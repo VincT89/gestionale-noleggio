@@ -3,6 +3,7 @@
     'action'   => '#',     // URL POST (route) — esattamente quello che già passi col :action
     'accept'   => '',      // es. "application/pdf,image/*"
     'multiple' => false,   // se presente, invia i file uno per uno
+    'contractRevision' => null,
 ])
 
 {{-- 
@@ -18,6 +19,9 @@
       class="space-y-2" enctype="multipart/form-data">
 
     @csrf
+    @if($contractRevision !== null)
+        <input type="hidden" name="contract_revision" value="{{ $contractRevision }}">
+    @endif
 
     <label class="label">
         <span class="label-text font-medium">{{ $label }}</span>
@@ -89,6 +93,8 @@ document.addEventListener('alpine:init', () => {
                 const fd = new FormData();
                 fd.append('file', file, file.name);
                 if (collection) fd.append('collection', collection);
+                const revision = form.querySelector('[name="contract_revision"]');
+                if (revision) fd.append('contract_revision', revision.value);
 
                 try {
                     const res = await fetch(url, {

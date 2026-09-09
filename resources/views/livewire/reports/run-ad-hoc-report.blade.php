@@ -582,25 +582,7 @@
                 @endif
             </div>
 
-            <div class="report-print-only mb-4 mt-3">
-                <h1 class="text-xl font-semibold">
-                    Statistica senza salvataggio
-                </h1>
-
-                <div class="mt-1 text-sm">
-                    Tipo analisi:
-                    {{ $report_type !== '' ? $this->getReportTypeLabel($report_type) : '—' }}
-                </div>
-
-                <div class="mt-1 text-sm">
-                    Periodo:
-                    {{ $dateFrom ?: '—' }} / {{ $dateTo ?: '—' }}
-                </div>
-
-                <div class="mt-1 text-sm">
-                    Generato il: {{ now()->format('d/m/Y H:i') }}
-                </div>
-            </div>
+            @include('livewire.reports.partials.print-header')
 
             @if ($runError)
                 <div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">

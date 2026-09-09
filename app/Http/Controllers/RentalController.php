@@ -8,6 +8,7 @@ use App\Models\RentalChecklist;
 use App\Domain\Pricing\VehiclePricingService;
 use App\Domain\Rentals\Guards\CloseRentalGuard;
 use App\Domain\Fees\AdminFeeResolver;
+use App\Services\Rentals\RentalPaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
@@ -65,13 +66,13 @@ class RentalController extends Controller
         }
 
         // Contratto presente su Rental
-        $hasContract = $rental->getMedia('contract')->isNotEmpty();
+        $hasContract = (bool) $rental->currentContractDocument('contract');
         if (!$hasContract) {
             return response()->json(['ok' => false, 'message' => 'Contratto non presente sul rental.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         // Se vuoi imporre la firma: contratti firmati su Rental e su Checklist(pickup)
-        $signedOnRental   = $rental->getMedia('signatures')->isNotEmpty();
+        $signedOnRental = (bool) $rental->currentContractDocument('signatures');
         $signedOnChecklist= $pickup->getMedia('checklist_pickup_signed')->isNotEmpty();
         if (!$signedOnChecklist) {
             return response()->json(['ok' => false, 'message' => 'Checklist pickup firmata assente.'], Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -109,13 +110,13 @@ class RentalController extends Controller
         }
 
         // Contratto presente su Rental
-        $hasContract = $rental->getMedia('contract')->isNotEmpty();
+        $hasContract = (bool) $rental->currentContractDocument('contract');
         if (!$hasContract) {
             return response()->json(['ok' => false, 'message' => 'Contratto non presente sul rental.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         // Se vuoi imporre la firma: contratti firmati su Rental e su Checklist(pickup)
-        $signedOnRental = $rental->getMedia('signatures')->isNotEmpty();
+        $signedOnRental = (bool) $rental->currentContractDocument('signatures');
 
         /**
          * ✅ Maggiore copertura: la firma pickup può essere salvata in collection diverse in base al flusso.
@@ -200,6 +201,7 @@ class RentalController extends Controller
     public function close(Request $request, Rental $rental, AdminFeeResolver $fees, CloseRentalGuard $guard)
     {
         // 1) Permesso
+        $this->authorize('view', $rental);
         $this->authorize('close', $rental);
 
         // 2) Regole (qui niente config: imposta tu i default/override)
@@ -224,6 +226,11 @@ class RentalController extends Controller
 
         // 4) Chiusura + snapshot fee admin (solo se org = renter)
         DB::transaction(function () use ($rental, $fees) {
+            $rental = Rental::query()->lockForUpdate()->findOrFail($rental->id);
+            $this->authorize('view', $rental);
+            $this->authorize('close', $rental);
+            abort_if($rental->status !== 'checked_in', 409, 'Lo stato del noleggio è cambiato. Aggiorna la pagina.');
+
             $isFirstClose = is_null($rental->closed_at);
             $closedAt     = $isFirstClose ? now() : $rental->closed_at;
 
@@ -362,7 +369,7 @@ class RentalController extends Controller
     /**
      * Registra pagamento sul noleggio
      */
-    public function storePayment(Request $request, Rental $rental)
+    public function storePayment(Request $request, Rental $rental, RentalPaymentService $payments)
     {
         $this->authorize('update', $rental);
 
@@ -381,49 +388,28 @@ class RentalController extends Controller
             'kind'              => [
                 'required', 
                 Rule::in($validKinds), 
-                Rule::unique('rental_charges', 'kind')
-                    ->where(fn ($q) => $q->where('rental_id', $rental->id)
-                                        ->whereNull('deleted_at')),
             ],
-            'amount'            => ['required','numeric','min:0.01'],
-            'payment_method'    => ['required','string','max:255'],
+            'amount'            => ['required','numeric','decimal:0,2','min:0.01','max:9999999999.99'],
+            'payment_method'    => ['required', Rule::in(['cash', 'pos', 'bank_transfer', 'other'])],
+            'request_key'       => ['nullable', 'uuid'],
             'payment_notes'     => ['nullable','string','max:255'], // note dal modale (UI)
             'payment_reference' => ['nullable','string','max:255'], // riferimento dal modale (UI)
             'description'       => ['nullable','string','max:255'],
-            'is_commissionable' => ['sometimes','boolean'], // override opzionale
         ],
         [
-            'kind.unique' => 'Esiste già un addebito di questo tipo per il noleggio.',
             'amount.min'  => 'L\'importo deve essere almeno :min.',
             'amount.required' => 'L\'importo è obbligatorio.',
+            'amount.decimal' => 'L\'importo può avere al massimo due decimali.',
+            'amount.max' => 'L\'importo supera il limite consentito.',
+            'kind.in' => 'Seleziona un tipo di pagamento valido.',
+            'payment_method.in' => 'Seleziona un metodo di pagamento valido.',
+            'request_key.uuid' => 'Richiesta di pagamento non valida. Riapri il modulo.',
             'payment_method.required' => 'Il metodo di pagamento è obbligatorio.',
             'payment_method.string' => 'Il metodo di pagamento deve essere una stringa.',
             'payment_method.max' => 'Il metodo di pagamento non può superare i :max caratteri.',
         ]);
 
-        DB::transaction(function () use ($rental, $data) {
-            // Se non specificato, commissionabile solo per base/overage
-            $isCommissionable = array_key_exists('is_commissionable', $data)
-                ? (bool)$data['is_commissionable']
-                : in_array($data['kind'], [
-                    RentalCharge::KIND_BASE,
-                    RentalCharge::KIND_DISTANCE_OVERAGE,
-                    RentalCharge::KIND_BASE_PLUS_DISTANCE_OVERAGE,
-                    RentalCharge::KIND_ACCONTO,
-                ], true) && $rental->assignment_id !== null;
-
-            RentalCharge::create([
-                'rental_id'           => $rental->id,
-                'kind'                => $data['kind'],
-                'description'         => $data['description'] ?? $data['payment_notes'] ?? null,
-                'amount'              => $data['amount'],
-                'is_commissionable'   => $isCommissionable,
-                'payment_method'      => $data['payment_method'],
-                'payment_recorded'    => true,
-                'payment_recorded_at' => now(),
-                'created_by'          => auth()->id(),
-            ]);
-        });
+        $payment = $payments->record($rental, $data, $request->user());
 
         // aggiorna flag per la UI
         $rental->refresh();
@@ -431,6 +417,9 @@ class RentalController extends Controller
         return response()->json([
             'ok'      => true,
             'message' => 'Pagamento registrato con successo.',
+            'payment_id' => $payment->id,
+            'base_paid_total' => (float) $rental->base_paid_total,
+            'has_combined_payment' => $rental->has_combined_payment,
             'flags'   => [
                 'has_base_payment'             => $rental->has_base_payment,
                 'needs_distance_overage'       => $rental->needs_distance_overage_payment,

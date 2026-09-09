@@ -102,6 +102,31 @@ class Rental extends Model implements SpatieHasMedia
         return $this->hasOne(RentalContractSnapshot::class);
     }
 
+    public function extensions(): HasMany
+    {
+        return $this->hasMany(RentalExtension::class);
+    }
+
+    public function contractRevision(): int
+    {
+        return (int) $this->extensions()->max('id');
+    }
+
+    public function currentCustomerSignature(): ?Media
+    {
+        $signature = $this->getFirstMedia('signature_customer');
+        return $signature && (int) $signature->getCustomProperty('rental_extension_id', 0) === $this->contractRevision()
+            ? $signature : null;
+    }
+
+    public function currentContractDocument(string $collection): ?Media
+    {
+        $revision = $this->contractRevision();
+        return $this->getMedia($collection)->sortByDesc('id')->first(
+            fn (Media $media) => (int) $media->getCustomProperty('rental_extension_id', 0) === $revision
+        );
+    }
+
     // -------------------------
     // Righe economiche (pagamenti eseguiti)
     // -------------------------
@@ -134,6 +159,21 @@ class Rental extends Model implements SpatieHasMedia
     {
         $sum = (float) $this->charges()->where('payment_recorded', true)->sum('amount');
         return number_format($sum, 2, '.', '');
+    }
+
+    public function getBasePaidTotalAttribute(): string
+    {
+        $sum = $this->charges()->paid()
+            ->whereIn('kind', [RentalCharge::KIND_BASE, RentalCharge::KIND_ACCONTO])
+            ->sum('amount');
+
+        return number_format((float) $sum, 2, '.', '');
+    }
+
+    public function getHasCombinedPaymentAttribute(): bool
+    {
+        return $this->charges()->paid()
+            ->where('kind', RentalCharge::KIND_BASE_PLUS_DISTANCE_OVERAGE)->exists();
     }
 
     // -------------------------
@@ -293,9 +333,8 @@ protected function resolveIncludedKm(): ?int
     public function getHasDistanceOveragePaymentAttribute(): bool
     {
         return $this->charges()
-            ->where('kind', RentalCharge::KIND_DISTANCE_OVERAGE)
-            ->orWhere('kind', RentalCharge::KIND_BASE_PLUS_DISTANCE_OVERAGE)
-            ->where('payment_recorded', true)
+            ->paid()
+            ->whereIn('kind', [RentalCharge::KIND_DISTANCE_OVERAGE, RentalCharge::KIND_BASE_PLUS_DISTANCE_OVERAGE])
             ->exists();
     }
 

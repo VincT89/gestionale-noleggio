@@ -32,8 +32,8 @@
     // Valori rapidi per la colonna destra (uguali a prima, solo ripuliti)
     $pickup   = $rental->checklists->firstWhere('type','pickup');
     $return   = $rental->checklists->firstWhere('type','return');
-    $hasCtr   = method_exists($rental, 'getMedia') ? $rental->getMedia('contract')->isNotEmpty()    : false;
-    $hasSign  = method_exists($rental, 'getMedia') ? $rental->getMedia('signatures')->isNotEmpty()  : false;
+    $hasCtr = (bool) $rental->currentContractDocument('contract');
+    $hasSign = (bool) $rental->currentContractDocument('signatures');
     $hasSignC = ($pickup && method_exists($pickup,'getMedia')) ? $pickup->getMedia('signatures')->isNotEmpty() : false;
     $photosPU = ($pickup && method_exists($pickup,'getMedia')) ? $pickup->getMedia('photos')->count() : 0;
     $photosRT = ($return && method_exists($return,'getMedia')) ? $return->getMedia('photos')->count() : 0;

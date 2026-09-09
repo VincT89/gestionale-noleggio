@@ -21,6 +21,8 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Locked;
+use App\Services\Rentals\RentalExtensionService;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
@@ -144,6 +146,77 @@ class Show extends Component
     /** Override prezzo finale (rentals.final_amount_override) */
     public ?string $final_amount_override = null;
 
+    public bool $extensionOpen = false;
+    public string $extensionReturnAt = '';
+    public string $extensionAmount = '';
+    public string $extensionNotes = '';
+    #[Locked]
+    public string $extensionRequestKey = '';
+    #[Locked]
+    public string $extensionExpectedReturnAt = '';
+    #[Locked]
+    public ?string $extensionExpectedAmount = null;
+    #[Locked]
+    public ?string $extensionExpectedOverride = null;
+    #[Locked]
+    public ?int $extensionToPrice = null;
+
+    public function openExtension(): void
+    {
+        $this->rental->refresh();
+        $this->authorize('update', $this->rental);
+        $this->resetValidation();
+        $this->extensionReturnAt = '';
+        $this->extensionAmount = '';
+        $this->extensionNotes = '';
+        $this->extensionRequestKey = (string) \Illuminate\Support\Str::uuid();
+        $this->extensionExpectedReturnAt = $this->rental->planned_return_at?->format('Y-m-d H:i:s') ?? '';
+        $this->extensionExpectedAmount = $this->rental->amount === null ? null : (string) $this->rental->amount;
+        $this->extensionExpectedOverride = $this->rental->final_amount_override;
+        $this->extensionOpen = true;
+        $this->extensionToPrice = null;
+    }
+
+    public function openExtensionPrice(int $id): void
+    {
+        $this->openExtension();
+        $this->rental->extensions()->whereNull('additional_amount')->findOrFail($id);
+        $this->extensionToPrice = $id;
+    }
+
+    public function saveExtension(RentalExtensionService $service): void
+    {
+        $data = [
+            'extensionReturnAt' => $this->extensionReturnAt,
+            'extensionAmount' => $this->extensionAmount,
+            'extensionNotes' => $this->extensionNotes,
+            'extensionRequestKey' => $this->extensionRequestKey,
+            'extensionExpectedReturnAt' => $this->extensionExpectedReturnAt,
+            'extensionExpectedAmount' => $this->extensionExpectedAmount,
+            'extensionExpectedOverride' => $this->extensionExpectedOverride,
+        ];
+        if ($this->extensionToPrice) {
+            $service->defineAmount($this->rental, $this->extensionToPrice, $data, auth()->user());
+        } else {
+            $service->extend($this->rental, $data, auth()->user());
+        }
+        $this->rental->refresh();
+        $this->extensionOpen = false;
+        $this->final_amount_override = $this->rental->final_amount_override;
+        $this->dispatch('rental-amount-updated', base_amount: (float) ($this->rental->final_amount_override ?? $this->rental->amount));
+        $this->dispatch('rental-state-updated', rentalId: (int) $this->rental->id);
+        $message = $this->rental->extensions()->whereNull('additional_amount')->exists()
+            ? 'Data di rientro aggiornata. Ricorda di definire il costo della proroga e registrare il pagamento.'
+            : 'Proroga registrata. Registra il pagamento quando viene incassato.';
+        $this->dispatch('toast', type: 'success', message: $message);
+    }
+
+    public function getRentalExtensionsProperty(): \Illuminate\Support\Collection
+    {
+        $this->authorize('view', $this->rental);
+        return $this->rental->extensions()->with('creator:id,name')->latest('id')->get();
+    }
+
     /** Cache nomi luoghi per evitare query ripetute */
     private array $cargosLuogoNameCache = [];
 
@@ -165,6 +238,25 @@ class Show extends Component
     public function switch(string $tab): void
     {
         $this->tab = $tab;
+    }
+
+    public function getRecordedPaymentsProperty(): \Illuminate\Support\Collection
+    {
+        $this->authorize('view', $this->rental);
+
+        return $this->rental->charges()->paid()->with('creator:id,name')
+            ->orderByDesc('payment_recorded_at')->orderByDesc('id')->get();
+    }
+
+    #[On('rental-payment-recorded')]
+    #[On('rental-state-updated')]
+    public function refreshRental(int $rentalId): void
+    {
+        if ($rentalId !== (int) $this->rental->id) {
+            return;
+        }
+        $this->authorize('view', $this->rental);
+        $this->rental->refresh();
     }
 
     /* -------------------------------------------------------------------------
@@ -942,7 +1034,8 @@ class Show extends Component
         $fk = $this->secondDriverForeignKey();
         $hasSecond = !empty($this->rental->{$fk});
 
-        $secondTotalCents = $hasSecond ? ($secondDailyCents * $days) : 0;
+        $secondTotalCents = $hasSecond
+            ? (int) ($snap['second_driver_total_cents'] ?? ($secondDailyCents * $days)) : 0;
         $computedCents = $tariffTotalCents + $secondTotalCents;
 
         DB::transaction(function () use ($computedCents) {
@@ -990,10 +1083,10 @@ class Show extends Component
         $media = null;
 
         if (method_exists($this->rental, 'getMedia')) {
-            $media = $this->rental->getMedia('signatures')->sortByDesc('created_at')->first();
+            $media = $this->rental->currentContractDocument('signatures');
 
             if (!$media) {
-                $media = $this->rental->getMedia('rental-contract-signed')->sortByDesc('created_at')->first();
+                $media = $this->rental->currentContractDocument('rental-contract-signed');
             }
         }
 
@@ -1160,6 +1253,12 @@ class Show extends Component
 
     public function generateContract(GenerateRentalContract $generator): void
     {
+        $this->rental->refresh();
+        $this->authorize('contractGenerate', $this->rental);
+        if ($this->rental->extensions()->whereNull('additional_amount')->exists()) {
+            $this->dispatch('toast', type: 'warning', message: 'Definisci il costo della proroga prima di generare il contratto aggiornato.');
+            return;
+        }
         if (!auth()->user()?->can('rentals.contract.generate') || !auth()->user()?->can('media.attach.contract')) {
             $this->dispatch('toast', type: 'error', message: 'Permesso negato.');
             return;
@@ -1170,7 +1269,8 @@ class Show extends Component
             return;
         }
 
-        if (!in_array($this->rental->status, ['draft', 'reserved'], true)) {
+        if (!in_array($this->rental->status, ['draft', 'reserved'], true)
+            && !$this->rental->extensions()->exists()) {
             $this->dispatch('toast', type: 'error', message: 'Non puoi generare il contratto in questa fase del noleggio.');
             return;
         }
@@ -1194,7 +1294,12 @@ class Show extends Component
 
     public function regenerateContractWithSignatures(GenerateRentalContract $generator): void
     {
+        $this->rental->refresh();
         $this->authorize('contractGenerate', $this->rental);
+        if ($this->rental->extensions()->whereNull('additional_amount')->exists()) {
+            $this->dispatch('toast', type: 'warning', message: 'Definisci il costo della proroga prima di generare il contratto aggiornato.');
+            return;
+        }
 
         if (empty($this->rental->customer_id)) {
             $this->dispatch('toast', type: 'warning', message: 'Associa prima un cliente al noleggio.');
@@ -1217,7 +1322,9 @@ class Show extends Component
             $generator->handle($this->rental, null, null, null, false, true);
 
             try {
-                $this->ensurePickupChecklistSignedPdf();
+                if (!$this->rental->contractRevision()) {
+                    $this->ensurePickupChecklistSignedPdf();
+                }
             } catch (\Throwable $e) {
                 report($e);
                 $this->dispatch('toast', type: 'warning', message: 'Contratto firmato generato, ma non sono riuscito a generare la checklist pickup firmata.');
@@ -1235,8 +1342,7 @@ class Show extends Component
 
     private function hasCustomerSignature(): bool
     {
-        return method_exists($this->rental, 'getFirstMedia')
-            && (bool) $this->rental->getFirstMedia('signature_customer');
+        return (bool) $this->rental->currentCustomerSignature();
     }
 
     /* -------------------------------------------------------------------------

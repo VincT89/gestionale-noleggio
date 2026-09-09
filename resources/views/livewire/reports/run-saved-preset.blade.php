@@ -310,23 +310,7 @@
                                 @endif
                             </div>
 
-                            <div class="report-print-only mb-4">
-                                <h1 class="text-xl font-bold">
-                                    {{ $selectedReportPreset['name'] ?? 'Report' }}
-                                </h1>
-
-                                <div class="mt-1 text-sm">
-                                    Tipo di analisi:
-                                    {{ $selectedReportPreset['report_type_label'] ?? '—' }}
-                                </div>
-
-                                <div class="mt-1 text-sm">
-                                    Periodo:
-                                    {{ $dateFrom ? \Illuminate\Support\Carbon::parse($dateFrom)->format('d/m/Y') : '—' }}
-                                    -
-                                    {{ $dateTo ? \Illuminate\Support\Carbon::parse($dateTo)->format('d/m/Y') : '—' }}
-                                </div>
-                            </div>
+                            @include('livewire.reports.partials.print-header')
 
                             @if ($chartInfoMessage)
                                 <div class="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-800 dark:bg-blue-900/20 dark:text-blue-200">

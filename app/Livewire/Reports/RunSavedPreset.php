@@ -10,6 +10,7 @@ use App\Models\Vehicle;
 use App\Services\Reports\ReportRunner;
 use Illuminate\Support\Carbon;
 use InvalidArgumentException;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
@@ -63,6 +64,10 @@ class RunSavedPreset extends Component
      * @var array<int, array<string, mixed>>
      */
     public array $reportRows = [];
+
+    /** Intestazione riferita all'ultima esecuzione, indipendente dalle modifiche al form. */
+    #[Locked]
+    public array $printContext = [];
 
     /**
      * Intestazioni tabellari derivate dai risultati.
@@ -497,6 +502,8 @@ class RunSavedPreset extends Component
         $this->reportRows = [];
         $this->reportColumns = [];
 
+        $this->printContext = [];
+
         $reportPreset = ReportPreset::query()->findOrFail($this->selectedReportPresetId);
 
         /**
@@ -535,6 +542,15 @@ class RunSavedPreset extends Component
                 : [];
 
             $this->prepareChartData($runtimePreset);
+
+            $this->printContext = [
+                'title' => $reportPreset->name,
+                'report_type_label' => $this->getReportTypeLabel($runtimePreset->report_type),
+                'date_from' => Carbon::parse($filters['date_from'])->format('d/m/Y'),
+                'date_to' => Carbon::parse($filters['date_to'])->format('d/m/Y'),
+                'generated_at' => now()->format('d/m/Y H:i'),
+                'organization_names' => $reportRunner->organizationNamesFor($runtimePreset),
+            ];
 
             $this->hasRunReport = true;
         } catch (InvalidArgumentException $exception) {
@@ -750,6 +766,7 @@ class RunSavedPreset extends Component
             'vehicle_id',
             'closed_at',
             'actual_return_at',
+            'admin_fee_percent',
         ]) as $rental) {
             /**
              * Per il calcolo fee usiamo una data coerente col noleggio chiuso:
@@ -1346,6 +1363,7 @@ class RunSavedPreset extends Component
         $this->runError = null;
         $this->hasRunReport = false;
         $this->reportRows = [];
+        $this->printContext = [];
         $this->reportColumns = [];
         $this->canRenderChart = false;
         $this->chartInfoMessage = null;

@@ -116,6 +116,8 @@
     </div>
 </div>
 
+@include('pages.rentals.partials.payment-history', ['payments' => $this->recordedPayments])
+
 {{-- Azioni sul noleggio + Modale registrazione pagamento --}}
 <div
     wire:ignore
@@ -241,11 +243,14 @@
         {{ (float)($rental->final_amount_override ?? $rental->amount) }},
         {
             hasBasePayment: @js($rental->has_base_payment),
+            basePaid: @js((float) $rental->base_paid_total),
+            hasCombinedPayment: @js($rental->has_combined_payment),
+            hasOveragePayment: @js($rental->has_distance_overage_payment),
             // ✅ Totale acconti già PAGATI (serve per calcolare il residuo quota base)
             accontoPaid: {{ (float) $rental->charges()->where('kind','acconto')->where('payment_recorded', true)->sum('amount') }},
 
             kinds: [
-                {val:'base',              label:'Quota base (contratto)'},
+                {val:'base',              label:'Quota base / saldo'},
                 {val:'distance_overage',  label:'Km extra'},
                 {val:'base+distance_overage', label:'Quota base + Km extra'},
                 {val:'damage',            label:'Danni'},
@@ -279,32 +284,45 @@
                   @csrf
                   <!-- Tipo -->
                   <div>
-                    <label class="label"><span class="label-text">Tipo</span></label>
-                    <select x-model="kind" name="kind"
-                            class="mt-1 w-full rounded-md border-gray-300 shadow-sm appearance-none pr-8 focus:border-indigo-500 focus:ring-indigo-500" required
+                    <label for="payment-kind" class="label"><span class="label-text">Tipo</span></label>
+                    <select id="payment-kind" x-model="kind" name="kind"
+                            class="mt-1 w-full rounded-md border-gray-300 bg-white text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 shadow-sm appearance-none pr-8 focus:border-indigo-500 focus:ring-indigo-500" required
                             @change="onKindChange()">
                       <option value="" disabled>Seleziona tipo</option>
                       <template x-for="k in kinds" :key="k.val">
                         <option :value="k.val" x-text="k.label"></option>
                       </template>
                     </select>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-300" x-show="kind === 'other'">
+                        Per un saldo o un versamento aggiuntivo del noleggio scegli Quota base / saldo.
+                    </p>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-300" x-show="kind"
+                        x-text="@js($rental->assignment_id !== null) && @js(\App\Models\RentalCharge::COMMISSIONABLE_KINDS).includes(kind)
+                            ? 'Questo pagamento entra nella base delle commissioni.'
+                            : 'Questo pagamento è escluso dalla base delle commissioni.'"></p>
                   </div>
 
                   <!-- Importo -->
                   <div>
-                    <label class="label"><span class="label-text">Importo</span></label>
-                    <input type="number" step="0.01" min="0" x-model.number="amount" name="amount"
-                          class="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" required>
-                    <p class="text-xs text-gray-500 mt-1" x-show="kind === 'distance_overage' && distanceOverageDue > 0">
+                    <label for="payment-amount" class="label"><span class="label-text">Importo</span></label>
+                    <input id="payment-amount" type="number" step="0.01" min="0.01" max="9999999999.99" x-model.number="amount" name="amount"
+                          class="block w-full rounded-md border border-gray-300 bg-white text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 px-3 py-2 text-sm" required>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-300" x-show="hasCombinedPayment && (kind === 'base' || kind === 'distance_overage' || kind === 'base+distance_overage')">
+                        Sono presenti pagamenti che comprendono anche i km extra. Verifica il saldo e inserisci l'importo da incassare.
+                    </p>
+                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-300" x-show="hasOveragePayment && !hasCombinedPayment && (kind === 'distance_overage' || kind === 'base+distance_overage')">
+                        Sono già registrati pagamenti per i km extra. Verifica lo storico e inserisci solo l'eventuale importo aggiuntivo.
+                    </p>
+                    <p class="text-xs text-gray-500 dark:text-gray-300 mt-1" x-show="kind === 'distance_overage' && distanceOverageDue > 0 && !hasOveragePayment">
                       Valore precompilato dai km extra.
                     </p>
                   </div>
 
                   <!-- Metodo -->
                   <div>
-                    <label class="label"><span class="label-text">Metodo di Pagamento</span></label>
-                    <select x-model="payment_method" name="payment_method"
-                            class="mt-1 w-full rounded-md border-gray-300 shadow-sm pr-8 focus:border-indigo-500 focus:ring-indigo-500" required>
+                    <label for="payment-method" class="label"><span class="label-text">Metodo di Pagamento</span></label>
+                    <select id="payment-method" x-model="payment_method" name="payment_method"
+                            class="mt-1 w-full rounded-md border-gray-300 bg-white text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 shadow-sm pr-8 focus:border-indigo-500 focus:ring-indigo-500" required>
                       <option value="" disabled>Seleziona metodo</option>
                       <option value="cash">Contanti</option>
                       <option value="pos">Carta di Credito</option>
@@ -315,14 +333,14 @@
 
                   <!-- Note / Riferimento -->
                   <div>
-                    <label class="label"><span class="label-text">Note</span></label>
-                    <textarea x-model.trim="payment_notes" name="payment_notes" rows="3"
-                              class="block w-full rounded-md border px-3 py-2 text-sm"></textarea>
+                    <label for="payment-notes" class="label"><span class="label-text">Note</span></label>
+                    <textarea id="payment-notes" x-model.trim="payment_notes" name="payment_notes" rows="3" maxlength="255"
+                              class="block w-full rounded-md border bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 px-3 py-2 text-sm"></textarea>
                   </div>
                   <div>
-                    <label class="label"><span class="label-text">Riferimento</span></label>
-                    <input type="text" x-model.trim="payment_reference" name="payment_reference"
-                          class="block w-full rounded-md border px-3 py-2 text-sm">
+                    <label for="payment-reference" class="label"><span class="label-text">Riferimento</span></label>
+                    <input id="payment-reference" type="text" x-model.trim="payment_reference" name="payment_reference" maxlength="255"
+                          class="block w-full rounded-md border bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100 px-3 py-2 text-sm">
                   </div>
                 </form>
               </div>
@@ -421,7 +439,10 @@ document.addEventListener('alpine:init', () => {
           return;
         }
 
-        if (data?.status) this.phase = data.status;
+        if (data?.status) {
+          this.phase = data.status;
+          window.Livewire?.dispatch('rental-state-updated', {rentalId: @js((int) $rental->id)});
+        }
         if (data?.flags) {
           if ('has_base_payment' in data.flags)
             this.flags.hasBasePayment = !!data.flags.has_base_payment;
@@ -505,7 +526,7 @@ document.addEventListener('alpine:init', () => {
     let baseAmount = isString ? Number(arg2 ?? 0) : Number(arg1?.defaultAmount ?? 0);
 
     const defaultKinds = [
-      {val:'base',             label:'Quota base (contratto)'},
+      {val:'base',             label:'Quota base / saldo'},
       {val:'distance_overage', label:'Km extra'},
       {val:'base+distance_overage', label:'Quota base + Km extra'},
       {val:'damage',           label:'Danni'},
@@ -532,6 +553,10 @@ document.addEventListener('alpine:init', () => {
       payment_notes:'',
       payment_reference:'',
       description:'', // retro-compat
+      requestKey: null,
+      basePaid: Number(arg3?.basePaid ?? arg1?.basePaid ?? 0),
+      hasCombinedPayment: !!(arg3?.hasCombinedPayment ?? arg1?.hasCombinedPayment ?? false),
+      hasOveragePayment: !!(arg3?.hasOveragePayment ?? arg1?.hasOveragePayment ?? false),
       accontoPaid: initialAccontoPaid,
       kindsAll: kindsFromArgs || defaultKinds,
       kinds: [],
@@ -553,11 +578,12 @@ document.addEventListener('alpine:init', () => {
       },
 
       /**
-      * ✅ Residuo quota base = importo contratto - acconti già pagati.
+      * Residuo quota base: sottrae tutti i versamenti della quota base e gli acconti.
       */
       baseDue(){
+        if (this.hasCombinedPayment) return null;
         const base = Number(this.baseAmount || 0);
-        const acc  = Number(this.accontoPaid || 0);
+        const acc  = Number(this.basePaid || 0);
         return Math.max(0, +(base - acc).toFixed(2));
       },
 
@@ -565,6 +591,7 @@ document.addEventListener('alpine:init', () => {
       * ✅ Residuo "quota base + km extra" = (base - acconto) + (solo km extra).
       */
       basePlusOverageDue(){
+        if (this.baseDue() === null || this.hasOveragePayment) return null;
         const over = Number(this.getOverageDue() || 0);
         return Math.max(0, +(this.baseDue() + over).toFixed(2));
       },
@@ -573,8 +600,6 @@ document.addEventListener('alpine:init', () => {
         const over = Number(this.getOverageDue() || 0);
 
         this.kinds = this.kindsAll.filter(k => {
-          if (k.val === 'base') return !this.hasBasePayment;
-
           // ✅ mostra km extra SOLO se > 0
           if (k.val === 'distance_overage') return over > 0;
 
@@ -583,10 +608,6 @@ document.addEventListener('alpine:init', () => {
 
           return true;
         });
-
-        if (this.hasBasePayment && this.kind === 'base') {
-          this.kind = '';
-        }
 
         if (over <= 0 && (this.kind === 'distance_overage' || this.kind === 'base+distance_overage')) {
           this.kind = '';
@@ -607,16 +628,17 @@ document.addEventListener('alpine:init', () => {
 
             // Se sto pagando la quota base (o base+overage), aggiorno la precompilazione
             if (this.open && this.kind === 'base') {
-              this.amount = Number(this.baseDue() || 0);
+              this.amount = this.baseDue() ?? '';
             }
             if (this.open && this.kind === 'base+distance_overage') {
-              this.amount = Number(this.basePlusOverageDue() || 0);
+              this.amount = this.basePlusOverageDue() ?? '';
             }
           }
         });
       },
 
       openModal(detail = null){
+        this.requestKey = null;
         // reset pulito ad ogni apertura
         this.kind = '';
         this.amount = 0;
@@ -632,7 +654,7 @@ document.addEventListener('alpine:init', () => {
         this.open = true;
         this.applyKindsFilter();
 
-        const alreadyPaid = !!window.__hasDistanceOveragePayment;
+        const alreadyPaid = this.hasOveragePayment || !!window.__hasDistanceOveragePayment;
 
         /**
         * Default suggerito:
@@ -645,29 +667,27 @@ document.addEventListener('alpine:init', () => {
           return;
         }
 
-        if (!this.hasBasePayment) {
-          this.kind = 'base';
-          this.amount = Number(this.baseDue() || 0);
-          return;
-        }
+        this.kind = 'base';
+        this.amount = this.baseDue() ?? '';
       },
 
       close(){ this.open=false; this.loading=false; },
 
       onKindChange(){
         if (this.kind === 'distance_overage') {
+          if (this.hasOveragePayment) { this.amount = ''; return; }
           const due = Number(this.getOverageDue() || 0);
           this.amount = due > 0 ? Number(due.toFixed(2)) : 0;
           return;
         }
 
         if (this.kind === 'base') {
-          this.amount = Number(this.baseDue() || 0);
+          this.amount = this.baseDue() ?? '';
           return;
         }
 
         if (this.kind === 'base+distance_overage') {
-          this.amount = Number(this.basePlusOverageDue() || 0);
+          this.amount = this.basePlusOverageDue() ?? '';
           return;
         }
 
@@ -678,7 +698,15 @@ document.addEventListener('alpine:init', () => {
         if (this.loading) return;
         this.loading = true;
         try{
+          if (!this.requestKey) {
+            const bytes = crypto.getRandomValues(new Uint8Array(16));
+            bytes[6] = (bytes[6] & 15) | 64;
+            bytes[8] = (bytes[8] & 63) | 128;
+            const hex = Array.from(bytes, value => value.toString(16).padStart(2, '0')).join('');
+            this.requestKey = `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+          }
           const fd = new FormData();
+          fd.append('request_key', this.requestKey);
           fd.append('kind', this.kind);
           fd.append('amount', this.amount);
           fd.append('payment_method', this.payment_method);
@@ -721,6 +749,10 @@ document.addEventListener('alpine:init', () => {
           if (typeof data?.acconto_paid_total !== 'undefined') {
             this.accontoPaid = Number(data.acconto_paid_total || 0);
           }
+          this.basePaid = Number(data.base_paid_total ?? this.basePaid);
+          this.hasCombinedPayment = !!(data.has_combined_payment ?? this.hasCombinedPayment);
+          this.hasBasePayment = !!(data.flags?.has_base_payment ?? this.hasBasePayment);
+          this.hasOveragePayment = !!(data.flags?.has_distance_overage_payment ?? this.hasOveragePayment);
 
           /**
            * Se l’utente sta registrando un pagamento "base" o "base+km extra",
@@ -738,14 +770,15 @@ document.addEventListener('alpine:init', () => {
             }));
           }
 
-          try{ this.$wire?.$refresh(); }catch(_){}
-          try{ window.Livewire?.emit?.('refresh'); }catch(_){}
+          window.Livewire?.dispatch('rental-payment-recorded', {rentalId: @js((int) $rental->id)});
 
           // reset soft
           this.close();
           this.kind=''; this.payment_method=''; this.payment_notes=''; this.payment_reference='';
           this.description=''; this.amount = Number(this.baseAmount || 0);
-
+          this.requestKey = null;
+        } catch (_) {
+          window.dispatchEvent(new CustomEvent('toast', {detail: {type:'error', message:'Connessione interrotta. Controlla lo storico prima di riprovare.'}}));
         } finally { this.loading=false; }
       },
     };

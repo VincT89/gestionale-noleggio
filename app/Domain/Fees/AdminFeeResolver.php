@@ -38,6 +38,7 @@ class AdminFeeResolver
         return Cache::remember($cacheKey, now()->addMinutes($this->ttlMinutes), function () use ($organizationId, $date) {
             $percent = DB::table('organization_fees')
                 ->where('organization_id', $organizationId)
+                ->whereNull('deleted_at')
                 ->where('effective_from', '<=', $date->toDateString())
                 ->where(function ($q) use ($date) {
                     $q->whereNull('effective_to')->orWhere('effective_to', '>=', $date->toDateString());
@@ -58,12 +59,13 @@ class AdminFeeResolver
         $date = $this->normalizeDate($at ?? ($rental->actual_return_at ?: now()));
 
         // percentuale attiva per l'org del rental (se manca → null)
-        $percent = $rental->organization_id
-            ? $this->findActivePercent($rental->organization_id, $date)
-            : null;
+        $percent = $rental->closed_at
+            ? ($rental->admin_fee_percent !== null ? (float) $rental->admin_fee_percent : null)
+            : ($rental->organization_id ? $this->findActivePercent($rental->organization_id, $date) : null);
 
         // somma righe commissionabili (senza affidarsi a accessor formattati)
         $commissionable = (float) $rental->charges()
+            ->paid()
             ->where('is_commissionable', true)
             ->sum('amount');
 

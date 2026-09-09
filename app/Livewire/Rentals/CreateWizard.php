@@ -13,6 +13,8 @@ use App\Services\Contracts\GenerateRentalContract;
 use App\Domain\Pricing\VehiclePricingService;
 use Illuminate\Database\Eloquent\Builder;
 use App\Services\Rentals\RentalNumberAllocator;
+use App\Services\Rentals\RentalPeriodAvailability;
+use Illuminate\Support\Facades\DB;
 
 class CreateWizard extends Component
 {
@@ -467,6 +469,28 @@ class CreateWizard extends Component
     /** Salva/aggiorna la bozza (sempre status=draft) */
     public function saveDraft(): void
     {
+        DB::transaction(function () {
+            $vehicleId = $this->rentalData['vehicle_id'] ?? null;
+            if ($vehicleId) {
+                Vehicle::whereKey($vehicleId)->lockForUpdate()->firstOrFail();
+            }
+            if ($this->rentalId) {
+                $existing = Rental::whereKey($this->rentalId)->lockForUpdate()->firstOrFail();
+                $this->authorize('update', $existing);
+                if (!in_array($existing->status, ['draft', 'reserved'], true) || $existing->extensions()->exists()) {
+                    throw ValidationException::withMessages([
+                        'rentalData.planned_return_at' => 'Questo contratto non è più modificabile dal nuovo noleggio. Usa la scheda contratto e la funzione Proroga noleggio.',
+                    ]);
+                }
+            } else {
+                $this->authorize('create', Rental::class);
+            }
+            $this->persistDraft();
+        }, 3);
+    }
+
+    private function persistDraft(): void
+    {
         $this->validate(
             $this->rulesStep1(),
             $this->messages(),
@@ -482,6 +506,7 @@ class CreateWizard extends Component
         // recupero l'assegnazione del veicolo selezionato
         $assignment = VehicleAssignment::query()
             ->where('vehicle_id', $this->rentalData['vehicle_id'] ?? 0)
+            ->where('renter_org_id', $orgId)
             ->active()
             ->latest('start_at')
             ->first();
@@ -494,6 +519,19 @@ class CreateWizard extends Component
         // Cast date una volta sola (evita parse ripetuti)
         $plannedPickupAt = $this->castDate($this->rentalData['planned_pickup_at'] ?? null);
         $plannedReturnAt = $this->castDate($this->rentalData['planned_return_at'] ?? null);
+
+        $periodRental = $this->rentalId ? Rental::findOrFail($this->rentalId) : new Rental();
+        $periodRental->fill([
+            'vehicle_id' => $this->rentalData['vehicle_id'],
+            'organization_id' => $orgId,
+            'assignment_id' => $assignment?->id,
+            'planned_pickup_at' => $plannedPickupAt,
+        ]);
+        app(RentalPeriodAvailability::class)->assertAvailable(
+            $periodRental, $plannedPickupAt, $plannedReturnAt, 'rentalData.planned_return_at'
+        );
+        $this->assertCustomerNoOverlap();
+        $this->assertDriverLicenseValidThroughReturn();
 
         /**
          * 💶 Denormalizzazione importo base del noleggio su rentals.amount
