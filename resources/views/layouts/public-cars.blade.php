@@ -20,7 +20,7 @@
             ['Cerca auto', route($routePrefix.'.index')], ['Veicoli commerciali', $website.'/auto-medium/'],
             ['Chi Siamo', $website.'/our-story/'], ['Partners', $website.'/#partners'],
             ['Diventa Segnalatore', $website.'/diventa-segnalatore/'],
-            ['Richiedi Preventivo', $website.'/contact-us/'], ['Login', route('login')],
+            ['Richiedi Preventivo', $website.'/contact-us/'],
         ];
     @endphp
     <header class="amd-header">
