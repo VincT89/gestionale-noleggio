@@ -2,6 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+    .app-surface {
+        @apply bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100;
+    }
+
+    .app-surface-subtle {
+        @apply bg-gray-50 text-gray-900 dark:bg-gray-700 dark:text-gray-100;
+    }
+
+    .app-muted {
+        @apply text-gray-600 dark:text-gray-300;
+    }
+
+    main nav [aria-current="page"] > span {
+        @apply text-gray-900 dark:text-gray-100;
+    }
+
+    .app-field {
+        @apply bg-white text-gray-900 placeholder:text-gray-500 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-400 dark:border-gray-600;
+        color-scheme: light;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        .app-field {
+            color-scheme: dark;
+        }
+    }
+}
+
 [x-cloak] {
     display: none;
 }

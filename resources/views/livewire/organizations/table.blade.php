@@ -6,8 +6,8 @@
         <div class="flex flex-wrap items-end gap-3">
             {{-- Ricerca --}}
             <div>
-                <label class="block text-xs text-gray-600 dark:text-gray-300 mb-1">Cerca</label>
-                <input type="text"
+                <label for="organizations-search" class="block text-xs text-gray-600 dark:text-gray-300 mb-1">Cerca</label>
+                <input id="organizations-search" type="text"
                        wire:model.live.debounce.400ms="search"
                        placeholder="Nome renter / nome utente / email"
                        class="px-3 py-2 rounded-md border bg-gray-50 dark:bg-gray-700 text-sm
@@ -16,8 +16,8 @@
 
             {{-- Filtro veicoli --}}
             <div>
-                <label class="block text-xs text-gray-600 dark:text-gray-300 mb-1">Veicoli assegnati (oggi)</label>
-                <select wire:model.live="countFilter"
+                <label for="organizations-countFilter" class="block text-xs text-gray-600 dark:text-gray-300 mb-1">Veicoli assegnati (oggi)</label>
+                <select id="organizations-countFilter" wire:model.live="countFilter"
                         class="px-6 py-2 rounded-md border bg-gray-50 dark:bg-gray-700 text-sm
                                text-gray-900 dark:text-gray-100">
                     <option value="all">Tutti</option>
@@ -28,8 +28,8 @@
 
             {{-- Filtro stato renter (attive / archiviate / tutte) --}}
             <div>
-                <label class="block text-xs text-gray-600 dark:text-gray-300 mb-1">Stato</label>
-                <select wire:model.live="statusFilter"
+                <label for="organizations-statusFilter" class="block text-xs text-gray-600 dark:text-gray-300 mb-1">Stato</label>
+                <select id="organizations-statusFilter" wire:model.live="statusFilter"
                         class="px-6 py-2 rounded-md border bg-gray-50 dark:bg-gray-700 text-sm
                                text-gray-900 dark:text-gray-100">
                     <option value="active">Attive</option>
@@ -40,8 +40,8 @@
 
             {{-- Per pagina --}}
             <div>
-                <label class="block text-xs text-gray-600 dark:text-gray-300 mb-1">Per pagina</label>
-                <select wire:model.live="perPage"
+                <label for="organizations-perPage" class="block text-xs text-gray-600 dark:text-gray-300 mb-1">Per pagina</label>
+                <select id="organizations-perPage" wire:model.live="perPage"
                         class="px-6 py-2 rounded-md border bg-gray-50 dark:bg-gray-700 text-sm
                                text-gray-900 dark:text-gray-100">
                     <option>10</option>

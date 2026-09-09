@@ -73,12 +73,16 @@ class VehiclePricingService
          * PRIORITÀ: 0 = più alta -> ordinamento ASC.
          * Uso reorder() per annullare eventuali orderBy definiti nella relazione del Model.
          */
-        $seasons = $pl->seasons()
+        $seasons = $pl->relationLoaded('seasons')
+            ? $pl->seasons->where('is_active', true)->sortBy('priority')
+            : $pl->seasons()
             ->where('is_active', true)
             ->reorder('priority', 'asc')
             ->get();
 
-        $tiers = $pl->tiers()
+        $tiers = $pl->relationLoaded('tiers')
+            ? $pl->tiers->where('is_active', true)->sortBy('priority')
+            : $pl->tiers()
             ->where('is_active', true)
             ->reorder('priority', 'asc')
             ->get();

@@ -6,8 +6,8 @@
         <div class="flex flex-wrap items-end gap-3">
             {{-- Ricerca --}}
             <div>
-                <label class="block text-xs text-gray-600 dark:text-gray-300 mb-1">Cerca</label>
-                <input type="text"
+                <label for="locations-search" class="block text-xs text-gray-600 dark:text-gray-300 mb-1">Cerca</label>
+                <input id="locations-search" type="text"
                        wire:model.live.debounce.400ms="search"
                        placeholder="Nome sede / città / CAP"
                        class="px-3 py-2 rounded-md border bg-gray-50 dark:bg-gray-700 text-sm
@@ -16,8 +16,8 @@
 
             {{-- Per pagina --}}
             <div>
-                <label class="block text-xs text-gray-600 dark:text-gray-300 mb-1">Per pagina</label>
-                <select wire:model.live="perPage"
+                <label for="locations-perPage" class="block text-xs text-gray-600 dark:text-gray-300 mb-1">Per pagina</label>
+                <select id="locations-perPage" wire:model.live="perPage"
                         class="px-6 py-2 rounded-md border bg-gray-50 dark:bg-gray-700 text-sm
                                text-gray-900 dark:text-gray-100">
                     <option>10</option>

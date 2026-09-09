@@ -1,12 +1,12 @@
 <x-app-layout>
-    <div class="p-6">
+    <div class="p-0 sm:p-6">
         <x-slot name="header">
             <div class="flex flex-wrap items-center justify-between">
                 <h2 class="font-semibold text-xl text-white dark:text-gray-200 leading-tight">
                     {{ __('Modifica veicolo') }}
                 </h2>
                 <a href="{{ route('vehicles.show', $vehicle) }}"
-                   class="inline-flex h-10 items-center rounded-md border border-gray-200 dark:border-gray-700 px-3 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                   class="inline-flex min-h-10 items-center rounded-md border border-gray-200 px-3 bg-gray-100 text-gray-900 hover:bg-gray-200">
                     Torna al dettaglio
                 </a>
             </div>

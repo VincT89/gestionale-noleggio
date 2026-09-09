@@ -41,7 +41,7 @@ class LocationController extends Controller
 
         $location = new Location();
         $location->fill($validated);
-        $location->organization_id = (int) Auth::user()->organization_id;
+        $location->organization_id = (int) $request->user()->organization_id;
         $location->save();
 
         // Con form "semplice Blade" qui potresti usare un flash o query param per un toast globale.

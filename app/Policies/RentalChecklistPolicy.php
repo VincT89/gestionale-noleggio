@@ -13,6 +13,11 @@ use App\Models\RentalChecklist;
  */
 class RentalChecklistPolicy
 {
+    public function view(User $user, RentalChecklist $checklist): bool
+    {
+        return $checklist->rental !== null && $user->can('view', $checklist->rental);
+    }
+
     /**
      * Creazione checklist (pickup/return).
      * Permesso richiesto: rental_checklists.create
@@ -35,7 +40,7 @@ class RentalChecklistPolicy
             return false;
         }
 
-        return $user->can('rental_checklists.update');
+        return $this->view($user, $checklist) && $user->can('rental_checklists.update');
     }
 
     /**
@@ -49,7 +54,7 @@ class RentalChecklistPolicy
             return false;
         }
 
-        return $user->can('media.attach.checklist_photo');
+        return $this->view($user, $checklist) && $user->can('media.attach.checklist_photo');
     }
 
     /**
@@ -67,7 +72,7 @@ class RentalChecklistPolicy
             return false;
         }
 
-        return $user->can('media.upload');
+        return $this->view($user, $checklist) && $user->can('media.upload');
     }
 
     /**
@@ -81,7 +86,7 @@ class RentalChecklistPolicy
             return false;
         }
 
-        return $user->can('media.delete');
+        return $this->view($user, $checklist) && $user->can('media.delete');
     }
 
     /**
@@ -96,6 +101,6 @@ class RentalChecklistPolicy
         }
 
         // Riutilizziamo il permesso di update per la generazione PDF in bozza.
-        return $user->can('rental_checklists.update');
+        return $this->view($user, $checklist) && $user->can('rental_checklists.update');
     }
 }

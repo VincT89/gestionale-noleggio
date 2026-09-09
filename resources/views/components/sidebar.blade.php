@@ -2,23 +2,25 @@
 
 <?php
 /**
- * Componente Sidebar – Gestionale Divani v3.0
+ * Navigazione del gestionale AMD Mobility.
  *
  * - Accordion “una sola sezione aperta” usando `openSection` dal layout
  * - Nessun `x-data` proprio: eredita `isOpen` e `openSection` dal genitore
- * - Fa parte del layout Flex (non è più fixed)
+ * - Su mobile il contenitore del layout si sovrappone al contenuto
  */
 ?>
 <aside
+    id="app-sidebar"
+    aria-label="Navigazione principale"
     x-cloak
     x-show="isOpen"
     x-transition:enter="transition-all duration-200"
     x-transition:leave="transition-all duration-200"
-    :class="isOpen ? 'w-48 sm:w-56 md:w-64' : 'w-0'"
-    class="overflow-hidden bg-white dark:bg-gray-800 border-r dark:border-gray-700 flex flex-col"
+    :class="isOpen ? 'w-64' : 'w-0'"
+    class="h-full overflow-y-auto overscroll-contain bg-white dark:bg-gray-800 border-r dark:border-gray-700 flex flex-col"
 >
     {{-- Spazio in testa (logo, padding) --}}
-    <div class="h-16 flex items-center justify-center">
+    <div class="h-16 shrink-0 flex items-center justify-center">
         
     </div>
 
@@ -38,6 +40,24 @@
         </a>
     </div>
 
+    @can('vehicle_pricing.update')
+        <div class="border-b border-gray-200 dark:border-gray-700">
+            <a href="{{ route('public-offers.index') }}" class="block px-8 py-3 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Catalogo pubblico</a>
+        </div>
+    @endcan
+
+    @can('rentals.viewAny')
+        <div class="border-b border-gray-200 dark:border-gray-700">
+            <a href="{{ route('public-bookings.index') }}" class="block px-8 py-3 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">Prenotazioni dal sito</a>
+        </div>
+    @endcan
+
+    <div class="border-b border-gray-200 dark:border-gray-700">
+        <a href="{{ auth()->user()->can('vehicle_pricing.update') ? route('public-cars.preview.index') : route('public-cars.index') }}" target="_blank" rel="noopener" class="block px-8 py-3 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+            Ricerca auto pubblica<span class="sr-only"> (si apre in una nuova scheda)</span>
+        </a>
+    </div>
+
     {{-- Menu a fisarmonica: itero solo le sezioni con almeno una voce accessibile --}}
     @foreach(config('menu.sidebar') as $i => $section)
         @php
@@ -53,8 +73,11 @@
         <div class="border-b border-gray-200 dark:border-gray-700">
             {{-- Intestazione sezione --}}
             <button
+                type="button"
                 @click="openSection = (openSection === {{ $i }} ? null : {{ $i }})"
-                class="w-full flex justify-between items-center px-6 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
+                :aria-expanded="(openSection === {{ $i }}).toString()"
+                aria-controls="sidebar-section-{{ $i }}"
+                class="w-full flex justify-between items-center px-6 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600"
             >
                 <span class="font-semibold text-gray-700 dark:text-gray-200">
                     {{ __($section['section']) }}
@@ -67,6 +90,7 @@
 
             {{-- Voci accessibili della sezione --}}
             <ul
+                id="sidebar-section-{{ $i }}"
                 x-show="openSection === {{ $i }}"
                 x-transition
                 class="space-y-1 bg-gray-50 dark:bg-gray-900"

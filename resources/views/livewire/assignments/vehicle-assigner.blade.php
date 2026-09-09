@@ -1,47 +1,47 @@
 <div class="space-y-6">
 
     {{-- FILTRI SUPERIORI --}}
-    <div class="bg-white shadow rounded p-4 space-y-4">
+    <div class="app-surface shadow rounded p-4 space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             {{-- Renter --}}
             <div>
-                <label class="block text-sm font-medium mb-1">Renter (organizzazione)</label>
-                <select class="w-full border rounded p-2" wire:model.live="renterOrgId">
+                <label for="assignments-renterOrgId" class="block text-sm font-medium mb-1">Renter (organizzazione)</label>
+                <select id="assignments-renterOrgId" class="w-full border rounded p-2 app-field" wire:model.live="renterOrgId">
                     <option value="">— seleziona —</option>
                     @foreach($renterOptions as $opt)
                         <option value="{{ $opt->id }}">{{ $opt->name }}</option>
                     @endforeach
                 </select>
-                @error('renterOrgId') <p class="text-red-600 text-sm mt-1">{{ $message }}</p> @enderror
+                @error('renterOrgId') <p class="text-red-600 dark:text-red-400 text-sm mt-1">{{ $message }}</p> @enderror
             </div>
 
             {{-- Dal --}}
             <div>
-                <label class="block text-sm font-medium mb-1">Dal</label>
-                <input type="datetime-local" class="w-full border rounded p-2" wire:model.live="dateFrom">
-                @error('dateFrom') <p class="text-red-600 text-sm mt-1">{{ $message }}</p> @enderror
+                <label for="assignments-dateFrom" class="block text-sm font-medium mb-1">Dal</label>
+                <input id="assignments-dateFrom" type="datetime-local" class="w-full border rounded p-2 app-field" wire:model.live="dateFrom">
+                @error('dateFrom') <p class="text-red-600 dark:text-red-400 text-sm mt-1">{{ $message }}</p> @enderror
             </div>
 
             {{-- Al (facoltativo) --}}
             <div>
-                <label class="block text-sm font-medium mb-1">Al (facoltativo)</label>
+                <label for="assignments-dateTo" class="block text-sm font-medium mb-1">Al (facoltativo)</label>
                 {{-- FIX: binding mancante su dateTo --}}
-                <input type="datetime-local" class="w-full border rounded p-2" wire:model.live="dateTo">
-                @error('dateTo') <p class="text-red-600 text-sm mt-1">{{ $message }}</p> @enderror
+                <input id="assignments-dateTo" type="datetime-local" class="w-full border rounded p-2 app-field" wire:model.live="dateTo">
+                @error('dateTo') <p class="text-red-600 dark:text-red-400 text-sm mt-1">{{ $message }}</p> @enderror
             </div>
 
             {{-- Ricerca libera --}}
             <div>
-                <label class="block text-sm font-medium mb-1">Cerca (targa, marca, modello, …)</label>
-                <input type="text" class="w-full border rounded p-2" placeholder="es. *AB 123*" wire:model.live.debounce.400ms="q">
+                <label for="assignments-q" class="block text-sm font-medium mb-1">Cerca (targa, marca, modello, …)</label>
+                <input id="assignments-q" type="text" class="w-full border rounded p-2 app-field" placeholder="es. *AB 123*" wire:model.live.debounce.400ms="q">
             </div>
         </div>
 
         {{-- Filtri secondari --}}
         <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
-                <label class="block text-sm font-medium mb-1">Alimentazione</label>
-                <select class="w-full border rounded p-2" wire:model.live="filters.fuel_type">
+                <label for="assignments-filters-fuel_type" class="block text-sm font-medium mb-1">Alimentazione</label>
+                <select id="assignments-filters-fuel_type" class="w-full border rounded p-2 app-field" wire:model.live="filters.fuel_type">
                     <option value="">— tutte —</option>
                     @foreach(\App\Models\Vehicle::FUEL_TYPE_LABELS_IT as $value => $label)
                         <option value="{{ $value }}">{{ $label }}</option>
@@ -50,8 +50,8 @@
             </div>
 
             <div>
-                <label class="block text-sm font-medium mb-1">Cambio</label>
-                <select class="w-full border rounded p-2" wire:model.live="filters.transmission">
+                <label for="assignments-filters-transmission" class="block text-sm font-medium mb-1">Cambio</label>
+                <select id="assignments-filters-transmission" class="w-full border rounded p-2 app-field" wire:model.live="filters.transmission">
                     <option value="">— tutti —</option>
                     @foreach(\App\Models\Vehicle::TRANSMISSION_LABELS_IT as $value => $label)
                         <option value="{{ $value }}">{{ $label }}</option>
@@ -59,8 +59,8 @@
                 </select>
             </div>
             <div>
-                <label class="block text-sm font-medium mb-1">Posti</label>
-                <input type="number" class="w-full border rounded p-2" wire:model.live="filters.seats" min="1">
+                <label for="assignments-filters-seats" class="block text-sm font-medium mb-1">Posti</label>
+                <input id="assignments-filters-seats" type="number" class="w-full border rounded p-2 app-field" wire:model.live="filters.seats" min="1">
             </div>
             <label class="inline-flex items-center space-x-2 mt-6">
                 <input type="checkbox" class="border rounded" wire:model.live="filters.only_available">
@@ -73,10 +73,10 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {{-- SINISTRA: Veicoli disponibili / filtrati --}}
-        <div class="bg-white shadow rounded">
-            <div class="flex items-center justify-between p-4 border-b">
+        <div class="app-surface shadow rounded">
+            <div class="flex flex-wrap items-center justify-between gap-3 p-4 border-b">
                 <h3 class="font-semibold">Veicoli</h3>
-                <div class="flex items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                     {{-- Seleziona/Deseleziona TUTTI della pagina corrente --}}
                     <div x-data>
                         <button class="px-3 py-2 border rounded hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -115,9 +115,9 @@
                             <div>
                                 <div class="font-medium">
                                     {{ $v->make }} {{ $v->model }}
-                                    <span class="text-sm text-gray-500">({{ $v->plate }})</span>
+                                    <span class="text-sm app-muted">({{ $v->plate }})</span>
                                 </div>
-                                <div class="text-xs text-gray-500">
+                                <div class="text-xs app-muted">
                                     {{ $v->fuel_type_label }} • {{ $v->transmission_label }} • {{ $v->seats }} posti
                                 </div>
                             </div>
@@ -127,7 +127,7 @@
                         </span>
                     </label>
                 @empty
-                    <p class="p-4 text-sm text-gray-500">Nessun veicolo trovato.</p>
+                    <p class="p-4 text-sm app-muted">Nessun veicolo trovato.</p>
                 @endforelse
             </div>
 
@@ -137,9 +137,9 @@
         </div>
 
         {{-- DESTRA: Riepilogo azione / Messaggi + Tabella assegnazioni --}}
-        <div class="bg-white shadow rounded p-4 space-y-3">
+        <div class="app-surface shadow rounded p-4 space-y-3">
             <h3 class="font-semibold">Riepilogo</h3>
-            <ul class="text-sm text-gray-700">
+            <ul class="text-sm app-muted">
                 <li><strong>Renter:</strong>
                     @php $r = $renterOptions->firstWhere('id', $renterOrgId); @endphp
                     {{ $r?->name ?? '—' }}
@@ -149,21 +149,21 @@
             </ul>
 
             @if($confirmMessage)
-                <div class="p-3 bg-gray-50 border rounded text-sm"
+                <div class="p-3 app-surface-subtle border rounded text-sm"
                      x-data="{ show: true }" x-init="setTimeout(() => show = false, 8000)" x-show="show"
                      x-transition.opacity.duration.400ms>
                     {{ $confirmMessage }}
                 </div>
             @endif
 
-            <p class="text-xs text-gray-500">
+            <p class="text-xs app-muted">
                 Le assegnazioni create avranno stato <em>scheduled</em> se future,
                 altrimenti <em>active</em>. Gli overlap con altre assegnazioni o blocchi vengono bloccati.
             </p>
 
             {{-- Tabella assegnazioni del renter selezionato --}}
-            <div class="bg-white dark:bg-gray-800 shadow rounded p-4 space-y-3">
-                <div class="flex items-center justify-between">
+            <div class="app-surface dark:bg-gray-800 shadow rounded p-4 space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-3">
                     <h3 class="font-semibold">Assegnazioni del renter selezionato</h3>
                     <div class="inline-flex rounded border overflow-hidden">
                         <button type="button"
@@ -185,11 +185,11 @@
                 </div>
 
                 @if(!$renterOrgId)
-                    <p class="text-sm text-gray-500">Seleziona un'organizzazione per vedere le assegnazioni.</p>
+                    <p class="text-sm app-muted">Seleziona un'organizzazione per vedere le assegnazioni.</p>
                 @else
                     <div class="overflow-x-auto overflow-y-visible border rounded">
                         <table class="min-w-full text-sm">
-                            <thead class="bg-gray-50 dark:bg-gray-700">
+                            <thead class="app-surface-subtle dark:bg-gray-700">
                                 <tr class="text-left">
                                     <th class="px-3 py-2">Veicolo</th>
                                     <th class="px-3 py-2">Periodo</th>
@@ -203,7 +203,7 @@
                                         <td class="px-3 py-2">
                                             @if($a->vehicle)
                                                 <div class="font-medium">{{ $a->vehicle->make }} {{ $a->vehicle->model }}</div>
-                                                <div class="text-xs text-gray-500">{{ $a->vehicle->plate }}</div>
+                                                <div class="text-xs app-muted">{{ $a->vehicle->plate }}</div>
                                             @else
                                                 <span class="text-xs text-gray-400">[veicolo rimosso]</span>
                                             @endif
@@ -232,7 +232,7 @@
                                             <div x-data="{ open:false, rect:null }" class="relative inline-block" x-id="['menu']">
                                                 <button x-ref="btn"
                                                         @click="open=!open; rect=$refs.btn.getBoundingClientRect()"
-                                                        class="px-2 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50 dark:border-gray-700">
+                                                        class="px-2 py-1 text-xs rounded border border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-700">
                                                     Azioni ▾
                                                 </button>
 
@@ -240,7 +240,7 @@
                                                     <div x-cloak x-show="open" @click.outside="open=false" x-transition
                                                          class="fixed z-50"
                                                          :style="rect ? `top:${rect.bottom + window.scrollY}px; left:${rect.right - 224 + window.scrollX}px; width:224px` : ''">
-                                                        <div class="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded shadow-lg">
+                                                        <div class="app-surface dark:bg-gray-800 border dark:border-gray-700 rounded shadow-lg">
                                                             @if($a->status === 'active')
                                                                 <button class="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700"
                                                                         @click.prevent="$wire.closeAssignmentNow({{ $a->id }}); open=false">
@@ -249,8 +249,8 @@
                                                                 <div class="px-3 py-2 border-t dark:border-gray-700">
                                                                     <label class="sr-only">Nuova data fine</label>
                                                                     <input type="datetime-local"
-                                                                           class="w-full border rounded px-2 py-1 text-xs dark:bg-gray-800 dark:border-gray-700"
-                                                                           wire:model.live="extend.{{ $a->id }}">
+                                                                           class="w-full border rounded px-2 py-1 text-xs dark:bg-gray-800 dark:border-gray-700 app-field"
+                                                                           wire:model.live="extend.{{ $a->id }}" aria-label="Nuova data fine assegnazione {{ $a->id }}">
                                                                     <button class="mt-2 w-full px-2 py-1 text-xs rounded border border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-400/40 dark:text-blue-300"
                                                                             @click.prevent="$wire.extendAssignment({{ $a->id }}); open=false">
                                                                         Estendi
@@ -267,8 +267,8 @@
                                                                 </button>
                                                                 <div class="px-3 py-2 border-t dark:border-gray-700">
                                                                     <input type="datetime-local"
-                                                                           class="w-full border rounded px-2 py-1 text-xs dark:bg-gray-800 dark:border-gray-700"
-                                                                           wire:model.live="extend.{{ $a->id }}">
+                                                                           class="w-full border rounded px-2 py-1 text-xs dark:bg-gray-800 dark:border-gray-700 app-field"
+                                                                           wire:model.live="extend.{{ $a->id }}" aria-label="Nuova data fine assegnazione {{ $a->id }}">
                                                                     <button class="mt-2 w-full px-2 py-1 text-xs rounded border border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-400/40 dark:text-blue-300"
                                                                             @click.prevent="$wire.extendAssignment({{ $a->id }}); open=false">
                                                                         Estendi
@@ -288,7 +288,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="px-3 py-4 text-sm text-gray-500">
+                                        <td colspan="4" class="px-3 py-4 text-sm app-muted">
                                             Nessuna assegnazione trovata per questa tab.
                                         </td>
                                     </tr>

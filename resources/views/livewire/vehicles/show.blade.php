@@ -2,20 +2,20 @@
 <div class="space-y-4">
 
     {{-- Breadcrumb --}}
-    <div class="text-sm text-gray-500">
+    <div class="text-sm app-muted">
         <a href="{{ route('vehicles.index') }}" class="hover:underline">Veicoli</a>
         <span class="mx-1">/</span>
         <span class="font-medium">{{ $v->plate }}</span>
     </div>
 
-    {{-- Header sticky con badge e azioni --}}
-    <div class="sticky top-0 z-20 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/70 border-b">
+    {{-- Intestazione fissa su desktop; su mobile scorre con il contenuto. --}}
+    <div class="md:sticky md:top-0 z-20 app-surface border-b">
         <div class="mx-auto max-w-screen-2xl px-2 py-3">
-            <div class="flex items-start justify-between gap-3">
+            <div class="flex flex-wrap items-start justify-between gap-3">
                 <div class="space-y-1">
                     <div class="text-lg font-semibold">
                         {{ $v->plate }} — {{ $v->make }} {{ $v->model }}
-                        <span class="text-gray-500 font-normal">({{ $v->year }})</span>
+                        <span class="app-muted font-normal">({{ $v->year }})</span>
                     </div>
                     <div class="flex flex-wrap items-center gap-2 text-xs">
                         {{-- Stato disponibilità --}}
@@ -54,7 +54,7 @@
                 {{-- Azioni header --}}
                 <div class="flex flex-wrap items-center gap-2">
                     @can('updateMileage', $v)
-                        <button type="button" class="rounded bg-slate-100 px-3 py-1"
+                        <button type="button" class="rounded bg-slate-100 px-3 py-1 text-slate-800"
                                 x-data
                                 x-on:click="$dispatch('open-mileage-modal', { current: {{ (int)$v->mileage_current }} })"
                                 @disabled($isArchived)>
@@ -65,7 +65,7 @@
                     @can('manageMaintenance', $v)
                         @if(!$isArchived)
                             @if(!$isMaintenance)
-                                <button type="button" class="rounded bg-amber-600 px-3 py-1 text-white"
+                                <button type="button" class="rounded bg-amber-700 px-3 py-1 text-white"
                                         x-data
                                         x-on:click="$dispatch('open-maint-open-modal')">
                                     Apri manutenzione
@@ -146,44 +146,44 @@
                 $euro = fn($cents) => is_null($cents) ? '—' : number_format($cents/100, 2, ',', '.') . ' €';
             @endphp
 
-            <div class="rounded-lg border bg-white p-4">
+            <div class="rounded-lg border app-surface p-4">
                 <h2 class="mb-3 text-base font-semibold">Profilo</h2>
 
                 <dl class="grid grid-cols-2 gap-3 text-sm">
-                    <dt class="text-gray-500">VIN</dt><dd>{{ $v->vin ?? '—' }}</dd>
-                    <dt class="text-gray-500">Colore</dt><dd>{{ $v->color ?? '—' }}</dd>
-                    <dt class="text-gray-500">Posti</dt><dd>{{ $v->seats ?? '—' }}</dd>
-                    <dt class="text-gray-500">Segmento</dt><dd>{{ $v->segment ?? '—' }}</dd>
-                    <dt class="text-gray-500">Carburante</dt><dd>{{ $v->fuel_type_label ?? $v->fuel_type ?? '—' }}</dd>
-                    <dt class="text-gray-500">Cambio</dt><dd>{{ $v->transmission_label ?? $v->transmission ?? '—' }}</dd>
-                    <dt class="text-gray-500">Creato il</dt><dd>{{ optional($v->created_at)->format('d/m/Y H:i') }}</dd>
-                    <dt class="text-gray-500">Aggiornato il</dt><dd>{{ optional($v->updated_at)->format('d/m/Y H:i') }}</dd>
+                    <dt class="app-muted">VIN</dt><dd>{{ $v->vin ?? '—' }}</dd>
+                    <dt class="app-muted">Colore</dt><dd>{{ $v->color ?? '—' }}</dd>
+                    <dt class="app-muted">Posti</dt><dd>{{ $v->seats ?? '—' }}</dd>
+                    <dt class="app-muted">Segmento</dt><dd>{{ $v->segment ?? '—' }}</dd>
+                    <dt class="app-muted">Carburante</dt><dd>{{ $v->fuel_type_label ?? $v->fuel_type ?? '—' }}</dd>
+                    <dt class="app-muted">Cambio</dt><dd>{{ $v->transmission_label ?? $v->transmission ?? '—' }}</dd>
+                    <dt class="app-muted">Creato il</dt><dd>{{ optional($v->created_at)->format('d/m/Y H:i') }}</dd>
+                    <dt class="app-muted">Aggiornato il</dt><dd>{{ optional($v->updated_at)->format('d/m/Y H:i') }}</dd>
 
                     {{-- --- Nuovi campi costi --- --}}
-                    <dt class="text-gray-500">Noleggio L/T (mensile)</dt>
+                    <dt class="app-muted">Noleggio L/T (mensile)</dt>
                     <dd>{{ $euro($v->lt_rental_monthly_cents) }}</dd>
 
-                    <dt class="text-gray-500">Franchigia RCA</dt>
+                    <dt class="app-muted">Franchigia RCA</dt>
                     <dd>{{ $euro($v->insurance_rca_cents) }}</dd>
 
-                    <dt class="text-gray-500">Franchigia Kasko</dt>
+                    <dt class="app-muted">Franchigia Kasko</dt>
                     <dd>{{ $euro($v->insurance_kasko_cents) }}</dd>
 
-                    <dt class="text-gray-500">Franchigia Cristalli</dt>
+                    <dt class="app-muted">Franchigia Cristalli</dt>
                     <dd>{{ $euro($v->insurance_cristalli_cents) }}</dd>
 
-                    <dt class="text-gray-500">Franchigia Furto/Incendio</dt>
+                    <dt class="app-muted">Franchigia Furto/Incendio</dt>
                     <dd>{{ $euro($v->insurance_furto_cents) }}</dd>
                 </dl>
             </div>
 
             {{-- Ultimi aggiornamenti km (audit) --}}
-            <div class="mt-4 rounded-lg border bg-white p-4">
+            <div class="mt-4 rounded-lg border app-surface p-4">
                 <h3 class="mb-2 text-sm font-semibold">Ultimi aggiornamenti km</h3>
-                <div class="text-xs text-gray-500 mb-2">Mostro gli ultimi 5.</div>
+                <div class="text-xs app-muted mb-2">Mostro gli ultimi 5.</div>
                 <div class="overflow-auto">
                     <table class="min-w-full text-sm">
-                        <thead class="bg-gray-50">
+                        <thead class="app-surface-subtle">
                             <tr>
                                 <th class="px-3 py-2 text-left">Quando</th>
                                 <th class="px-3 py-2 text-left">Da → A</th>
@@ -205,7 +205,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="px-3 py-6 text-center text-gray-500">Nessun aggiornamento registrato.</td>
+                                    <td colspan="4" class="px-3 py-6 text-center app-muted">Nessun aggiornamento registrato.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -223,12 +223,12 @@
 
         {{-- DOCUMENTI --}}
         @if($tab === 'documents')
-            <div class="rounded-lg border bg-white p-4 space-y-3">
+            <div class="rounded-lg border app-surface p-4 space-y-3">
                 <div class="flex flex-wrap items-end gap-3">
                     <div>
-                        <label class="block text-xs text-gray-500">Stato</label>
+                        <label class="block text-xs app-muted">Stato</label>
                         <div class="relative">
-                            <select wire:model.live="docState" class="mt-1 w-48 rounded border-gray-300 pr-8">
+                            <select wire:model.live="docState" class="mt-1 w-48 rounded border-gray-300 pr-8 app-field">
                                 <option value="">Tutti</option>
                                 <option value="expired">Scaduti</option>
                                 <option value="soon">≤60 giorni</option>
@@ -237,9 +237,9 @@
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-500">Tipo</label>
+                        <label class="block text-xs app-muted">Tipo</label>
                         <div class="relative">
-                            <select wire:model.live="docType" class="mt-1 w-48 rounded border-gray-300 pr-8">
+                            <select wire:model.live="docType" class="mt-1 w-48 rounded border-gray-300 pr-8 app-field">
                                 <option value="">Tutti</option>
                                 @foreach($docLabels as $key => $label)
                                     <option value="{{ $key }}">{{ $label }}</option>
@@ -258,7 +258,7 @@
 
                 <div class="overflow-auto rounded border">
                     <table class="min-w-full text-sm">
-                        <thead class="bg-gray-50">
+                        <thead class="app-surface-subtle">
                         <tr>
                             <th class="px-3 py-2 text-left">Tipo</th>
                             <th class="px-3 py-2 text-left">Numero</th>
@@ -273,7 +273,7 @@
                                 $days = $exp ? now()->startOfDay()->diffInDays($exp, false) : null;
                                 $cls  = is_null($days) ? '' : ($days <= 7 ? 'bg-rose-100 text-rose-700' : ($days <= 60 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'));
                             @endphp
-                            <tr class="hover:bg-gray-50">
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                                 <td class="px-3 py-2">{{ $docLabels[$doc->type] ?? strtoupper($doc->type) }}</td>
                                 <td class="px-3 py-2">{{ $doc->number ?? '—' }}</td>
                                 <td class="px-3 py-2">{{ $exp?->format('d/m/Y') ?? '—' }}</td>
@@ -286,7 +286,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="4" class="px-3 py-6 text-center text-gray-500">Nessun documento.</td></tr>
+                            <tr><td colspan="4" class="px-3 py-6 text-center app-muted">Nessun documento.</td></tr>
                         @endforelse
                         </tbody>
                     </table>
@@ -296,18 +296,18 @@
 
         {{-- LISTINO --}}
         @if($tab === 'pricing')
-            <div class="rounded-lg border bg-white p-4 space-y-3">
+            <div class="rounded-lg border app-surface p-4 space-y-3">
                 @can('vehicle_pricing.viewAny')
                     <livewire:vehicles.pricing :vehicle="$vehicle" />
                 @else
-                    <div class="text-sm text-gray-600">Non hai i permessi per vedere questa sezione.</div>
+                    <div class="text-sm app-muted">Non hai i permessi per vedere questa sezione.</div>
                 @endcan
             </div>
         @endif
 
         {{-- STATO TECNICO --}}
         @if($tab === 'maintenance')
-            <div class="rounded-lg border bg-white p-4 space-y-3">
+            <div class="rounded-lg border app-surface p-4 space-y-3">
                 <div class="flex items-center gap-2">
                     <span class="rounded bg-{{ $isMaintenance ? 'amber' : 'green' }}-100 px-2 py-1 text-{{ $isMaintenance ? 'amber' : 'green' }}-800 text-xs">
                         {{ $isMaintenance ? 'MANUTENZIONE APERTA' : 'OK' }}
@@ -317,7 +317,7 @@
                         @if(!$isArchived)
                             @if(!$isMaintenance)
                                 <button type="button"
-                                        class="rounded bg-amber-600 px-2 py-1 text-white"
+                                        class="rounded bg-amber-700 px-2 py-1 text-white"
                                         x-data
                                         x-on:click="$dispatch('open-maint-open-modal')">
                                     Apri manutenzione
@@ -342,12 +342,12 @@
                                 <div class="flex flex-wrap items-center justify-between">
                                     <div>
                                         <span class="font-medium uppercase">{{ $s->state_label }}</span>
-                                        <span class="text-gray-500 ml-2">{{ \Illuminate\Support\Carbon::parse($s->started_at)->format('d/m/Y H:i') }}</span>
+                                        <span class="app-muted ml-2">{{ \Illuminate\Support\Carbon::parse($s->started_at)->format('d/m/Y H:i') }}</span>
                                         <span class="mx-1">→</span>
-                                        <span class="text-gray-500">{{ $s->ended_at ? \Illuminate\Support\Carbon::parse($s->ended_at)->format('d/m/Y H:i') : '—' }}</span>
+                                        <span class="app-muted">{{ $s->ended_at ? \Illuminate\Support\Carbon::parse($s->ended_at)->format('d/m/Y H:i') : '—' }}</span>
                                     </div>
                                     @if($s->reason)
-                                        <div class="text-gray-600">{{ $s->reason }}</div>
+                                        <div class="app-muted">{{ $s->reason }}</div>
                                     @endif
                                 </div>
 
@@ -358,21 +358,21 @@
                                         $euro = fn($c) => is_null($c) ? null : number_format($c/100, 2, ',', '.').' €';
                                     @endphp
                                     <dl class="mt-2 grid grid-cols-2 gap-2 text-xs">
-                                        <dt class="text-gray-500">Officina/Luogo</dt>
+                                        <dt class="app-muted">Officina/Luogo</dt>
                                         <dd>{{ $meta?->workshop ?? '—' }}</dd>
 
-                                        <dt class="text-gray-500">Costo</dt>
+                                        <dt class="app-muted">Costo</dt>
                                         <dd>{{ isset($meta?->cost_cents) ? $euro((int)$meta->cost_cents) : '—' }}</dd>
 
                                         @if(!empty($meta?->notes))
-                                            <dt class="text-gray-500">Note</dt>
+                                            <dt class="app-muted">Note</dt>
                                             <dd>{{ $meta->notes }}</dd>
                                         @endif
                                     </dl>
                                 @endif
                             </div>
                         @empty
-                            <div class="text-gray-500">Nessuno stato registrato.</div>
+                            <div class="app-muted">Nessuno stato registrato.</div>
                         @endforelse
                     </div>
                 </div>
@@ -381,7 +381,7 @@
 
         {{-- ASSEGNAZIONI --}}
         @if($tab === 'assignments')
-            <div class="rounded-lg border bg-white p-4 space-y-3">
+            <div class="rounded-lg border app-surface p-4 space-y-3">
                 <div class="text-sm">
                     @if($assignedNow)
                         <div>
@@ -398,7 +398,7 @@
                     <h3 class="mb-2 font-semibold">Storico (ultime 10)</h3>
                     <div class="overflow-auto rounded border">
                         <table class="min-w-full text-sm">
-                            <thead class="bg-gray-50">
+                            <thead class="app-surface-subtle">
                                 <tr>
                                     <th class="px-3 py-2 text-left">Org</th>
                                     <th class="px-3 py-2 text-left">Dal</th>
@@ -415,7 +415,7 @@
                                         <td class="px-3 py-2">{{ $a->status }}</td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="4" class="px-3 py-6 text-center text-gray-500">Nessuna assegnazione.</td></tr>
+                                    <tr><td colspan="4" class="px-3 py-6 text-center app-muted">Nessuna assegnazione.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -426,7 +426,7 @@
 
         {{-- NOTE --}}
         @if($tab === 'notes')
-            <div class="rounded-lg border bg-white p-4">
+            <div class="rounded-lg border app-surface p-4">
                 <h3 class="mb-2 font-semibold">Note</h3>
                 <div class="prose max-w-none text-sm">
                     {{ $v->notes ?: '—' }}
@@ -448,28 +448,28 @@
                 };
             @endphp
 
-            <div class="rounded-lg border bg-white p-4 space-y-4">
+            <div class="rounded-lg border app-surface p-4 space-y-4">
 
                 {{-- KPI --}}
                 <div class="flex flex-wrap gap-3 text-sm">
-                    <span class="inline-flex items-center rounded bg-slate-100 px-2 py-1">Aperti: <strong class="ml-1">{{ $damageOpenCount }}</strong></span>
-                    <span class="inline-flex items-center rounded bg-slate-100 px-2 py-1">Totali: <strong class="ml-1">{{ $damageTotalCount }}</strong></span>
-                    <span class="inline-flex items-center rounded bg-slate-100 px-2 py-1">Costo riparazioni (12 mesi): <strong class="ml-1">{{ $fmtEur($damageCost12m) }}</strong></span>
+                    <span class="inline-flex items-center rounded bg-slate-100 px-2 py-1 text-slate-800">Aperti: <strong class="ml-1">{{ $damageOpenCount }}</strong></span>
+                    <span class="inline-flex items-center rounded bg-slate-100 px-2 py-1 text-slate-800">Totali: <strong class="ml-1">{{ $damageTotalCount }}</strong></span>
+                    <span class="inline-flex items-center rounded bg-slate-100 px-2 py-1 text-slate-800">Costo riparazioni (12 mesi): <strong class="ml-1">{{ $fmtEur($damageCost12m) }}</strong></span>
                 </div>
 
                 {{-- Filtri --}}
                 <div class="grid md:grid-cols-6 gap-3 items-end">
                     <div>
-                        <label class="block text-xs text-gray-500">Stato</label>
-                        <select class="mt-1 w-full rounded border-gray-300" wire:model.live="damageStatus">
+                        <label class="block text-xs app-muted">Stato</label>
+                        <select class="mt-1 w-full rounded border-gray-300 app-field" wire:model.live="damageStatus">
                             <option value="open">Aperti</option>
                             <option value="closed">Chiusi</option>
                             <option value="all">Tutti</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-500">Origine</label>
-                        <select class="mt-1 w-full rounded border-gray-300" wire:model.live="damageSource">
+                        <label class="block text-xs app-muted">Origine</label>
+                        <select class="mt-1 w-full rounded border-gray-300 app-field" wire:model.live="damageSource">
                             <option value="">Tutte</option>
                             <option value="manual">Manuale</option>
                             <option value="inspection">Ispezione</option>
@@ -478,8 +478,8 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-500">Severità (non-rental)</label>
-                        <select class="mt-1 w-full rounded border-gray-300" wire:model.live="damageSeverity">
+                        <label class="block text-xs app-muted">Severità (non-rental)</label>
+                        <select class="mt-1 w-full rounded border-gray-300 app-field" wire:model.live="damageSeverity">
                             <option value="">Tutte</option>
                             <option value="low">Bassa</option>
                             <option value="medium">Media</option>
@@ -487,12 +487,12 @@
                         </select>
                     </div>
                     <div class="md:col-span-2">
-                        <label class="block text-xs text-gray-500">Ricerca</label>
-                        <input type="text" class="mt-1 w-full rounded border-gray-300" placeholder="area/descrizione/note…" wire:model.live="damageSearch">
+                        <label class="block text-xs app-muted">Ricerca</label>
+                        <input type="text" class="mt-1 w-full rounded border-gray-300 app-field" placeholder="area/descrizione/note…" wire:model.live="damageSearch">
                     </div>
                     <div class="md:col-span-1">
-                        <label class="block text-xs text-gray-500">Ordina</label>
-                        <select class="mt-1 w-full rounded border-gray-300" wire:model.live="damageSort">
+                        <label class="block text-xs app-muted">Ordina</label>
+                        <select class="mt-1 w-full rounded border-gray-300 app-field" wire:model.live="damageSort">
                             <option value="default">Default</option>
                             <option value="opened_desc">Apertura ↓</option>
                             <option value="opened_asc">Apertura ↑</option>
@@ -507,12 +507,12 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-500">Dal</label>
-                        <input type="date" class="mt-1 w-full rounded border-gray-300" wire:model.live="damageFromDate">
+                        <label class="block text-xs app-muted">Dal</label>
+                        <input type="date" class="mt-1 w-full rounded border-gray-300 app-field" wire:model.live="damageFromDate">
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-500">Al</label>
-                        <input type="date" class="mt-1 w-full rounded border-gray-300" wire:model.live="damageToDate">
+                        <label class="block text-xs app-muted">Al</label>
+                        <input type="date" class="mt-1 w-full rounded border-gray-300 app-field" wire:model.live="damageToDate">
                     </div>
                     <div class="md:col-span-4">
                         <button type="button" class="mt-6 inline-flex h-9 items-center rounded border px-3 text-slate-700"
@@ -524,7 +524,7 @@
 
                 {{-- === NUOVO DANNO (collassabile) === --}}
                 @can('vehicle_damages.create', $v)
-                <div class="rounded border bg-white p-3">
+                <div class="rounded border app-surface p-3">
                     <div x-data="{open:false}">
                         <div class="flex items-center justify-between">
                             <div class="text-sm font-semibold">Nuovo danno</div>
@@ -537,19 +537,19 @@
                         <div class="mt-3" x-show="open" x-cloak>
                             <div class="grid sm:grid-cols-4 gap-3">
                                 <div>
-                                    <label class="block text-xs text-gray-500">Origine</label>
-                                    <select wire:model.defer="newDamage.source" class="mt-1 w-full rounded border-gray-300">
+                                    <label class="block text-xs app-muted">Origine</label>
+                                    <select wire:model.defer="newDamage.source" class="mt-1 w-full rounded border-gray-300 app-field">
                                         <option value="manual">Manuale</option>
                                         <option value="inspection">Ispezione</option>
                                         <option value="service">Officina/Service</option>
                                         {{-- NIENTE 'rental': i danni rental nascono dalle checklist --}}
                                     </select>
-                                    @error('newDamage.source')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
+                                    @error('newDamage.source')<div class="text-xs text-rose-600 dark:text-rose-400 mt-1">{{ $message }}</div>@enderror
                                 </div>
 
                                 <div>
-                                    <label class="block text-xs text-gray-500">Area</label>
-                                    <select wire:model.defer="newDamage.area" class="mt-1 w-full rounded border-gray-300">
+                                    <label class="block text-xs app-muted">Area</label>
+                                    <select wire:model.defer="newDamage.area" class="mt-1 w-full rounded border-gray-300 app-field">
                                         <option value="">{{ __('—') }}</option>
                                         <option value="front">Anteriore</option>
                                         <option value="rear">Posteriore</option>
@@ -561,26 +561,26 @@
                                         <option value="wheel">Ruota</option>
                                         <option value="other">Altro</option>
                                     </select>
-                                    @error('newDamage.area')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
+                                    @error('newDamage.area')<div class="text-xs text-rose-600 dark:text-rose-400 mt-1">{{ $message }}</div>@enderror
                                 </div>
 
                                 <div>
-                                    <label class="block text-xs text-gray-500">Severità</label>
-                                    <select wire:model.defer="newDamage.severity" class="mt-1 w-full rounded border-gray-300">
+                                    <label class="block text-xs app-muted">Severità</label>
+                                    <select wire:model.defer="newDamage.severity" class="mt-1 w-full rounded border-gray-300 app-field">
                                         <option value="">{{ __('—') }}</option>
                                         <option value="low">Bassa</option>
                                         <option value="medium">Media</option>
                                         <option value="high">Alta</option>
                                     </select>
-                                    @error('newDamage.severity')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
+                                    @error('newDamage.severity')<div class="text-xs text-rose-600 dark:text-rose-400 mt-1">{{ $message }}</div>@enderror
                                 </div>
 
                                 <div class="sm:col-span-4">
-                                    <label class="block text-xs text-gray-500">Descrizione</label>
+                                    <label class="block text-xs app-muted">Descrizione</label>
                                     <textarea rows="2" wire:model.defer="newDamage.description"
-                                            class="mt-1 w-full rounded border-gray-300"
+                                            class="mt-1 w-full rounded border-gray-300 app-field"
                                             placeholder="Dettagli del danno (opzionale)…"></textarea>
-                                    @error('newDamage.description')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
+                                    @error('newDamage.description')<div class="text-xs text-rose-600 dark:text-rose-400 mt-1">{{ $message }}</div>@enderror
                                 </div>
                             </div>
 
@@ -598,7 +598,7 @@
                 {{-- Tabella Danni con riga espansa (no chevron) --}}
                 <div class="overflow-x-auto rounded border">
                     <table class="min-w-full text-sm">
-                        <thead class="bg-gray-50">
+                        <thead class="app-surface-subtle">
                             <tr>
                                 <th class="px-3 py-2 text-left">Stato</th>
                                 <th class="px-3 py-2 text-left">Origine</th>
@@ -627,7 +627,7 @@
 
                             {{-- Riga principale (click per espandere) --}}
                             <tr wire:key="damage-row-{{ $d->id }}"
-                                class="hover:bg-gray-50 cursor-pointer"
+                                class="hover:bg-gray-50 cursor-pointer dark:hover:bg-gray-700"
                                 wire:click="toggleDamageRow({{ $d->id }})">
                                 <td class="px-3 py-2" x-on:click.stop>
                                     <span class="rounded px-2 py-0.5 text-xs {{ $statusCls }}">
@@ -668,7 +668,7 @@
                                             {{-- Link al noleggio solo per source=rental e se esiste rental_id --}}
                                             @if($d->source === 'rental' && ($rid = $d->firstRentalDamage?->rental_id))
                                                 <a href="{{ route('rentals.show', $rid) }}"
-                                                class="inline-flex items-center text-indigo-700 hover:underline">
+                                                class="inline-flex items-center text-indigo-700 hover:underline dark:text-indigo-300">
                                                     Apri noleggio #{{ $rid }}
                                                 </a>
 
@@ -697,7 +697,7 @@
                                                 @can('vehicle_damages.reopen', $d)
                                                     <button x-data
                                                             x-on:click.stop.prevent="if(confirm('Riaprire questo danno?')) $wire.reopenDamage({{ $d->id }})"
-                                                            class="rounded bg-amber-600 px-2 py-1 text-white text-xs">
+                                                            class="rounded bg-amber-700 px-2 py-1 text-white text-xs">
                                                         Riapri
                                                     </button>
                                                 @endcan
@@ -726,7 +726,7 @@
                                             {{-- Info extra: costo riparazione e note --}}
                                             @if(!is_null($d->repair_cost) || $d->notes)
                                                 <span class="text-gray-400">|</span>
-                                                <div class="text-xs text-gray-600">
+                                                <div class="text-xs app-muted">
                                                     @if(!is_null($d->repair_cost))
                                                         Costo rip.: <strong>{{ number_format((float)$d->repair_cost, 2, ',', '.') }} €</strong>
                                                     @endif
@@ -740,15 +740,15 @@
                                 </tr>
                             @endif
                         @empty
-                            <tr><td colspan="8" class="px-3 py-6 text-center text-gray-500">Nessun danno trovato.</td></tr>
+                            <tr><td colspan="8" class="px-3 py-6 text-center app-muted">Nessun danno trovato.</td></tr>
                         @endforelse
                         </tbody>
                     </table>
                 </div>
             </div>
         @elseif($tab === 'damages')
-            <div class="rounded-lg border bg-white p-4">
-                <div class="text-sm text-gray-600">Non hai i permessi per vedere questa sezione.</div>
+            <div class="rounded-lg border app-surface p-4">
+                <div class="text-sm app-muted">Non hai i permessi per vedere questa sezione.</div>
             </div>
         @endif
     </div>
@@ -759,11 +759,11 @@
         <template x-if="open">
             <div class="fixed inset-0 z-50">
                 <div class="absolute inset-0 bg-black/40"></div>
-                <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded bg-white p-4 shadow-xl">
+                <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded app-surface p-4 shadow-xl">
                     <div class="text-lg font-semibold">Aggiorna chilometraggio</div>
-                    <div class="mt-2 text-sm text-gray-600">Attuale: <strong x-text="current.toLocaleString('it-IT')"></strong> km</div>
+                    <div class="mt-2 text-sm app-muted">Attuale: <strong x-text="current.toLocaleString('it-IT')"></strong> km</div>
                     <div class="mt-3">
-                        <input type="number" min="0" step="1" class="w-full rounded border-gray-300"
+                        <input type="number" min="0" step="1" class="w-full rounded border-gray-300 app-field"
                                x-model="value">
                     </div>
                     <div class="mt-4 flex justify-end gap-2">
@@ -784,25 +784,25 @@
         <template x-if="open">
             <div class="fixed inset-0 z-50">
                 <div class="absolute inset-0 bg-black/40"></div>
-                <div class="absolute left-1/2 top-1/2 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded bg-white p-4 shadow-xl">
+                <div class="absolute left-1/2 top-1/2 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded app-surface p-4 shadow-xl">
                     <div class="text-lg font-semibold">Apri manutenzione</div>
                     <div class="mt-3 grid gap-3">
                         <div>
-                            <label class="block text-xs text-gray-500">Officina/Luogo *</label>
-                            <input type="text" class="mt-1 w-full rounded border-gray-300"
+                            <label class="block text-xs app-muted">Officina/Luogo *</label>
+                            <input type="text" class="mt-1 w-full rounded border-gray-300 app-field"
                                 wire:model.defer="maintWorkshop" maxlength="128" placeholder="Es. Officina Rossi, Via…">
-                            @error('maintWorkshop')<div class="mt-1 text-xs text-rose-600">{{ $message }}</div>@enderror
+                            @error('maintWorkshop')<div class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>@enderror
                         </div>
                         <div>
-                            <label class="block text-xs text-gray-500">Note (opz.)</label>
-                            <textarea rows="3" class="mt-1 w-full rounded border-gray-300"
+                            <label class="block text-xs app-muted">Note (opz.)</label>
+                            <textarea rows="3" class="mt-1 w-full rounded border-gray-300 app-field"
                                     wire:model.defer="maintNotes" placeholder="Dettagli…"></textarea>
-                            @error('maintNotes')<div class="mt-1 text-xs text-rose-600">{{ $message }}</div>@enderror
+                            @error('maintNotes')<div class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>@enderror
                         </div>
                     </div>
                     <div class="mt-4 flex justify-end gap-2">
                         <button type="button" class="rounded border px-3 py-1" x-on:click="open=false">Annulla</button>
-                        <button type="button" class="rounded bg-amber-600 px-3 py-1 text-white"
+                        <button type="button" class="rounded bg-amber-700 px-3 py-1 text-white"
                                 x-on:click="$wire.setMaintenance().then(() => { open=false; })">
                             Apri
                         </button>
@@ -818,20 +818,20 @@
         <template x-if="open">
             <div class="fixed inset-0 z-50">
                 <div class="absolute inset-0 bg-black/40"></div>
-                <div class="absolute left-1/2 top-1/2 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded bg-white p-4 shadow-xl">
+                <div class="absolute left-1/2 top-1/2 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded app-surface p-4 shadow-xl">
                     <div class="text-lg font-semibold">Chiudi manutenzione</div>
                     <div class="mt-3 grid gap-3">
                         <div>
-                            <label class="block text-xs text-gray-500">Costo totale (€) *</label>
-                            <input type="number" min="0" step="0.01" class="mt-1 w-full rounded border-gray-300"
+                            <label class="block text-xs app-muted">Costo totale (€) *</label>
+                            <input type="number" min="0" step="0.01" class="mt-1 w-full rounded border-gray-300 app-field"
                                 wire:model.defer="maintCloseCostEur" placeholder="0,00">
-                            @error('maintCloseCostEur')<div class="mt-1 text-xs text-rose-600">{{ $message }}</div>@enderror
+                            @error('maintCloseCostEur')<div class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>@enderror
                         </div>
                         <div>
-                            <label class="block text-xs text-gray-500">Note (opz.)</label>
-                            <textarea rows="3" class="mt-1 w-full rounded border-gray-300"
+                            <label class="block text-xs app-muted">Note (opz.)</label>
+                            <textarea rows="3" class="mt-1 w-full rounded border-gray-300 app-field"
                                     wire:model.defer="maintNotes" placeholder="Esito, ricambi, ecc."></textarea>
-                            @error('maintNotes')<div class="mt-1 text-xs text-rose-600">{{ $message }}</div>@enderror
+                            @error('maintNotes')<div class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>@enderror
                         </div>
                     </div>
                     <div class="mt-4 flex justify-end gap-2">
@@ -852,28 +852,28 @@
             <div class="fixed inset-0 z-50">
                 <div class="absolute inset-0 bg-black/40"></div>
 
-                <div class="absolute left-1/2 top-1/2 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded bg-white p-4 shadow-xl">
+                <div class="absolute left-1/2 top-1/2 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded app-surface p-4 shadow-xl">
                     <div class="text-lg font-semibold">Chiudi danno</div>
 
                     <div class="mt-3 grid gap-3">
                         <div>
-                            <label class="block text-xs text-gray-500">Costo riparazione (€) *</label>
+                            <label class="block text-xs app-muted">Costo riparazione (€) *</label>
                             <input type="number" step="0.01" min="0"
-                                class="mt-1 w-full rounded border-gray-300"
+                                class="mt-1 w-full rounded border-gray-300 app-field"
                                 wire:model.defer="damageCloseCostEur"
                                 placeholder="0,00">
                             @error('damageCloseCostEur')
-                                <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
+                                <div class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>
                             @enderror
                         </div>
 
                         <div>
-                            <label class="block text-xs text-gray-500">Note (opz.)</label>
-                            <textarea rows="3" class="mt-1 w-full rounded border-gray-300"
+                            <label class="block text-xs app-muted">Note (opz.)</label>
+                            <textarea rows="3" class="mt-1 w-full rounded border-gray-300 app-field"
                                     wire:model.defer="damageCloseNotes"
                                     placeholder="Dettagli intervento, ricambi, ecc."></textarea>
                             @error('damageCloseNotes')
-                                <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
+                                <div class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>
                             @enderror
                         </div>
                     </div>
@@ -896,31 +896,31 @@
             <div class="fixed inset-0 z-50">
                 <div class="absolute inset-0 bg-black/40" x-on:click="open=false"></div>
 
-                <div class="absolute left-1/2 top-1/2 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded bg-white dark:bg-gray-900 p-4 shadow-xl">
+                <div class="absolute left-1/2 top-1/2 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded app-surface dark:bg-gray-900 p-4 shadow-xl">
                     <div class="text-lg font-semibold">Modifica danno</div>
 
                     <div class="mt-3 grid gap-3">
                         <div>
-                            <label class="block text-xs text-gray-500">Severità *</label>
+                            <label class="block text-xs app-muted">Severità *</label>
                             <select
-                                class="mt-1 w-full rounded border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+                                class="mt-1 w-full rounded border-gray-300 dark:border-gray-700 dark:bg-gray-800 app-field"
                                 wire:model.defer="editSeverity">
                                 <option value="low">Bassa</option>
                                 <option value="medium">Media</option>
                                 <option value="high">Alta</option>
                             </select>
                             @error('editSeverity')
-                                <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
+                                <div class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>
                             @enderror
                         </div>
 
                         <div>
-                            <label class="block text-xs text-gray-500">Descrizione *</label>
+                            <label class="block text-xs app-muted">Descrizione *</label>
                             <textarea rows="4"
-                                    class="mt-1 w-full rounded border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+                                    class="mt-1 w-full rounded border-gray-300 dark:border-gray-700 dark:bg-gray-800 app-field"
                                     wire:model.defer="editDescription"></textarea>
                             @error('editDescription')
-                                <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
+                                <div class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>
                             @enderror
                         </div>
                     </div>
@@ -947,7 +947,7 @@
             <div class="fixed inset-0 bg-black/40" wire:click="closeDamagePhotosSidebar"></div>
 
             {{-- Pannello laterale destro --}}
-            <aside class="fixed right-0 top-0 h-full w-full max-w-xl bg-white dark:bg-gray-900 shadow-xl
+            <aside class="fixed right-0 top-0 h-full w-full max-w-xl app-surface dark:bg-gray-900 shadow-xl
                         border-l border-gray-200 dark:border-gray-700 p-4 overflow-y-auto">
                 <div class="flex items-center justify-between gap-3">
                     <div class="min-w-0">
@@ -995,7 +995,7 @@
                         <div class="flex items-center justify-between gap-3">
                             <div>
                                 <div class="text-sm font-medium">Aggiungi foto</div>
-                                <div class="text-xs text-gray-500">JPEG/PNG/WebP, max 20&nbsp;MB</div>
+                                <div class="text-xs app-muted">JPEG/PNG/WebP, max 20&nbsp;MB</div>
                             </div>
 
                             <label class="inline-flex cursor-pointer items-center rounded bg-indigo-600 px-3 py-1.5 text-white text-sm hover:bg-indigo-700">
@@ -1013,20 +1013,20 @@
                             <div class="h-2 w-full overflow-hidden rounded bg-gray-200 dark:bg-gray-800">
                                 <div class="h-2 bg-indigo-600" :style="`width:${progress}%;`"></div>
                             </div>
-                            <div class="mt-1 text-xs text-gray-500" x-text="progress + '%'"></div>
+                            <div class="mt-1 text-xs app-muted" x-text="progress + '%'"></div>
                         </div>
 
                         {{-- Errori --}}
-                        <p class="mt-2 text-xs text-rose-600" x-show="error" x-text="error"></p>
+                        <p class="mt-2 text-xs text-rose-600 dark:text-rose-400" x-show="error" x-text="error"></p>
                     </div>
                 @else
-                    <div class="mt-4 rounded border border-gray-200 dark:border-gray-700 p-3 text-xs text-gray-600">
+                    <div class="mt-4 rounded border border-gray-200 dark:border-gray-700 p-3 text-xs app-muted">
                         Le foto dei danni da noleggio si caricano dalla checklist del noleggio.
                     </div>
                 @endif
 
                 @if(empty($damagePhotos))
-                    <div class="mt-6 text-sm text-gray-500">
+                    <div class="mt-6 text-sm app-muted">
                         Nessuna foto collegata a questo danno.
                     </div>
                 @else
@@ -1036,7 +1036,7 @@
                             href="{{ $m['url'] }}"
                             target="_blank"
                             class="group block rounded border overflow-hidden hover:shadow transition">
-                                <div class="aspect-[4/3] bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                                <div class="aspect-[4/3] bg-gray-100 dark:bg-gray-800 overflow-hidden text-slate-800">
                                     <img src="{{ $m['thumb'] ?? $m['url'] }}"
                                         alt="{{ $m['file_name'] ?? 'foto-danno' }}"
                                         class="w-full h-full object-cover"
@@ -1048,7 +1048,7 @@
                                         {{ \Illuminate\Support\Str::limit($m['file_name'] ?? '', 28) }}
                                     </span>
                                     @if(!empty($m['created_at']))
-                                        <span class="text-gray-500 whitespace-nowrap">{{ $m['created_at'] }}</span>
+                                        <span class="app-muted whitespace-nowrap">{{ $m['created_at'] }}</span>
                                     @endif
                                 </div>
 
@@ -1165,4 +1165,3 @@
 </script>
 @endpush
 @endonce
-

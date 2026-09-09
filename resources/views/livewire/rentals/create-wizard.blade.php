@@ -18,17 +18,17 @@
     {{-- Stepper header --}}
     <div class="flex items-center gap-3 text-xs font-semibold uppercase">
         <div class="flex items-center gap-2">
-            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full {{ $step>=1 ? 'bg-indigo-600 text-white' : 'bg-gray-300' }}">1</span>
+            <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full {{ $step>=1 ? 'bg-indigo-600 text-white' : 'bg-gray-300 text-gray-800' }}">1</span>
             <span>Dati noleggio</span>
         </div>
         <div class="h-px flex-1 bg-gray-300"></div>
         <div class="flex items-center gap-2">
-            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full {{ $step>=2 ? 'bg-indigo-600 text-white' : 'bg-gray-300' }}">2</span>
+            <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full {{ $step>=2 ? 'bg-indigo-600 text-white' : 'bg-gray-300 text-gray-800' }}">2</span>
             <span>Cliente</span>
         </div>
         <div class="h-px flex-1 bg-gray-300"></div>
         <div class="flex items-center gap-2">
-            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full {{ $step>=3 ? 'bg-indigo-600 text-white' : 'bg-gray-300' }}">3</span>
+            <span class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full {{ $step>=3 ? 'bg-indigo-600 text-white' : 'bg-gray-300 text-gray-800' }}">3</span>
             <span>Bozza</span>
         </div>
     </div>

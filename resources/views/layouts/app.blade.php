@@ -20,7 +20,8 @@
     </head>
     <body
         x-data="{ isOpen: false, openSection: null }"
-        class="font-sans antialiased flex h-screen overflow-hidden"
+        @keydown.escape.window="if (isOpen) { isOpen = false; $refs.sidebarToggle.focus() }"
+        class="font-sans antialiased flex h-dvh overflow-hidden text-gray-900 dark:text-gray-100"
     >
         {{-- Toast globali (Livewire + Alpine) --}}
         <x-ui.toast />
@@ -28,22 +29,36 @@
         {{-- Portal target per dropdown filtri/ordinamento tabelle --}}
         <div id="portal-target"></div>
 
-        {{-- WRAPPER relativo per sidebar + toggle --}}
-        <div class="relative flex-shrink-0 flex flex-col">
+        <button
+            type="button"
+            x-cloak
+            x-show="isOpen"
+            @click="isOpen = false; $refs.sidebarToggle.focus()"
+            class="fixed inset-0 z-30 bg-black/40 md:hidden"
+            aria-label="Chiudi menu laterale"
+            tabindex="-1"
+        ></button>
+
+        {{-- Su mobile il menu si sovrappone senza comprimere la pagina. --}}
+        <div class="fixed inset-y-0 left-0 z-40 flex flex-col md:relative md:z-auto md:flex-shrink-0">
             {{-- Sidebar component --}}
             <x-sidebar />
 
             {{-- Toggle button “agganciato” alla sidebar --}}
             <button
+                type="button"
+                x-ref="sidebarToggle"
                 x-cloak
                 @click="isOpen = !isOpen"
                 :class="[
-                'absolute top-1/2 transform -translate-y-1/2 p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow focus:outline-none z-20 transition-all duration-150',
+                'absolute top-1/2 transform -translate-y-1/2 min-h-11 min-w-7 px-1 py-2 md:min-w-9 md:px-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-r-lg shadow focus-visible:ring-2 focus-visible:ring-indigo-600 z-20 transition-all duration-150',
                 isOpen
-                    ? 'left-48 sm:left-56 md:left-64'
+                    ? 'left-64'
                     : 'left-0'
                 ]"
                 :aria-label="isOpen ? 'Chiudi sidebar' : 'Apri sidebar'"
+                :aria-expanded="isOpen.toString()"
+                aria-controls="app-sidebar"
             >
                 <i :class="isOpen ? 'fas fa-angle-left' : 'fas fa-angle-right'"></i>
             </button>
@@ -51,7 +66,7 @@
         </div>
 
         {{-- Contenuto principale --}}
-        <div id="main-content" class="flex-1 flex flex-col bg-gray-100 dark:bg-gray-900 overflow-auto">
+        <div id="main-content" class="min-w-0 flex-1 flex flex-col bg-gray-100 dark:bg-gray-900 overflow-auto">
             <x-banner />
             @livewire('navigation-menu')
 
@@ -63,7 +78,7 @@
                 </header>
             @endif
 
-            <main class="flex-1 p-6">
+            <main class="min-w-0 flex-1 p-3 sm:p-6">
                 {{ $slot }}
             </main>
         </div>

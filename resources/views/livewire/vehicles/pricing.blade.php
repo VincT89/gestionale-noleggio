@@ -9,10 +9,10 @@
 
     {{-- NAV SOTTO-TAB --}}
     <div class="border-b border-gray-200 dark:border-gray-700">
-        <nav class="-mb-px flex gap-6 text-sm">
+        <nav class="-mb-px flex flex-wrap gap-4 text-sm">
             @foreach(['overview'=>'Panoramica','settings'=>'Impostazioni','seasons'=>'Stagioni','tiers'=>'Tiers','simulator'=>'Simulatore','history'=>'Storico'] as $k=>$label)
                 <button type="button" wire:click="setTab('{{ $k }}')"
-                        class="px-2 pb-2 border-b-2 focus:outline-none {{ $subtab===$k ? 'border-slate-800 text-slate-900 dark:text-white' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
+                        class="px-2 pb-2 border-b-2 focus:outline-none {{ $subtab===$k ? 'border-slate-800 text-slate-900 dark:text-white' : 'border-transparent app-muted hover:text-gray-700 dark:hover:text-gray-100' }}">
                     {{ $label }}
                 </button>
             @endforeach
@@ -58,7 +58,7 @@
                             @endif
                         @endif
                     </div>
-                    <div class="mt-1 text-gray-500">
+                    <div class="mt-1 app-muted">
                         @if($pricelist?->published_at)
                             Pubblicato il {{ $pricelist->published_at->format('d/m/Y H:i') }}
                         @endif
@@ -153,7 +153,7 @@
                     <label class="block text-sm font-medium">Nome (opz.)</label>
                     <input type="text" wire:model.defer="name" @disabled(!$this->canEdit)
                            class="mt-1 w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700">
-                    @error('name')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
+                    @error('name')<p class="text-sm text-red-600 dark:text-red-400 mt-1">{{ $message }}</p>@enderror
                 </div>
 
                 <div>
@@ -168,36 +168,36 @@
                     <label class="block text-sm font-medium">Tariffa base giornaliera (€)</label>
                     <input type="number" step="0.01" min="0" wire:model.lazy="base_daily_eur" @disabled(!$this->canEdit)
                            class="mt-1 w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700" placeholder="es. 35">
-                    <p class="text-xs text-gray-500 mt-1">Inserisci l’importo in euro, verrà salvato in centesimi.</p>
-                    @error('base_daily_eur')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
+                    <p class="text-xs app-muted mt-1">Inserisci l’importo in euro, verrà salvato in centesimi.</p>
+                    @error('base_daily_eur')<p class="text-sm text-red-600 dark:text-red-400 mt-1">{{ $message }}</p>@enderror
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium">% weekend (sa/do)</label>
                     <input type="number" step="1" min="0" max="100" wire:model.lazy="weekend_pct" @disabled(!$this->canEdit)
                            class="mt-1 w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700">
-                    @error('weekend_pct')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
+                    @error('weekend_pct')<p class="text-sm text-red-600 dark:text-red-400 mt-1">{{ $message }}</p>@enderror
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium">Km inclusi al giorno</label>
                     <input type="number" min="0" wire:model.lazy="km_included_per_day" @disabled(!$this->canEdit)
                            class="mt-1 w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700">
-                    @error('km_included_per_day')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
+                    @error('km_included_per_day')<p class="text-sm text-red-600 dark:text-red-400 mt-1">{{ $message }}</p>@enderror
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium">Costo km extra (€)</label>
                     <input type="number" step="0.01" min="0" wire:model.lazy="extra_km_eur" @disabled(!$this->canEdit)
                            class="mt-1 w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700" placeholder="es. 0.20">
-                    @error('extra_km_eur')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
+                    @error('extra_km_eur')<p class="text-sm text-red-600 dark:text-red-400 mt-1">{{ $message }}</p>@enderror
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium">Cauzione (€)</label>
                     <input type="number" step="1" min="0" wire:model.lazy="deposit_eur" @disabled(!$this->canEdit)
                            class="mt-1 w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700" placeholder="facoltativo">
-                    @error('deposit_eur')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
+                    @error('deposit_eur')<p class="text-sm text-red-600 dark:text-red-400 mt-1">{{ $message }}</p>@enderror
                 </div>
 
                 <div>
@@ -211,14 +211,14 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs text-gray-500">Seconda guida (€/giorno)</label>
+                    <label class="block text-xs app-muted">Seconda guida (€/giorno)</label>
                     <input type="number"
                         step="0.01"
                         min="0"
-                        class="mt-1 w-full rounded border-gray-300"
+                        class="mt-1 w-full rounded border-gray-300 app-field"
                         wire:model.live="second_driver_daily_eur">
                     @error('second_driver_daily_eur')
-                        <div class="mt-1 text-xs text-rose-600">{{ $message }}</div>
+                        <div class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>
                     @enderror
                 </div>
 
@@ -235,7 +235,7 @@
     @if($subtab ==='seasons')
         <div class="rounded-lg border p-4 bg-white dark:bg-gray-800 dark:border-gray-700">
             <h3 class="font-semibold mb-1">Stagioni</h3>
-            <p class="text-xs text-gray-500 mb-3">
+            <p class="text-xs app-muted mb-3">
                 Questa sezione serve ad impostare un <strong>listino stagionale</strong> che modifica la tariffa base:
                 puoi applicare una variazione percentuale (±%) e, se vuoi, anche un <em>override</em> della percentuale weekend
                 solo per il periodo indicato. In caso di sovrapposizioni, vince la <strong>priorità</strong> più alta.
@@ -249,32 +249,32 @@
 
             <div class="grid sm:grid-cols-6 gap-3">
                 <div class="sm:col-span-1">
-                    <label class="block text-xs text-gray-600 mb-1">Nome</label>
+                    <label class="block text-xs app-muted mb-1">Nome</label>
                     <input type="text" wire:model.defer="season_name" @disabled(!$this->canEdit)
                            class="w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700" placeholder="Alta">
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-600 mb-1">Inizio</label>
+                    <label class="block text-xs app-muted mb-1">Inizio</label>
                     <input type="date" wire:model.defer="season_start_date" @disabled(!$this->canEdit)
                            class="w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700">
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-600 mb-1">Fine</label>
+                    <label class="block text-xs app-muted mb-1">Fine</label>
                     <input type="date" wire:model.defer="season_end_date" @disabled(!$this->canEdit)
                            class="w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700">
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-600 mb-1">±% stagione</label>
+                    <label class="block text-xs app-muted mb-1">±% stagione</label>
                     <input type="number" step="1" wire:model.defer="season_pct" @disabled(!$this->canEdit)
                            class="w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700" placeholder="+15">
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-600 mb-1">Weekend % (override)</label>
+                    <label class="block text-xs app-muted mb-1">Weekend % (override)</label>
                     <input type="number" step="1" min="0" max="100" wire:model.defer="season_weekend_override" @disabled(!$this->canEdit)
                            class="w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700" placeholder="opzionale">
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-600 mb-1">Priorità</label>
+                    <label class="block text-xs app-muted mb-1">Priorità</label>
                     <input type="number" step="1" wire:model.defer="season_priority" @disabled(!$this->canEdit)
                            class="w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700" placeholder="0">
                 </div>
@@ -289,7 +289,7 @@
             <div class="mt-4 overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead>
-                        <tr class="text-left text-gray-500">
+                        <tr class="text-left app-muted">
                             <th class="py-1">Nome</th>
                             <th>Periodo</th>
                             <th>±%</th>
@@ -308,13 +308,13 @@
                             <td>{{ $s->priority }}</td>
                             <td>
                                 <button type="button" wire:click="deleteSeason({{ $s->id }})" @disabled(!$this->canEdit)
-                                        class="text-red-600 hover:underline disabled:opacity-50">Elimina</button>
+                                        class="text-red-600 dark:text-red-400 hover:underline disabled:opacity-50">Elimina</button>
                             </td>
                         </tr>
                     @endforeach
                     @if($this->seasons->isEmpty())
                         <tr>
-                            <td colspan="6" class="py-4 text-center text-gray-500">Nessuna stagione trovata.</td>
+                            <td colspan="6" class="py-4 text-center app-muted">Nessuna stagione trovata.</td>
                         </tr>
                     @endif
                     </tbody>
@@ -327,7 +327,7 @@
     @if($subtab ==='tiers')
         <div class="rounded-lg border p-4 bg-white dark:bg-gray-800 dark:border-gray-700">
             <h3 class="font-semibold mb-1">Fasce di durata (Tiers)</h3>
-            <p class="text-xs text-gray-500 mb-3">
+            <p class="text-xs app-muted mb-3">
                 Questa sezione imposta degli <strong>scalini di prezzo per durata</strong>:
                 per ogni fascia di giorni puoi definire un <strong>override €/giorno</strong> (ignora weekend/stagioni)
                 <em>oppure</em> uno <strong>sconto %</strong> sul totale. In caso di sovrapposizione, prevale la
@@ -342,32 +342,32 @@
 
             <div class="grid sm:grid-cols-6 gap-3">
                 <div>
-                    <label class="block text-xs text-gray-600 mb-1">Nome (opz.)</label>
+                    <label class="block text-xs app-muted mb-1">Nome (opz.)</label>
                     <input type="text" wire:model.defer="tier_name" @disabled(!$this->canEdit)
                            class="w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700">
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-600 mb-1">Min giorni</label>
+                    <label class="block text-xs app-muted mb-1">Min giorni</label>
                     <input type="number" step="1" wire:model.defer="tier_min_days" @disabled(!$this->canEdit)
                            class="w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700">
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-600 mb-1">Max giorni (opz.)</label>
+                    <label class="block text-xs app-muted mb-1">Max giorni (opz.)</label>
                     <input type="number" step="1" wire:model.defer="tier_max_days" @disabled(!$this->canEdit)
                            class="w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700">
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-600 mb-1">Override €/giorno (opz.)</label>
+                    <label class="block text-xs app-muted mb-1">Override €/giorno (opz.)</label>
                     <input type="number" step="0.01" wire:model.defer="tier_override_daily_eur" @disabled(!$this->canEdit)
                            class="w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700">
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-600 mb-1">Sconto % (opz.)</label>
+                    <label class="block text-xs app-muted mb-1">Sconto % (opz.)</label>
                     <input type="number" step="1" wire:model.defer="tier_discount_pct" @disabled(!$this->canEdit)
                            class="w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700">
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-600 mb-1">Priorità</label>
+                    <label class="block text-xs app-muted mb-1">Priorità</label>
                     <input type="number" step="1" wire:model.defer="tier_priority" @disabled(!$this->canEdit)
                            class="w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700">
                 </div>
@@ -382,7 +382,7 @@
             <div class="mt-4 overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead>
-                        <tr class="text-left text-gray-500">
+                        <tr class="text-left app-muted">
                             <th class="py-1">Nome</th>
                             <th>Giorni</th>
                             <th>Override €/g</th>
@@ -401,13 +401,13 @@
                             <td>{{ $t->priority }}</td>
                             <td>
                                 <button type="button" wire:click="deleteTier({{ $t->id }})" @disabled(!$this->canEdit)
-                                        class="text-red-600 hover:underline disabled:opacity-50">Elimina</button>
+                                        class="text-red-600 dark:text-red-400 hover:underline disabled:opacity-50">Elimina</button>
                             </td>
                         </tr>
                     @endforeach
                     @if($this->tiers->isEmpty())
                         <tr>
-                            <td colspan="6" class="py-4 text-center text-gray-500">Nessun tier trovato.</td>
+                            <td colspan="6" class="py-4 text-center app-muted">Nessun tier trovato.</td>
                         </tr>
                     @endif
                     </tbody>
@@ -420,7 +420,7 @@
     @if($subtab==='simulator')
         <div class="rounded-lg border p-4 bg-white dark:bg-gray-800 dark:border-gray-700">
             <h3 class="font-semibold mb-1">Simulatore dettagliato</h3>
-            <p class="text-xs text-gray-500 mb-3">
+            <p class="text-xs app-muted mb-3">
                 Inserisci periodo e km previsti per ottenere un <strong>preventivo</strong> secondo il listino selezionato
                 (base + stagioni + weekend + eventuali tiers). Il pulsante <em>Stampa</em> creerà un layout
                 adatto da condividere con il cliente.
@@ -428,21 +428,21 @@
 
             <div class="grid sm:grid-cols-4 gap-4">
                 <div>
-                    <label class="block text-sm font-medium">Ritiro</label>
-                    <input type="datetime-local" wire:model="pickup_at"
-                           class="mt-1 w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700">
-                    @error('pickup_at')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
+                    <label for="pricing-pickup-at" class="block text-sm font-medium">Ritiro</label>
+                    <input id="pricing-pickup-at" type="datetime-local" wire:model="pickup_at"
+                           class="mt-1 w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700 app-field">
+                    @error('pickup_at')<p class="text-xs text-red-600 dark:text-red-400 mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label class="block text-sm font-medium">Riconsegna</label>
-                    <input type="datetime-local" wire:model="dropoff_at"
-                           class="mt-1 w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700">
-                    @error('dropoff_at')<p class="text-xs text-red-600 mt-1">{{ $message }}</p>@enderror
+                    <label for="pricing-dropoff-at" class="block text-sm font-medium">Riconsegna</label>
+                    <input id="pricing-dropoff-at" type="datetime-local" wire:model="dropoff_at"
+                           class="mt-1 w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700 app-field">
+                    @error('dropoff_at')<p class="text-xs text-red-600 dark:text-red-400 mt-1">{{ $message }}</p>@enderror
                 </div>
                 <div>
-                    <label class="block text-sm font-medium">Km previsti</label>
-                    <input type="number" min="0" wire:model="expected_km"
-                           class="mt-1 w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700">
+                    <label for="pricing-expected-km" class="block text-sm font-medium">Km previsti</label>
+                    <input id="pricing-expected-km" type="number" min="0" wire:model="expected_km"
+                           class="mt-1 w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700 app-field">
                 </div>
                 <div class="flex items-end gap-2">
                     <button type="button" wire:click="calc"
@@ -453,7 +453,7 @@
                             wire:click="printQuote"
                             @disabled(!$quote)
                             title="{{ $quote ? 'Scarica PDF preventivo' : 'Calcola prima il preventivo' }}"
-                            class="inline-flex h-9 items-center rounded-md border px-3 text-gray-600 dark:text-gray-300 disabled:opacity-50">
+                            class="inline-flex h-9 items-center rounded-md border px-3 app-muted dark:text-gray-300 disabled:opacity-50">
                         Stampa
                     </button>
                 </div>
@@ -461,29 +461,29 @@
 
             @if($quote)
                 <div class="mt-4 grid sm:grid-cols-8 gap-4 text-sm">
-                    <div><span class="text-gray-500">Giorni</span><div class="font-medium">{{ $quote['days'] }}</div></div>
-                    <div><span class="text-gray-500">Quota giorni</span><div class="font-medium">{{ $fmt($quote['daily_total']) }}</div></div>
-                    <div><span class="text-gray-500">Km extra</span><div class="font-medium">{{ $fmt($quote['km_extra']) }}</div></div>
-                    <div><span class="text-gray-500">Cauzione</span><div class="font-medium">{{ $fmt($quote['deposit']) }}</div></div>
-                    <div><span class="text-gray-500">Totale</span><div class="font-semibold">{{ $fmt($quote['total']) }}</div></div>
+                    <div><span class="app-muted">Giorni</span><div class="font-medium">{{ $quote['days'] }}</div></div>
+                    <div><span class="app-muted">Quota giorni</span><div class="font-medium">{{ $fmt($quote['daily_total']) }}</div></div>
+                    <div><span class="app-muted">Km extra</span><div class="font-medium">{{ $fmt($quote['km_extra']) }}</div></div>
+                    <div><span class="app-muted">Cauzione</span><div class="font-medium">{{ $fmt($quote['deposit']) }}</div></div>
+                    <div><span class="app-muted">Totale</span><div class="font-semibold">{{ $fmt($quote['total']) }}</div></div>
 
                     {{-- Nuovi indicatori economici --}}
-                    <div><span class="text-gray-500">Costo L/T (€/g)</span><div class="font-medium">{{ $fmt($quote['lt_daily_cost']) }}</div></div>
-                    <div><span class="text-gray-500">Prezzo medio /g</span><div class="font-medium">{{ $fmt($quote['avg_daily_price']) }}</div></div>
+                    <div><span class="app-muted">Costo L/T (€/g)</span><div class="font-medium">{{ $fmt($quote['lt_daily_cost']) }}</div></div>
+                    <div><span class="app-muted">Prezzo medio /g</span><div class="font-medium">{{ $fmt($quote['avg_daily_price']) }}</div></div>
                     <div>
-                        <span class="text-gray-500">Margine €/g</span>
-                        <div class="font-semibold @if(($quote['net_daily_after_lt'] ?? 0) < 0) text-rose-600 @endif">
+                        <span class="app-muted">Margine €/g</span>
+                        <div class="font-semibold @if(($quote['net_daily_after_lt'] ?? 0) < 0) text-rose-600 dark:text-rose-400 @endif">
                             {{ $fmt($quote['net_daily_after_lt']) }}
                         </div>
                     </div>
                 </div>
 
                 {{-- se vuoi, sotto puoi mostrare anche il margine complessivo --}}
-                <div class="mt-2 text-xs text-gray-500">
+                <div class="mt-2 text-xs app-muted">
                     Margine totale dopo L/T: <strong>{{ $fmt($quote['net_total_after_lt']) }}</strong>
                 </div>
                 @if(!empty($quote['tier']))
-                    <div class="mt-2 text-xs text-gray-500">
+                    <div class="mt-2 text-xs app-muted">
                         Tier applicato:
                         @if($quote['tier']['override_daily_cents'] ?? null)
                             override {{ number_format($quote['tier']['override_daily_cents']/100,2,',','.') }} €/g
@@ -503,8 +503,8 @@
             <div class="flex items-center justify-between">
                 <h3 class="font-semibold">Storico versioni</h3>
                 <div class="flex items-center gap-2 text-sm">
-                    <span class="text-gray-500">per pagina</span>
-                    <select wire:model="historyPerPage" class="rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700">
+                    <span class="app-muted">per pagina</span>
+                    <select wire:model="historyPerPage" class="rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700 app-field">
                         @foreach([10,20,50] as $pp)
                             <option value="{{ $pp }}">{{ $pp }}</option>
                         @endforeach
@@ -515,7 +515,7 @@
             <div class="mt-3 overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead>
-                        <tr class="text-left text-gray-500">
+                        <tr class="text-left app-muted">
                             <th class="py-1">Ver.</th>
                             <th>Stato</th>
                             <th>Pubblicato</th>
@@ -547,14 +547,14 @@
                                 @endif
                                 @if($canArchive)
                                     <button type="button" wire:click="archive({{ $row->id }})"
-                                            class="text-red-600 hover:underline">Archivia</button>
+                                            class="text-red-600 dark:text-red-400 hover:underline">Archivia</button>
                                 @endif
                             </td>
                         </tr>
                     @endforeach
                     @if($history->isEmpty())
                         <tr>
-                            <td colspan="9" class="py-4 text-center text-gray-500">Nessuna versione trovata.</td>
+                            <td colspan="9" class="py-4 text-center app-muted">Nessuna versione trovata.</td>
                         </tr>
                     @endif
                     </tbody>

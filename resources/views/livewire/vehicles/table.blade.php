@@ -10,29 +10,29 @@
 
     {{-- Header + KPI --}}
     <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="flex gap-2 text-sm">
-            <span class="inline-flex items-center rounded-md bg-green-100 px-2 py-1">Disponibili: {{ $kpi['available'] }}</span>
-            <span class="inline-flex items-center rounded-md bg-blue-100 px-2 py-1">Assegnati: {{ $kpi['assigned'] }}</span>
-            <span class="inline-flex items-center rounded-md bg-amber-100 px-2 py-1">In manut.: {{ $kpi['maintenance'] }}</span>
-            <span class="inline-flex items-center rounded-md bg-rose-100 px-2 py-1">Scadenze ≤60gg: {{ $kpi['expiring'] }}</span>
+        <div class="flex flex-wrap gap-2 text-sm">
+            <span class="inline-flex items-center rounded-md bg-green-100 text-green-800 px-2 py-1">Disponibili: {{ $kpi['available'] }}</span>
+            <span class="inline-flex items-center rounded-md bg-blue-100 text-blue-800 px-2 py-1">Assegnati: {{ $kpi['assigned'] }}</span>
+            <span class="inline-flex items-center rounded-md bg-amber-100 text-amber-800 px-2 py-1">In manut.: {{ $kpi['maintenance'] }}</span>
+            <span class="inline-flex items-center rounded-md bg-rose-100 text-rose-800 px-2 py-1">Scadenze ≤60gg: {{ $kpi['expiring'] }}</span>
         </div>
     </div>
 
     {{-- Toolbar (griglia): ricerca/filtri + "Mostra archiviati" nella STESSA riga --}}
     <div class="grid grid-cols-12 items-end gap-3">
-        <div class="col-span-3">
-            <label class="block text-sm font-medium text-gray-700">Ricerca</label>
-            <input type="search"
+        <div class="col-span-12 sm:col-span-6 lg:col-span-3">
+            <label for="vehicles-search" class="block text-sm font-medium app-muted">Ricerca</label>
+            <input id="vehicles-search" type="search"
                    wire:model.live.debounce.400ms="search"
                    placeholder="Targa, VIN, marca, modello…"
-                   class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                   class="mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 app-field" />
         </div>
 
-        <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-700">Stato tecnico</label>
+        <div class="col-span-12 sm:col-span-6 lg:col-span-2">
+            <label for="vehicles-filterTechnical" class="block text-sm font-medium app-muted">Stato tecnico</label>
             <div class="relative">
-                <select wire:model.live="filterTechnical"
-                        class="mt-1 w-full rounded-md border-gray-300 shadow-sm appearance-none pr-8 focus:border-indigo-500 focus:ring-indigo-500">
+                <select id="vehicles-filterTechnical" wire:model.live="filterTechnical"
+                        class="mt-1 w-full rounded-md border-gray-300 shadow-sm appearance-none pr-8 focus:border-indigo-500 focus:ring-indigo-500 app-field">
                     <option value="">Qualsiasi</option>
                     <option value="ok">OK</option>
                     <option value="maintenance">Manutenzione / Fuori servizio</option>
@@ -40,11 +40,11 @@
             </div>
         </div>
 
-        <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-700">Disponibilità</label>
+        <div class="col-span-12 sm:col-span-6 lg:col-span-2">
+            <label for="vehicles-filterAvailability" class="block text-sm font-medium app-muted">Disponibilità</label>
             <div class="relative">
-                <select wire:model.live="filterAvailability"
-                        class="mt-1 w-full rounded-md border-gray-300 shadow-sm appearance-none pr-8 focus:border-indigo-500 focus:ring-indigo-500">
+                <select id="vehicles-filterAvailability" wire:model.live="filterAvailability"
+                        class="mt-1 w-full rounded-md border-gray-300 shadow-sm appearance-none pr-8 focus:border-indigo-500 focus:ring-indigo-500 app-field">
                     <option value="">Qualsiasi</option>
                     <option value="free">Libero ora</option>
                     <option value="assigned">Assegnato ora</option>
@@ -52,11 +52,11 @@
             </div>
         </div>
 
-        <div class="col-span-2">
-            <label class="block text-sm font-medium text-gray-700">Carburante</label>
+        <div class="col-span-12 sm:col-span-6 lg:col-span-2">
+            <label for="vehicles-filterFuel" class="block text-sm font-medium app-muted">Carburante</label>
             <div class="relative">
-                <select wire:model.live="filterFuel"
-                        class="mt-1 w-full rounded-md border-gray-300 shadow-sm appearance-none pr-8 focus:border-indigo-500 focus:ring-indigo-500">
+                <select id="vehicles-filterFuel" wire:model.live="filterFuel"
+                        class="mt-1 w-full rounded-md border-gray-300 shadow-sm appearance-none pr-8 focus:border-indigo-500 focus:ring-indigo-500 app-field">
                     <option value="">Tutti</option>
                     <option value="petrol">Benzina</option>
                     <option value="diesel">Diesel</option>
@@ -68,11 +68,11 @@
             </div>
         </div>
 
-        <div class="col-span-1">
-            <label class="block text-sm font-medium text-gray-700">Righe/pagina</label>
+        <div class="col-span-12 sm:col-span-6 lg:col-span-1">
+            <label for="vehicles-perPage" class="block text-sm font-medium app-muted">Righe/pagina</label>
             <div class="relative">
-                <select wire:model.live="perPage"
-                        class="mt-1 w-full rounded-md border-gray-300 shadow-sm appearance-none pr-8 focus:border-indigo-500 focus:ring-indigo-500">
+                <select id="vehicles-perPage" wire:model.live="perPage"
+                        class="mt-1 w-full rounded-md border-gray-300 shadow-sm appearance-none pr-8 focus:border-indigo-500 focus:ring-indigo-500 app-field">
                     <option value="10">10</option>
                     <option value="25">25</option>
                     <option value="50">50</option>
@@ -81,17 +81,17 @@
             </div>
         </div>
 
-        <div class="col-span-1 flex items-center">
+        <div class="col-span-12 sm:col-span-6 lg:col-span-1 flex items-center">
             <label class="inline-flex items-center gap-2 mt-6">
                 <input type="checkbox" wire:model.live="showArchived" class="rounded border-gray-300">
-                <span class="text-sm text-gray-700">Mostra archiviati</span>
+                <span class="text-sm app-muted">Mostra archiviati</span>
             </label>
         </div>
     </div>
 
     {{-- Barra selezione + azioni bulk --}}
-    <div class="flex flex-wrap items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
-        <div class="flex items-center gap-3">
+    <div class="flex flex-wrap items-center justify-between rounded-md border border-gray-200 app-surface-subtle px-3 py-2 text-sm">
+        <div class="flex flex-wrap items-center gap-3">
             <label class="inline-flex items-center gap-2">
                 <input type="checkbox"
                     wire:click="toggleSelectAllOnPage(@js($idsSelectableOnPage))"
@@ -103,10 +103,10 @@
             <span>Selezionati: <strong>{{ count($selected) }}</strong></span>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
             @can('vehicles.manage_maintenance')
                 <button type="button"
-                        class="rounded bg-amber-600 px-3 py-1.5 text-white hover:bg-amber-700 disabled:opacity-50"
+                        class="rounded bg-amber-700 px-3 py-1.5 text-white hover:bg-amber-700 disabled:opacity-50"
                         wire:click="setMaintenanceSelected"
                         @disabled(!count($selected))>
                     Segna in manutenzione (selezionati)
@@ -127,7 +127,7 @@
     {{-- Tabella --}}
     <div class="overflow-auto rounded-md border border-gray-200">
         <table class="min-w-full text-sm">
-            <thead class="bg-gray-50">
+            <thead class="app-surface-subtle">
             <tr>
                 <th class="w-8 px-3 py-2"></th>
                 @php
@@ -140,7 +140,7 @@
                     ];
                 @endphp
                 @foreach($cols as $field => $label)
-                    <th class="px-3 py-2 text-left font-semibold text-gray-700">
+                    <th class="px-3 py-2 text-left font-semibold app-muted">
                         <button type="button" class="inline-flex items-center gap-1" wire:click="sortBy('{{ $field }}')">
                             <span>{{ $label }}</span>
                             @if($sortField === $field)
@@ -156,7 +156,7 @@
             </tr>
             </thead>
 
-            <tbody class="divide-y divide-gray-200 bg-white">
+            <tbody class="divide-y divide-gray-200 app-surface">
             @foreach($vehicles as $v)
                 @php
                     $isArchived = method_exists($v, 'trashed') ? $v->trashed() : false;
@@ -169,13 +169,13 @@
                     $badge = $days === null ? '' : ($days <= 7 ? 'bg-rose-100 text-rose-700' : ($days <= 60 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'));
                 @endphp
 
-                <tr class="hover:bg-gray-50 {{ $isArchived ? 'opacity-60' : '' }}">
+                <tr class="hover:bg-gray-50 {{ $isArchived ? 'opacity-60' : '' }} dark:hover:bg-gray-700">
                     <td class="px-3 py-2">
                         @php $isArchived = method_exists($v, 'trashed') ? $v->trashed() : false; @endphp
 
                         <input type="checkbox"
                             value="{{ $v->id }}"
-                            wire:model.live="selected"
+                            aria-label="Seleziona veicolo {{ $v->plate }}" wire:model.live="selected"
                             @checked(in_array($v->id, $selected, true))
                             @disabled($isArchived)
                             class="rounded border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed" />
@@ -183,7 +183,7 @@
 
                     {{-- Targa: apre SEMPRE il drawer --}}
                     <td class="px-3 py-2 font-medium">
-                        <button type="button" class="text-indigo-700 hover:underline" wire:click="openDrawer({{ $v->id }})">
+                        <button type="button" class="text-indigo-700 hover:underline dark:text-indigo-300" wire:click="openDrawer({{ $v->id }})">
                             {{ $v->plate }}
                         </button>
                     </td>
@@ -223,7 +223,7 @@
                             @endcan
                         @else
                             @can('updateMileage', $v)
-                                <button type="button" class="rounded bg-slate-100 px-2 py-1 mt-1"
+                                <button type="button" class="rounded bg-slate-100 px-2 py-1 mt-1 text-slate-800"
                                         x-data
                                         x-on:click="$dispatch('open-mileage-modal', { id: {{ $v->id }}, current: {{ (int)$v->mileage_current }} })">
                                     Agg. km
@@ -233,7 +233,7 @@
                             @can('manageMaintenance', $v)
                                 @if(!$v->is_maintenance)
                                     <button type="button"
-                                            class="rounded bg-amber-600 px-2 py-1 mt-1 text-white"
+                                            class="rounded bg-amber-700 px-2 py-1 mt-1 text-white"
                                             x-data
                                             x-on:click="$dispatch('open-maintenance-open-modal', { id: {{ $v->id }} })">
                                         Manutenzione
@@ -249,7 +249,7 @@
                             @endcan
 
                             @can('vehicles.view', $v)
-                                <a href="{{ route('vehicles.show', $v) }}" class="rounded bg-white px-2 py-1 mt-1 mr-1 ring-1 ring-gray-300">
+                                <a href="{{ route('vehicles.show', $v) }}" class="rounded bg-white text-gray-900 px-2 py-1 mt-1 mr-1 ring-1 ring-gray-300">
                                     Apri
                                 </a>
                             @endcan
@@ -265,7 +265,7 @@
             @endforeach
             @if($vehicles->isEmpty())
                 <tr>
-                    <td class="px-3 py-6 text-center text-gray-500" colspan="100%">Nessun veicolo trovato.</td>
+                    <td class="px-3 py-6 text-center app-muted" colspan="100%">Nessun veicolo trovato.</td>
                 </tr>
             @endif
             </tbody>
@@ -281,11 +281,11 @@
         <div class="fixed inset-0 z-[70]">
             <div class="fixed inset-0 bg-black/40" wire:click="closeDrawer"></div>
 
-            <div class="fixed right-0 top-0 h-full w-full max-w-3xl overflow-y-auto bg-white shadow-2xl">
+            <div class="fixed right-0 top-0 h-full w-full max-w-3xl overflow-y-auto app-surface shadow-2xl">
                 <div class="flex items-center justify-between border-b px-4 py-3">
                     <div>
                         <div class="text-lg font-semibold">{{ $drawer['v']->plate }} — {{ $drawer['v']->make }} {{ $drawer['v']->model }}</div>
-                        <div class="text-sm text-gray-500">
+                        <div class="text-sm app-muted">
                             Anno {{ $drawer['v']->year }} • {{ $drawer['v']->fuel_type_label }} • {{ $drawer['v']->transmission_label }}
                         </div>
                     </div>
@@ -297,14 +297,14 @@
                     <section>
                         <h3 class="mb-2 font-semibold">Profilo</h3>
                         <dl class="grid grid-cols-2 gap-2 text-sm">
-                            <dt class="text-gray-500">VIN</dt><dd>{{ $drawer['v']->vin ?? '—' }}</dd>
-                            <dt class="text-gray-500">Colore</dt><dd>{{ $drawer['v']->color ?? '—' }}</dd>
-                            <dt class="text-gray-500">Posti</dt><dd>{{ $drawer['v']->seats ?? '—' }}</dd>
-                            <dt class="text-gray-500">Segmento</dt><dd>{{ $drawer['v']->segment ?? '—' }}</dd>
-                            <dt class="text-gray-500">Sede</dt><dd>{{ $drawer['v']->defaultPickupLocation?->name ?? '—' }}</dd>
-                            <dt class="text-gray-500">Org.</dt><dd>{{ $drawer['v']->adminOrganization?->name ?? '—' }}</dd>
-                            <dt class="text-gray-500">Km</dt><dd>{{ number_format((int)$drawer['v']->mileage_current, 0, ',', '.') }}</dd>
-                            <dt class="text-gray-500">Note</dt><dd class="col-span-1">{{ $drawer['v']->notes ?? '—' }}</dd>
+                            <dt class="app-muted">VIN</dt><dd>{{ $drawer['v']->vin ?? '—' }}</dd>
+                            <dt class="app-muted">Colore</dt><dd>{{ $drawer['v']->color ?? '—' }}</dd>
+                            <dt class="app-muted">Posti</dt><dd>{{ $drawer['v']->seats ?? '—' }}</dd>
+                            <dt class="app-muted">Segmento</dt><dd>{{ $drawer['v']->segment ?? '—' }}</dd>
+                            <dt class="app-muted">Sede</dt><dd>{{ $drawer['v']->defaultPickupLocation?->name ?? '—' }}</dd>
+                            <dt class="app-muted">Org.</dt><dd>{{ $drawer['v']->adminOrganization?->name ?? '—' }}</dd>
+                            <dt class="app-muted">Km</dt><dd>{{ number_format((int)$drawer['v']->mileage_current, 0, ',', '.') }}</dd>
+                            <dt class="app-muted">Note</dt><dd class="col-span-12 sm:col-span-6 lg:col-span-1">{{ $drawer['v']->notes ?? '—' }}</dd>
                         </dl>
                     </section>
 
@@ -338,10 +338,10 @@
                                 @php
                                     $exp  = $doc->expiry_date ? \Illuminate\Support\Carbon::parse($doc->expiry_date)->startOfDay() : null;
                                     $days = $exp ? now()->startOfDay()->diffInDays($exp, false) : null;
-                                    $cls  = is_null($days) ? '' : ($days <= 7 ? 'text-rose-600' : ($days <= 60 ? 'text-amber-600' : 'text-green-600'));
+                                    $cls  = is_null($days) ? '' : ($days <= 7 ? 'text-rose-700 dark:text-rose-400' : ($days <= 60 ? 'text-amber-700 dark:text-amber-400' : 'text-green-700 dark:text-green-400'));
                                 @endphp
                                 <div class="flex justify-between">
-                                    <div>{{ strtoupper($doc->type_label) }} @if($doc->number)<span class="text-gray-500">#{{ $doc->number }}</span>@endif</div>
+                                    <div>{{ strtoupper($doc->type_label) }} @if($doc->number)<span class="app-muted">#{{ $doc->number }}</span>@endif</div>
                                     <div>
                                         @if(!is_null($days))
                                             <span class="{{ $cls }}">{{ (int)$days }} gg</span>
@@ -351,7 +351,7 @@
                                     </div>
                                 </div>
                             @empty
-                                <div class="text-gray-500">Nessun documento caricato.</div>
+                                <div class="app-muted">Nessun documento caricato.</div>
                             @endforelse
                         </div>
                     </section>
@@ -361,13 +361,13 @@
                         <h3 class="font-semibold">Azioni rapide</h3>
                         <div class="flex items-center gap-2">
                             @can('vehicles.update', $drawer['v'])
-                                <button type="button" class="rounded bg-slate-100 px-2 py-1"
+                                <button type="button" class="rounded bg-slate-100 px-2 py-1 text-slate-800"
                                         x-data
                                         x-on:click="$dispatch('open-mileage-modal', { id: {{ $drawer['v']->id }}, current: {{ (int)$drawer['v']->mileage_current }} })">
                                     Agg. km
                                 </button>
                                 @if(($drawer['currentState'] ?? null) !== 'maintenance')
-                                    <button type="button" class="rounded bg-amber-600 px-2 py-1 text-white" wire:click="setMaintenance({{ $drawer['v']->id }})">
+                                    <button type="button" class="rounded bg-amber-700 px-2 py-1 text-white" wire:click="setMaintenance({{ $drawer['v']->id }})">
                                         Manutenzione
                                     </button>
                                 @else
@@ -389,12 +389,12 @@
         <template x-if="open">
             <div class="fixed inset-0 z-[100]">
                 <div class="absolute inset-0 bg-black/40"></div>
-                <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-md bg-white p-4 shadow-xl">
+                <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-md app-surface p-4 shadow-xl">
                     <div class="text-lg font-semibold">Aggiorna chilometraggio</div>
-                    <div class="mt-2 text-sm text-gray-600">Valore attuale: <strong x-text="current.toLocaleString('it-IT')"></strong> km</div>
+                    <div class="mt-2 text-sm app-muted">Valore attuale: <strong x-text="current.toLocaleString('it-IT')"></strong> km</div>
                     <div class="mt-3">
                         <input type="number" min="0" step="1"
-                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 app-field"
                                x-model="value">
                     </div>
                     <div class="mt-4 flex justify-end gap-2">
@@ -415,24 +415,24 @@
         <template x-if="open">
             <div class="fixed inset-0 z-[100]">
                 <div class="absolute inset-0 bg-black/40"></div>
-                <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-md bg-white p-4 shadow-xl">
+                <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-md app-surface p-4 shadow-xl">
                     <div class="text-lg font-semibold">Apri manutenzione</div>
-                    <div class="mt-2 text-sm text-gray-600">
+                    <div class="mt-2 text-sm app-muted">
                         Inserisci l’officina / luogo in cui avverrà la manutenzione.
                     </div>
                     <div class="mt-3 space-y-2">
                         <div>
-                            <label class="block text-xs text-gray-600">Officina / Luogo *</label>
-                            <input type="text" x-model="workshop" class="w-full rounded-md border-gray-300" placeholder="Officina Rossi (Via…)">
+                            <label class="block text-xs app-muted">Officina / Luogo *</label>
+                            <input type="text" x-model="workshop" class="w-full rounded-md border-gray-300 app-field" placeholder="Officina Rossi (Via…)">
                         </div>
                         <div>
-                            <label class="block text-xs text-gray-600">Note (opz.)</label>
-                            <textarea rows="2" x-model="notes" class="w-full rounded-md border-gray-300" placeholder="Dettagli intervento…"></textarea>
+                            <label class="block text-xs app-muted">Note (opz.)</label>
+                            <textarea rows="2" x-model="notes" class="w-full rounded-md border-gray-300 app-field" placeholder="Dettagli intervento…"></textarea>
                         </div>
                     </div>
                     <div class="mt-4 flex justify-end gap-2">
                         <button type="button" class="rounded border px-3 py-1" x-on:click="open=false">Annulla</button>
-                        <button type="button" class="rounded bg-amber-600 px-3 py-1 text-white hover:bg-amber-700"
+                        <button type="button" class="rounded bg-amber-700 px-3 py-1 text-white hover:bg-amber-700"
                                 x-on:click="$wire.confirmOpenMaintenance(id, workshop, notes); open=false;">
                             Conferma apertura
                         </button>
@@ -448,19 +448,19 @@
         <template x-if="open">
             <div class="fixed inset-0 z-[100]">
                 <div class="absolute inset-0 bg-black/40"></div>
-                <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-md bg-white p-4 shadow-xl">
+                <div class="absolute left-1/2 top-1/2 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-md app-surface p-4 shadow-xl">
                     <div class="text-lg font-semibold">Chiudi manutenzione</div>
-                    <div class="mt-2 text-sm text-gray-600">
+                    <div class="mt-2 text-sm app-muted">
                         Inserisci il costo totale (se disponibile). Potrai aggiornarlo anche in seguito.
                     </div>
                     <div class="mt-3 space-y-2">
                         <div>
-                            <label class="block text-xs text-gray-600">Costo totale (€)</label>
-                            <input type="number" min="0" step="0.01" x-model="cost" class="w-full rounded-md border-gray-300" placeholder="0,00">
+                            <label class="block text-xs app-muted">Costo totale (€)</label>
+                            <input type="number" min="0" step="0.01" x-model="cost" class="w-full rounded-md border-gray-300 app-field" placeholder="0,00">
                         </div>
                         <div>
-                            <label class="block text-xs text-gray-600">Note (opz.)</label>
-                            <textarea rows="2" x-model="notes" class="w-full rounded-md border-gray-300" placeholder="Esito intervento…"></textarea>
+                            <label class="block text-xs app-muted">Note (opz.)</label>
+                            <textarea rows="2" x-model="notes" class="w-full rounded-md border-gray-300 app-field" placeholder="Esito intervento…"></textarea>
                         </div>
                     </div>
                     <div class="mt-4 flex justify-end gap-2">

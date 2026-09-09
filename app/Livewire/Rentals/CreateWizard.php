@@ -467,6 +467,25 @@ class CreateWizard extends Component
     /** Salva/aggiorna la bozza (sempre status=draft) */
     public function saveDraft(): void
     {
+        $vehicleIds = [$this->rentalData['vehicle_id'] ?? null];
+        if ($this->rentalId) $vehicleIds[] = Rental::whereKey($this->rentalId)->value('vehicle_id');
+        $originalId = $this->rentalId;
+        try {
+            app(\App\Domain\Rentals\ReservationTransaction::class)->run(
+                (int) auth()->user()->organization_id, $vehicleIds, function () use ($originalId) {
+                    $this->rentalId = $originalId;
+                    $this->assertVehicleAvailability();
+                    $this->persistDraft();
+                }
+            );
+        } catch (\Throwable $exception) {
+            $this->rentalId = $originalId;
+            throw $exception;
+        }
+    }
+
+    private function persistDraft(): void
+    {
         $this->validate(
             $this->rulesStep1(),
             $this->messages(),
@@ -1140,7 +1159,7 @@ class CreateWizard extends Component
                 $q->whereRaw('COALESCE(actual_pickup_at, planned_pickup_at) < ?', [$end])
                     ->whereRaw('COALESCE(actual_return_at, planned_return_at) > ?', [$start]);
             })
-            ->exists();
+            ->lockForUpdate()->first(['id']);
 
         if ($exists) {
             $this->dispatch('toast', type: 'error', message: 'Il veicolo è già prenotato per le date selezionate.');

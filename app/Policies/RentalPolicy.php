@@ -45,28 +45,29 @@ class RentalPolicy
 
     public function checkout(User $user, Rental $rental): bool
     {
-        return $user->can('rentals.checkout');
+        return $this->view($user, $rental) && $user->can('rentals.checkout');
     }
     public function inuse(User $user, Rental $rental): bool
     {
-        return $user->can('rentals.inuse');
+        return $this->view($user, $rental) && $user->can('rentals.inuse');
     }
     public function checkin(User $user, Rental $rental): bool
     {
-        return $user->can('rentals.checkin');
+        return $this->view($user, $rental) && $user->can('rentals.checkin');
     }
     public function close(User $user, Rental $rental): bool
     {
         // Permesso base a chiudere
-        return $user->can('rentals.close') || $user->can('rentals.close.override');
+        return $this->view($user, $rental)
+            && ($user->can('rentals.close') || $user->can('rentals.close.override'));
     }
     public function cancel(User $user, Rental $rental): bool
     {
-        return $user->can('rentals.cancel');
+        return $this->view($user, $rental) && $user->can('rentals.cancel');
     }
     public function noshow(User $user, Rental $rental): bool
     {
-        return $user->can('rentals.noshow');
+        return $this->view($user, $rental) && $user->can('rentals.noshow');
     }
 
     // Contratti
@@ -107,6 +108,6 @@ class RentalPolicy
     
     public function deleteMedia(User $user, Rental $rental): bool
     {
-        return $user->can('media.delete');
+        return $this->view($user, $rental) && $user->can('media.delete');
     }
 }

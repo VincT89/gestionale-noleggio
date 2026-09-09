@@ -293,8 +293,7 @@ protected function resolveIncludedKm(): ?int
     public function getHasDistanceOveragePaymentAttribute(): bool
     {
         return $this->charges()
-            ->where('kind', RentalCharge::KIND_DISTANCE_OVERAGE)
-            ->orWhere('kind', RentalCharge::KIND_BASE_PLUS_DISTANCE_OVERAGE)
+            ->whereIn('kind', [RentalCharge::KIND_DISTANCE_OVERAGE, RentalCharge::KIND_BASE_PLUS_DISTANCE_OVERAGE])
             ->where('payment_recorded', true)
             ->exists();
     }

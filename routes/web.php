@@ -27,6 +27,22 @@ use App\Http\Controllers\Admin\ReportPresetRunController;
 use App\Http\Controllers\Admin\ReportPresetController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AuditController;
+use App\Http\Controllers\PublicCarSearchController;
+use App\Http\Controllers\PublicRentalOfferController;
+use App\Http\Controllers\PublicBookingController;
+
+Route::get('/prenotazione/{reference}', [PublicBookingController::class, 'confirmation'])
+    ->middleware(['signed', 'throttle:60,1'])->name('public-bookings.confirmation');
+Route::get('/prenotazione/{reference}/pdf', [PublicBookingController::class, 'pdf'])
+    ->middleware(['signed', 'throttle:30,1,booking-pdf-'])->name('public-bookings.pdf');
+
+Route::prefix('cerca-auto')->name('public-cars.')->middleware('throttle:60,1')->group(function () {
+    Route::get('/', [PublicCarSearchController::class, 'index'])->name('index');
+    Route::get('/{offer}/prenota', [PublicBookingController::class, 'create'])->whereNumber('offer')->name('booking.create');
+    Route::post('/{offer}/prenota', [PublicBookingController::class, 'store'])->whereNumber('offer')->middleware('throttle:public-bookings')->name('booking.store');
+    Route::get('/{offer}/foto', [PublicCarSearchController::class, 'photo'])->whereNumber('offer')->name('photo');
+    Route::get('/{offer}', [PublicCarSearchController::class, 'show'])->whereNumber('offer')->name('show');
+});
 
 
 /*
@@ -60,6 +76,18 @@ Route::middleware([
     | Permessi: gestiti nella view via Gate (le tiles e il menu si auto-filtrano).
     */
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
+    Route::get('/prenotazioni-sito', [PublicBookingController::class, 'index'])->middleware('can:rentals.viewAny')->name('public-bookings.index');
+
+    Route::middleware('can:vehicle_pricing.update')->group(function () {
+        Route::get('/catalogo-pubblico', [PublicRentalOfferController::class, 'index'])->name('public-offers.index');
+        Route::post('/catalogo-pubblico', [PublicRentalOfferController::class, 'store'])->name('public-offers.store');
+        Route::put('/catalogo-pubblico/{offer}', [PublicRentalOfferController::class, 'update'])->whereNumber('offer')->name('public-offers.update');
+        Route::get('/catalogo-pubblico/anteprima', [PublicCarSearchController::class, 'preview'])->name('public-cars.preview.index');
+        Route::get('/catalogo-pubblico/anteprima/{offer}/prenota', [PublicBookingController::class, 'create'])->whereNumber('offer')->name('public-cars.preview.booking.create');
+        Route::post('/catalogo-pubblico/anteprima/{offer}/prenota', [PublicBookingController::class, 'store'])->whereNumber('offer')->middleware('throttle:public-bookings')->name('public-cars.preview.booking.store');
+        Route::get('/catalogo-pubblico/anteprima/{offer}/foto', [PublicCarSearchController::class, 'previewPhoto'])->whereNumber('offer')->name('public-cars.preview.photo');
+        Route::get('/catalogo-pubblico/anteprima/{offer}', [PublicCarSearchController::class, 'previewShow'])->whereNumber('offer')->name('public-cars.preview.show');
+    });
 
 /*
 |--------------------------------------------------------------------------

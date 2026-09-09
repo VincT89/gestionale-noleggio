@@ -11,6 +11,11 @@ use App\Models\RentalDamage;
  */
 class RentalDamagePolicy
 {
+    public function view(User $user, RentalDamage $damage): bool
+    {
+        return $damage->rental !== null && $user->can('view', $damage->rental);
+    }
+
     /**
      * Creazione danno.
      * Permesso: rental_damages.create
@@ -27,6 +32,10 @@ class RentalDamagePolicy
      */
     public function update(User $user, RentalDamage $damage): bool
     {
+        if (! $this->view($user, $damage)) {
+            return false;
+        }
+
         $checklist = $damage->rental?->checklists()
             ->where('type', $damage->phase) // pickup/return/during
             ->first();
@@ -44,7 +53,7 @@ class RentalDamagePolicy
      */
     public function delete(User $user, RentalDamage $damage): bool
     {
-        return $user->can('rental_damages.delete');
+        return $this->view($user, $damage) && $user->can('rental_damages.delete');
     }
 
     /**
@@ -54,6 +63,10 @@ class RentalDamagePolicy
      */
     public function uploadPhoto(User $user, RentalDamage $damage): bool
     {
+        if (! $this->view($user, $damage)) {
+            return false;
+        }
+
         $checklist = $damage->rental?->checklists()
             ->where('type', $damage->phase) // pickup/return/during
             ->first();
@@ -72,6 +85,10 @@ class RentalDamagePolicy
      */
     public function deleteMedia(User $user, RentalDamage $damage): bool
     {
+        if (! $this->view($user, $damage)) {
+            return false;
+        }
+
         $checklist = $damage->rental?->checklists()
             ->where('type', $damage->phase) // pickup/return/during
             ->first();

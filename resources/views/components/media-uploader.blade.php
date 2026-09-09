@@ -30,14 +30,15 @@
         </div>
     @endif
 
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2 min-w-0">
         <input type="file"
+               aria-label="{{ $label }}"
                x-ref="file"
                name="file" {{-- il controller legge "file" --}}
                accept="{{ $accept }}"
                @change="upload()"
                @if($multiple) multiple @endif
-               class="file-input file-input-bordered w-full" />
+               class="file-input file-input-bordered w-full min-w-0 max-w-full" />
 
         <button type="button"
                 class="p-2 btn btn-sm shadow-none

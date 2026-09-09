@@ -456,6 +456,8 @@ class RentalController extends Controller
      */
     public function distanceOverage(Rental $rental)
     {
+        $this->authorize('update', $rental);
+
         /**
          * ✅ Fonte unica: flag "overage pagato?"
          * (manteniamo lo stesso comportamento UI)
