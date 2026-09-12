@@ -10,6 +10,9 @@
 
 <section aria-labelledby="payment-history-title" class="min-w-0 rounded-lg border border-gray-200 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
     <h2 id="payment-history-title" class="font-semibold">Storico pagamenti</h2>
+    @error('payment')
+        <p role="alert" class="mt-2 text-sm text-red-700 dark:text-red-300">{{ $message }}</p>
+    @enderror
 
     @if($payments->isEmpty())
         <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">Nessun pagamento registrato.</p>
@@ -43,6 +46,16 @@
                             <div><dt class="inline">Registrato da:</dt> <dd class="inline">{{ $payment->creator->name }}</dd></div>
                         @endif
                     </dl>
+                    @can('update', $rental)
+                        <button type="button"
+                                wire:click="deletePayment({{ $payment->id }})"
+                                wire:confirm="Eliminare il pagamento di {{ $money($payment->amount) }} del {{ $payment->payment_recorded_at?->format('d/m/Y H:i') ?? 'data non disponibile' }}? Il totale registrato e le eventuali commissioni verranno aggiornati."
+                                wire:loading.attr="disabled" wire:target="deletePayment"
+                                aria-label="Elimina pagamento di {{ $money($payment->amount) }} del {{ $payment->payment_recorded_at?->format('d/m/Y H:i') ?? 'data non disponibile' }}"
+                                class="mt-2 min-h-11 rounded-md border border-red-300 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950">
+                            Elimina pagamento
+                        </button>
+                    @endcan
                 </li>
             @endforeach
         </ul>

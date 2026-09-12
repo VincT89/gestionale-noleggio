@@ -23,6 +23,7 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Locked;
 use App\Services\Rentals\RentalExtensionService;
+use App\Services\Rentals\RentalPaymentService;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
@@ -246,6 +247,24 @@ class Show extends Component
 
         return $this->rental->charges()->paid()->with('creator:id,name')
             ->orderByDesc('payment_recorded_at')->orderByDesc('id')->get();
+    }
+
+    public function deletePayment(int $paymentId, RentalPaymentService $payments): void
+    {
+        $this->authorize('view', $this->rental);
+        $this->authorize('update', $this->rental);
+        $this->resetErrorBag('payment');
+        $payments->delete($this->rental, $paymentId, auth()->user());
+        $this->rental->refresh();
+        unset($this->recordedPayments);
+        $this->dispatch('rental-flags-updated',
+            has_base_payment: $this->rental->has_base_payment,
+            has_distance_overage_payment: $this->rental->has_distance_overage_payment,
+            base_paid_total: (float) $this->rental->base_paid_total,
+            has_combined_payment: $this->rental->has_combined_payment,
+            acconto_paid_total: (float) $this->rental->charges()->paid()->where('kind', 'acconto')->sum('amount'),
+        );
+        $this->dispatch('toast', type: 'success', message: 'Pagamento eliminato. Totali aggiornati.');
     }
 
     #[On('rental-payment-recorded')]

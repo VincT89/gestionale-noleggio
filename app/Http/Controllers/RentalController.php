@@ -225,11 +225,20 @@ class RentalController extends Controller
         }
 
         // 4) Chiusura + snapshot fee admin (solo se org = renter)
-        DB::transaction(function () use ($rental, $fees) {
+        DB::transaction(function () use ($rental, $fees, $guard, $rules) {
             $rental = Rental::query()->lockForUpdate()->findOrFail($rental->id);
             $this->authorize('view', $rental);
             $this->authorize('close', $rental);
             abort_if($rental->status !== 'checked_in', 409, 'Lo stato del noleggio è cambiato. Aggiorna la pagina.');
+
+            // Un pagamento potrebbe essere stato eliminato mentre attendevamo il lock.
+            $currentCheck = $guard->check($rental, $rules);
+            $canOverride = $currentCheck['code'] === 'snapshot_locked' && auth()->user()->can('rentals.close.override');
+            if (!$currentCheck['ok'] && !$canOverride) {
+                throw new \Illuminate\Http\Exceptions\HttpResponseException(response()->json([
+                    'ok' => false, 'code' => $currentCheck['code'], 'message' => $currentCheck['message'],
+                ], Response::HTTP_UNPROCESSABLE_ENTITY));
+            }
 
             $isFirstClose = is_null($rental->closed_at);
             $closedAt     = $isFirstClose ? now() : $rental->closed_at;
@@ -391,7 +400,7 @@ class RentalController extends Controller
             ],
             'amount'            => ['required','numeric','decimal:0,2','min:0.01','max:9999999999.99'],
             'payment_method'    => ['required', Rule::in(['cash', 'pos', 'bank_transfer', 'other'])],
-            'request_key'       => ['nullable', 'uuid'],
+            'request_key'       => ['required', 'uuid'],
             'payment_notes'     => ['nullable','string','max:255'], // note dal modale (UI)
             'payment_reference' => ['nullable','string','max:255'], // riferimento dal modale (UI)
             'description'       => ['nullable','string','max:255'],
@@ -403,7 +412,8 @@ class RentalController extends Controller
             'amount.max' => 'L\'importo supera il limite consentito.',
             'kind.in' => 'Seleziona un tipo di pagamento valido.',
             'payment_method.in' => 'Seleziona un metodo di pagamento valido.',
-            'request_key.uuid' => 'Richiesta di pagamento non valida. Riapri il modulo.',
+            'request_key.required' => 'Pagina non aggiornata. Ricarica la pagina prima di registrare il pagamento.',
+            'request_key.uuid' => 'Richiesta di pagamento non valida. Ricarica la pagina prima di riprovare.',
             'payment_method.required' => 'Il metodo di pagamento è obbligatorio.',
             'payment_method.string' => 'Il metodo di pagamento deve essere una stringa.',
             'payment_method.max' => 'Il metodo di pagamento non può superare i :max caratteri.',

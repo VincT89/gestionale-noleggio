@@ -101,7 +101,7 @@ class RentalExtensionsTest extends TestCase
     public function test_extension_updates_dates_price_km_and_history_without_recording_a_payment(): void
     {
         $this->postJson(route('rentals.record_payment', $this->rental),
-            ['kind' => 'base', 'amount' => 90, 'payment_method' => 'cash'])->assertOk();
+            ['kind' => 'base', 'amount' => 90, 'payment_method' => 'cash', 'request_key' => (string) Str::uuid()])->assertOk();
         $extension = $this->extend();
         $current = $this->rental->fresh();
         $this->assertSame('2026-09-12 10:00:00', $current->planned_return_at->format('Y-m-d H:i:s'));
@@ -117,7 +117,7 @@ class RentalExtensionsTest extends TestCase
         $current->update(['mileage_out' => 1000, 'mileage_in' => 1600]);
         $this->assertEquals(100, $current->distance_overage_km);
         $this->postJson(route('rentals.record_payment', $current),
-            ['kind' => 'base', 'amount' => 60, 'payment_method' => 'bank_transfer'])->assertOk();
+            ['kind' => 'base', 'amount' => 60, 'payment_method' => 'bank_transfer', 'request_key' => (string) Str::uuid()])->assertOk();
         $this->assertEquals(22.5, app(AdminFeeResolver::class)->calculateForRental($current)['amount']);
         $this->assertEquals(150, $current->fresh()->base_paid_total);
     }
@@ -219,7 +219,7 @@ class RentalExtensionsTest extends TestCase
     public function test_date_only_extension_keeps_a_reminder_until_price_and_payment_are_entered(): void
     {
         $this->postJson(route('rentals.record_payment', $this->rental),
-            ['kind' => 'base', 'amount' => 90, 'payment_method' => 'cash'])->assertOk();
+            ['kind' => 'base', 'amount' => 90, 'payment_method' => 'cash', 'request_key' => (string) Str::uuid()])->assertOk();
         $component = Livewire::test(Show::class, ['rental' => $this->rental])
             ->call('openExtension')->set('extensionReturnAt', '2026-09-12T10:00')
             ->call('saveExtension')->assertHasNoErrors()->assertSee('Importo della proroga da definire');
@@ -233,7 +233,7 @@ class RentalExtensionsTest extends TestCase
         $this->assertEquals(150, $this->rental->fresh()->amount);
         $this->assertSame(1, $this->rental->charges()->count());
         $this->postJson(route('rentals.record_payment', $this->rental),
-            ['kind' => 'base', 'amount' => 60, 'payment_method' => 'cash'])->assertOk();
+            ['kind' => 'base', 'amount' => 60, 'payment_method' => 'cash', 'request_key' => (string) Str::uuid()])->assertOk();
         $component->dispatch('rental-payment-recorded', rentalId: $this->rental->id)->assertDontSee('Pagamento da registrare');
         $this->assertEquals(22.5, app(AdminFeeResolver::class)->calculateForRental($this->rental)['amount']);
     }

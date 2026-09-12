@@ -210,7 +210,7 @@ class Rental extends Model implements SpatieHasMedia
      * Km eccedenti:
      * - Preferisce i km delle checklist (campo "mileage"), fallback su mileage_in/out del rental.
      * - I km inclusi vengono risolti da snapshot contrattuale (freeze-once) se presente,
-     *   altrimenti fallback a 0 (nessun incluso noto).
+     *   un limite assente o illimitato non genera eccedenze.
      */
     public function getDistanceOverageKmAttribute(): int
     {
@@ -218,8 +218,10 @@ class Rental extends Model implements SpatieHasMedia
         $pickupKm = optional($this->pickupChecklist)->mileage ?? $this->mileage_out;
         $returnKm = optional($this->returnChecklist)->mileage ?? $this->mileage_in;
 
-        // Km inclusi: prova da snapshot dedicato (se presente), altrimenti 0
-        $includedKm = (int) ($this->resolveIncludedKm() ?? 0);
+        $includedKm = $this->resolveIncludedKm();
+        if ($includedKm === null) {
+            return 0;
+        }
 
         // Se mancano dati km, niente overage
         if ($pickupKm === null || $returnKm === null) {
@@ -271,6 +273,11 @@ protected function resolveIncludedKm(): ?int
 
     /** @var array $snap */
     $snap = is_array($snapModel->pricing_snapshot ?? null) ? $snapModel->pricing_snapshot : [];
+
+    // Il contratto rappresenta un limite giornaliero esplicitamente nullo come illimitato.
+    if (array_key_exists('km_daily_limit', $snap) && $snap['km_daily_limit'] === null) {
+        return null;
+    }
 
     /**
      * ✅ PRIORITÀ: se lo snapshot è giornaliero, il totale incluso è:

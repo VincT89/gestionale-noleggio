@@ -10,14 +10,18 @@ const source = template.match(/<script>([\s\S]*?)<\/script>/)[1]
 
 function modal(options = {}, overage = 0) {
     const factories = {};
+    const listeners = {};
     const context = {
         Alpine: { data: (name, factory) => { factories[name] = factory; } },
         document: { addEventListener: (_event, listener) => listener() },
-        window: { __distanceOverageDue: overage, __hasDistanceOveragePayment: false },
+        window: { __distanceOverageDue: overage, __hasDistanceOveragePayment: false,
+            addEventListener: (name, listener) => { (listeners[name] ??= []).push(listener); } },
     };
     vm.runInNewContext(source, context);
     const payment = factories.paymentModal('/payments', 520, options);
+    payment.init();
     payment.openModal();
+    payment.receiveFlags = detail => listeners['rental-flags-updated'].forEach(listener => listener({detail}));
     return payment;
 }
 
@@ -65,4 +69,25 @@ test('i km extra già pagati non vengono riproposti automaticamente', () => {
     payment.kind = 'base+distance_overage';
     payment.onKindChange();
     assert.equal(payment.amount, '');
+});
+
+test('eliminare un pagamento aggiorna il residuo anche nella modale gia aperta', () => {
+    const payment = modal({basePaid:520, hasBasePayment:true});
+    payment.receiveFlags({base_paid_total:455, has_base_payment:true, has_combined_payment:false});
+    assert.equal(payment.amount, 65);
+    payment.close();
+    payment.openModal();
+    assert.equal(payment.amount, 65);
+});
+
+test('eliminare il pagamento cumulativo ripristina il saldo e i km extra corretti', () => {
+    const payment = modal({basePaid:455, hasCombinedPayment:true, hasOveragePayment:true}, 80);
+    payment.receiveFlags({base_paid_total:455, has_base_payment:true, has_combined_payment:false, has_distance_overage_payment:false});
+    payment.close();
+    payment.openModal();
+    assert.equal(payment.kind, 'distance_overage');
+    assert.equal(Number(payment.amount), 80);
+    payment.kind = 'base+distance_overage';
+    payment.onKindChange();
+    assert.equal(payment.amount, 145);
 });

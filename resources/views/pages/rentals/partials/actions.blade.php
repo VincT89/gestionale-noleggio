@@ -408,6 +408,7 @@ document.addEventListener('alpine:init', () => {
         const f = e.detail || {};
         if ('has_base_payment' in f)               this.flags.hasBasePayment    = !!f.has_base_payment;
         if ('has_distance_overage_payment' in f)   this.flags.hasOveragePayment = !!f.has_distance_overage_payment;
+        if ('has_distance_overage_payment' in f) window.__hasDistanceOveragePayment = !!f.has_distance_overage_payment;
         if ('acconto_paid_total' in f) this.accontoPaid = Number(f.acconto_paid_total || 0);
       });
     },
@@ -617,6 +618,19 @@ document.addEventListener('alpine:init', () => {
       init(){
         // filtro iniziale
         this.applyKindsFilter();
+
+        window.addEventListener('rental-flags-updated', (e) => {
+          const f = e.detail || {};
+          if ('base_paid_total' in f) this.basePaid = Number(f.base_paid_total);
+          if ('has_base_payment' in f) this.hasBasePayment = !!f.has_base_payment;
+          if ('has_combined_payment' in f) this.hasCombinedPayment = !!f.has_combined_payment;
+          if ('has_distance_overage_payment' in f) {
+            this.hasOveragePayment = !!f.has_distance_overage_payment;
+            window.__hasDistanceOveragePayment = this.hasOveragePayment;
+          }
+          if ('acconto_paid_total' in f) this.accontoPaid = Number(f.acconto_paid_total);
+          if (this.open && 'base_paid_total' in f && !this.loading) this.onKindChange();
+        });
 
         // ascolta aggiornamenti da backend (dopo storePayment)
         window.addEventListener('rental-amount-updated', (e) => {
