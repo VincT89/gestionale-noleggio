@@ -117,6 +117,6 @@ return [
         ['label' => 'Assegnazioni oggi',    'route' => 'assignments.index',       'icon' => 'fa-calendar-day', 'permission' => 'assignments.viewAny',        'badge_count' => 'assignments_today'],
         ['label' => 'Blocchi attivi',       'route' => 'blocks.index',            'icon' => 'fa-triangle-exclamation','permission' => 'blocks.viewAny',     'badge_count' => 'blocks_active'],
         ['label' => 'Doc. in scadenza',     'route' => 'vehicle-documents.index', 'icon' => 'fa-exclamation-circle','permission' => 'vehicle_documents.viewAny','badge_count' => 'vehicle_docs_due'],
-        ['label' => 'Clienti',              'route' => 'customers.index',         'icon' => 'fa-users',        'permission' => 'customers.viewAny',          'badge_count' => 'customers_total'],
+        ['label' => 'Clienti',              'route' => 'customers.index',         'icon' => 'fa-users',        'permission' => 'manage.renters',             'badge_count' => 'customers_total'],
     ],
 ];

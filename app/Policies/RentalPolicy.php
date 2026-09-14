@@ -43,6 +43,14 @@ class RentalPolicy
         return $user->can('rentals.delete');
     }
 
+    public function updateCustomer(User $user, Rental $rental): bool
+    {
+        return $rental->customer_id !== null
+            && $this->view($user, $rental)
+            && $this->update($user, $rental)
+            && $user->can('customers.update');
+    }
+
     public function checkout(User $user, Rental $rental): bool
     {
         return $user->can('rentals.checkout');

@@ -62,20 +62,26 @@
                     <dd class="font-medium flex items-center justify-between gap-2">
                         <span>{{ optional($rental->customer)->name ?? '—' }}</span>
 
-                        @if(in_array($rental->status, ['draft','reserved'], true))
+                        @php
+                            $canAssignCustomer = in_array($rental->status, ['draft', 'reserved'], true)
+                                && auth()->user()->can('update', $rental);
+                            $canEditCustomer = !empty($rental->customer_id)
+                                && auth()->user()->can('updateCustomer', $rental);
+                        @endphp
+                        @if($canEditCustomer || ($canAssignCustomer && empty($rental->customer_id)))
                             <div class="flex items-center gap-2">
                                 <button
                                     type="button"
                                     class="btn btn-xs shadow-none
                                             !bg-neutral !text-neutral-content !border-neutral
                                             hover:brightness-95 focus-visible:outline-none focus-visible:ring focus-visible:ring-neutral/30
-                                            disabled:opacity-50 disabled:cursor-not-allowed p-2"
+                                            disabled:opacity-50 disabled:cursor-not-allowed p-2 min-h-11"
                                     wire:click="openCustomerModal('primary')"
                                 >
-                                    {{ empty($rental->customer_id) ? 'Aggiungi Cliente' : 'Modifica Cliente' }}
+                                    {{ empty($rental->customer_id) ? 'Aggiungi cliente' : 'Modifica cliente' }}
                                 </button>
 
-                                @if(!empty($rental->customer_id))
+                                @if($canAssignCustomer && !empty($rental->customer_id))
                                     <button
                                         type="button"
                                         class="btn btn-xs shadow-none
@@ -388,7 +394,9 @@
             $btnGhostXs = 'btn btn-ghost btn-xs';
         @endphp
 
-        <div class="modal modal-open z-[96]">
+        <div class="modal modal-open z-[96]" x-data x-trap.inert.noscroll="true"
+             @keydown.escape.window="$wire.closeCustomerModal()"
+             role="dialog" aria-modal="true" aria-labelledby="rental-customer-title">
             {{-- Click sul backdrop = chiudi --}}
             <div class="modal-backdrop" wire:click="closeCustomerModal"></div>
 
@@ -415,19 +423,26 @@
                                 : ($hasLinked ? 'Modifica cliente' : 'Aggiungi cliente');
                         @endphp
 
-                        <h3 class="text-lg font-semibold">
+                        <h3 id="rental-customer-title" class="text-lg font-semibold">
                             {{ $title }}
                         </h3>
                         <p class="text-sm opacity-70">
-                            Seleziona un cliente esistente per precompilare i dati, oppure creane uno nuovo.
+                            @if($this->customerModalMode === 'edit')
+                                Modifica i dati del cliente collegato a questo contratto.
+                                L'anagrafica viene aggiornata anche per gli altri suoi noleggi.
+                                I PDF già generati e i dati già inviati a CARGOS restano invariati.
+                            @else
+                                Seleziona un cliente esistente per precompilare i dati, oppure creane uno nuovo.
+                            @endif
                         </p>
                     </div>
 
-                    <button type="button" class="btn btn-ghost btn-sm" wire:click="closeCustomerModal">✕</button>
+                    <button type="button" class="btn btn-ghost btn-sm min-h-11" wire:click="closeCustomerModal">Chiudi</button>
                 </div>
 
-                <div class="mt-5 grid md:grid-cols-2 gap-6">
+                <div class="mt-5 grid {{ $this->customerModalMode === 'create' ? 'md:grid-cols-2' : '' }} gap-6">
                     {{-- Colonna sinistra: ricerca e selezione --}}
+                    @if($this->customerModalMode === 'create')
                     <div class="space-y-3">
                         <div class="text-sm font-semibold">Cerca cliente esistente</div>
 
@@ -461,6 +476,7 @@
                             @endforelse
                         </div>
                     </div>
+                    @endif
 {{-- =========================
     COLONNA DX — Form cliente (stile Rentals/Wizard)
     - Nome completo auto da first_name + last_name
@@ -494,10 +510,10 @@
 >
     <div class="flex items-center justify-between">
         <div class="text-sm font-semibold">
-            {{ $this->customerPopulated ? 'Cliente selezionato (modificabile)' : 'Crea nuovo cliente' }}
+            {{ $this->customerModalMode === 'edit' ? 'Dati cliente' : ($this->customerPopulated ? 'Cliente selezionato (modificabile)' : 'Crea nuovo cliente') }}
         </div>
 
-        @if($this->customerPopulated && $this->customer_id)
+        @if($this->customerModalMode === 'create' && $this->customerPopulated && $this->customer_id)
             <span class="text-xs rounded-full px-2 py-0.5 bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300">
                 ID #{{ $this->customer_id }}
             </span>
@@ -752,8 +768,8 @@
                 Annulla
             </button>
 
-            <button type="submit" class="{{ $btnIndigo }}" wire:loading.attr="disabled">
-                {{ $this->customerPopulated ? 'Aggiorna cliente' : 'Crea e associa' }}
+            <button type="submit" class="{{ $btnIndigo }} min-h-11" wire:loading.attr="disabled">
+                {{ $this->customerModalMode === 'edit' ? 'Salva modifiche' : ($this->customerPopulated ? 'Aggiorna cliente' : 'Crea e associa') }}
             </button>
         </div>
     </form>
