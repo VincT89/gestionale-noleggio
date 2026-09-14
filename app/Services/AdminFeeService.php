@@ -64,6 +64,7 @@ class AdminFeeService
 
         // 2) Base commissionabile Tᶜ = somma righe commissionabili (amount già IVA inclusa)
         $base = (float) $rental->charges()
+            ->paid()
             ->where('is_commissionable', true)
             ->sum('amount');
 

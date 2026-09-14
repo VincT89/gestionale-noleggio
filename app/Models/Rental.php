@@ -102,6 +102,31 @@ class Rental extends Model implements SpatieHasMedia
         return $this->hasOne(RentalContractSnapshot::class);
     }
 
+    public function extensions(): HasMany
+    {
+        return $this->hasMany(RentalExtension::class);
+    }
+
+    public function contractRevision(): int
+    {
+        return (int) $this->extensions()->max('id');
+    }
+
+    public function currentCustomerSignature(): ?Media
+    {
+        $signature = $this->getFirstMedia('signature_customer');
+        return $signature && (int) $signature->getCustomProperty('rental_extension_id', 0) === $this->contractRevision()
+            ? $signature : null;
+    }
+
+    public function currentContractDocument(string $collection): ?Media
+    {
+        $revision = $this->contractRevision();
+        return $this->getMedia($collection)->sortByDesc('id')->first(
+            fn (Media $media) => (int) $media->getCustomProperty('rental_extension_id', 0) === $revision
+        );
+    }
+
     // -------------------------
     // Righe economiche (pagamenti eseguiti)
     // -------------------------
@@ -134,6 +159,21 @@ class Rental extends Model implements SpatieHasMedia
     {
         $sum = (float) $this->charges()->where('payment_recorded', true)->sum('amount');
         return number_format($sum, 2, '.', '');
+    }
+
+    public function getBasePaidTotalAttribute(): string
+    {
+        $sum = $this->charges()->paid()
+            ->whereIn('kind', [RentalCharge::KIND_BASE, RentalCharge::KIND_ACCONTO])
+            ->sum('amount');
+
+        return number_format((float) $sum, 2, '.', '');
+    }
+
+    public function getHasCombinedPaymentAttribute(): bool
+    {
+        return $this->charges()->paid()
+            ->where('kind', RentalCharge::KIND_BASE_PLUS_DISTANCE_OVERAGE)->exists();
     }
 
     // -------------------------
@@ -170,7 +210,7 @@ class Rental extends Model implements SpatieHasMedia
      * Km eccedenti:
      * - Preferisce i km delle checklist (campo "mileage"), fallback su mileage_in/out del rental.
      * - I km inclusi vengono risolti da snapshot contrattuale (freeze-once) se presente,
-     *   altrimenti fallback a 0 (nessun incluso noto).
+     *   un limite assente o illimitato non genera eccedenze.
      */
     public function getDistanceOverageKmAttribute(): int
     {
@@ -178,8 +218,10 @@ class Rental extends Model implements SpatieHasMedia
         $pickupKm = optional($this->pickupChecklist)->mileage ?? $this->mileage_out;
         $returnKm = optional($this->returnChecklist)->mileage ?? $this->mileage_in;
 
-        // Km inclusi: prova da snapshot dedicato (se presente), altrimenti 0
-        $includedKm = (int) ($this->resolveIncludedKm() ?? 0);
+        $includedKm = $this->resolveIncludedKm();
+        if ($includedKm === null) {
+            return 0;
+        }
 
         // Se mancano dati km, niente overage
         if ($pickupKm === null || $returnKm === null) {
@@ -231,6 +273,11 @@ protected function resolveIncludedKm(): ?int
 
     /** @var array $snap */
     $snap = is_array($snapModel->pricing_snapshot ?? null) ? $snapModel->pricing_snapshot : [];
+
+    // Il contratto rappresenta un limite giornaliero esplicitamente nullo come illimitato.
+    if (array_key_exists('km_daily_limit', $snap) && $snap['km_daily_limit'] === null) {
+        return null;
+    }
 
     /**
      * ✅ PRIORITÀ: se lo snapshot è giornaliero, il totale incluso è:
@@ -293,8 +340,8 @@ protected function resolveIncludedKm(): ?int
     public function getHasDistanceOveragePaymentAttribute(): bool
     {
         return $this->charges()
+            ->paid()
             ->whereIn('kind', [RentalCharge::KIND_DISTANCE_OVERAGE, RentalCharge::KIND_BASE_PLUS_DISTANCE_OVERAGE])
-            ->where('payment_recorded', true)
             ->exists();
     }
 

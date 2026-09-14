@@ -92,6 +92,37 @@ class ReportRunner
     }
 
     /**
+     * Noleggiatori dei risultati, anche quando il report non raggruppa per renter.
+     * Usa gli stessi filtri e le stesse esclusioni della query economica.
+     *
+     * @return array<int, string>
+     */
+    public function organizationNamesFor(ReportPreset $preset): array
+    {
+        $filters = $preset->filters ?? [];
+        $this->validatePresetConfiguration(
+            $preset->report_type,
+            array_values($preset->metrics ?? []),
+            array_values($preset->dimensions ?? []),
+            $filters,
+        );
+
+        $query = $this->makeBaseQuery($preset->report_type);
+        $this->applyFilters($query, $preset->report_type, $filters);
+
+        return $query
+            ->leftJoin('organizations as report_organizations', 'report_organizations.id', '=', 'rentals.organization_id')
+            ->select('rentals.organization_id', 'report_organizations.name', 'report_organizations.legal_name')
+            ->distinct()
+            ->orderBy('report_organizations.name')
+            ->orderBy('rentals.organization_id')
+            ->get()
+            ->map(fn ($organization): string => trim((string) $organization->name)
+                ?: (trim((string) $organization->legal_name) ?: 'Organizzazione #'.$organization->organization_id))
+            ->all();
+    }
+
+    /**
      * Restituisce il dizionario completo dei report supportati.
      *
      * @return array<string, array<string, mixed>>
@@ -245,14 +276,21 @@ class ReportRunner
     {
         return match ($reportType) {
             'commissions_by_closure' => DB::table('rentals')
+                ->whereNull('rentals.deleted_at')
                 ->where('rentals.status', 'closed')
                 ->whereNotNull('rentals.closed_at'),
 
             'cash_by_payment_date' => DB::table('rental_charges')
-                ->join('rentals', 'rentals.id', '=', 'rental_charges.rental_id'),
+                ->join('rentals', 'rentals.id', '=', 'rental_charges.rental_id')
+                ->whereNull('rentals.deleted_at')
+                ->whereNull('rental_charges.deleted_at')
+                ->where('rental_charges.payment_recorded', true),
 
             'cash_by_closure_month' => DB::table('rental_charges')
                 ->join('rentals', 'rentals.id', '=', 'rental_charges.rental_id')
+                ->whereNull('rentals.deleted_at')
+                ->whereNull('rental_charges.deleted_at')
+                ->where('rental_charges.payment_recorded', true)
                 ->where('rentals.status', 'closed')
                 ->whereNotNull('rentals.closed_at'),
 

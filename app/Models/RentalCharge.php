@@ -21,6 +21,11 @@ class RentalCharge extends Model
     public const KIND_ACCONTO          = 'acconto';
     public const KIND_BASE_PLUS_DISTANCE_OVERAGE = 'base+distance_overage';
 
+    public const COMMISSIONABLE_KINDS = [
+        self::KIND_BASE, self::KIND_ACCONTO, self::KIND_DISTANCE_OVERAGE,
+        self::KIND_BASE_PLUS_DISTANCE_OVERAGE, self::KIND_SURCHARGE, self::KIND_OTHER,
+    ];
+
     protected $fillable = [
         'rental_id',
         'kind',
@@ -30,6 +35,8 @@ class RentalCharge extends Model
         'payment_recorded',
         'payment_recorded_at',
         'payment_method',
+        'payment_reference',
+        'request_key',
         'created_by',
     ];
 

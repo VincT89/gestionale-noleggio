@@ -2,7 +2,8 @@
 {{-- Stile coerente con la pagina: header con badge di stato, liste con card leggere e bottoni filled --}}
 
 @php
-    $hasGenerated = method_exists($rental,'getMedia') && $rental->getMedia('contract')->isNotEmpty();
+    $contractRevision = $rental->contractRevision();
+    $hasGenerated = (bool) $rental->currentContractDocument('contract');
 
     // ✅ compat: se qualcuno ha usato davvero una collection diversa per il firmato
     $signedMedia = collect();
@@ -12,7 +13,8 @@
             $signedMedia = $rental->getMedia('rental-contract-signed');
         }
     }
-    $hasSigned   = $signedMedia->isNotEmpty();
+    $hasSigned = (bool) ($rental->currentContractDocument('signatures')
+        ?? $rental->currentContractDocument('rental-contract-signed'));
 
     $hasCustomer = !empty($rental->customer_id);
 
@@ -23,9 +25,7 @@
      * - Default aziendale: Organization -> signature_company (fallback se non c'è override)
      */
 
-    $customerSig = method_exists($rental, 'getFirstMedia')
-        ? $rental->getFirstMedia('signature_customer')
-        : null;
+    $customerSig = $rental->currentCustomerSignature();
 
     $lessorOverrideSig = method_exists($rental, 'getFirstMedia')
         ? $rental->getFirstMedia('signature_lessor')
@@ -58,6 +58,7 @@
 @endphp
 
 <div class="card shadow">
+    <input type="hidden" id="current-contract-revision" value="{{ $contractRevision }}">
     <div class="card-body space-y-5">
         {{-- Header sezione --}}
         <div class="flex items-center justify-between">
@@ -67,6 +68,10 @@
                 <span class="badge {{ $hasSigned ? 'badge-success' : 'badge-outline' }}">Firmato</span>
             </div>
         </div>
+
+        @if($contractRevision && !$hasSigned)
+            <p class="text-sm">Il contratto è stato prorogato. Dopo aver definito il costo, genera il PDF aggiornato; per firmarlo acquisisci nuovamente la firma del cliente. I PDF precedenti restano consultabili nello storico.</p>
+        @endif
 
         {{-- CTA: base (rigenerabile) + firmato --}}
         <div class="flex flex-wrap items-center justify-end gap-2">
@@ -157,18 +162,20 @@
                 <div>
                     <div class="font-semibold">Prezzo contratto</div>
                     <div class="text-xs opacity-70">
-                        Mostriamo il prezzo previsto dal listino e puoi impostare un override. Nel PDF verrà usato l’override se presente.
+                        {{ $contractRevision
+                            ? 'L’importo comprende i costi concordati delle proroghe già valorizzate.'
+                            : 'Mostriamo il prezzo previsto dal listino e puoi impostare un override. Nel PDF verrà usato l’override se presente.' }}
                     </div>
                 </div>
 
                 <span class="badge {{ $overrideAmount !== null ? 'badge-success' : 'badge-outline' }}">
-                    {{ $overrideAmount !== null ? 'Override attivo' : 'Listino' }}
+                    {{ $contractRevision ? 'Prorogato' : ($overrideAmount !== null ? 'Override attivo' : 'Listino') }}
                 </span>
             </div>
 
             <div class="grid md:grid-cols-3 gap-3">
                 <div class="rounded-lg border bg-base-100 p-3">
-                    <div class="text-xs opacity-70">Prezzo previsto (listino)</div>
+                    <div class="text-xs opacity-70">{{ $contractRevision ? 'Importo aggiornato' : 'Prezzo previsto (listino)' }}</div>
                     <div class="text-lg font-semibold">
                         € {{ number_format($baseAmount, 2, ',', '.') }}
                     </div>
@@ -249,7 +256,8 @@
                 @endphp
 
                 @forelse($baseMedia as $m)
-                    @php $isCurrent = (bool) $m->getCustomProperty('current'); @endphp
+                    @php $isCurrent = (bool) $m->getCustomProperty('current')
+                        && (int) $m->getCustomProperty('rental_extension_id', 0) === $contractRevision; @endphp
                     <div class="flex items-center justify-between rounded-xl border p-3 {{ $isCurrent ? 'ring-1 ring-primary/30' : '' }}">
                         <div class="text-sm">
                             <span class="mr-2">📄</span>
@@ -261,7 +269,7 @@
                             @endif
                         </div>
                         <div class="flex gap-2">
-                            <a href="{{ $m->getUrl() }}" target="_blank"
+                            <a href="{{ route('media.open', $m) }}" target="_blank"
                                class="btn btn-sm shadow-none
                                       !bg-neutral !text-neutral-content !border-neutral
                                       hover:brightness-95 focus-visible:outline-none focus-visible:ring focus-visible:ring-neutral/30">
@@ -302,7 +310,8 @@
                 @endphp
 
                 @forelse($signedMedia as $m)
-                    @php $isCurrent = (bool) $m->getCustomProperty('current'); @endphp
+                    @php $isCurrent = (bool) $m->getCustomProperty('current')
+                        && (int) $m->getCustomProperty('rental_extension_id', 0) === $contractRevision; @endphp
 
                     <div class="flex items-center justify-between rounded-xl border p-3 {{ $isCurrent ? 'ring-1 ring-primary/30' : '' }}">
                         <div class="text-sm">
@@ -378,6 +387,7 @@
                         @csrf
                         <input type="file" name="file" accept="image/png,image/jpeg"
                                class="file-input file-input-sm file-input-bordered w-full max-w-[260px]" required>
+                        <input type="hidden" name="contract_revision" value="{{ $contractRevision }}">
                         <button class="p-2 btn btn-sm shadow-none
                                       !bg-neutral !text-neutral-content !border-neutral
                                       hover:brightness-95 focus-visible:outline-none focus-visible:ring focus-visible:ring-neutral/30"
@@ -781,6 +791,7 @@
                     try {
                         const fd = new FormData();
                         fd.append('file', new File([blob], 'signature.png', { type: 'image/png' }));
+                        fd.append('contract_revision', document.getElementById('current-contract-revision')?.value || '0');
 
                         const url = this.URLS[this.target];
 

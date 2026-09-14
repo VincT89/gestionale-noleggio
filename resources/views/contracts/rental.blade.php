@@ -38,6 +38,8 @@
         $lessorName = trim((string)($vehicle_owner_name ?? ''));
     }
 
+    $renterName = trim((string)($renter_name ?? ''));
+
     /**
      * Numero contratto:
      * - per il contratto vuoto resta realmente vuoto
@@ -324,12 +326,22 @@
 
 <body>
 
-    {{-- BOX LOGHI (DOMPDF safe) --}}
-    <div style="position:absolute; top:20px; right:20px; width:260px; height:38px; text-align:right;">
-        {{-- DOMPDF: layout affiancato più affidabile con table --}}
-        <table style="width:100%; height:38px; border-collapse:collapse; table-layout:fixed;">
+    <table style="width:100%; border-collapse:collapse; table-layout:fixed; margin-bottom:8px; page-break-inside:avoid;">
+        <tr>
+            <td style="width:62%; padding:0 12px 0 0; vertical-align:top; border:0;">
+                @if($renterName !== '' && $renterName !== $lessorName)
+                    <div style="font-size:12px; margin-bottom:6px; overflow-wrap:break-word;">
+                        Noleggiatore operativo: <strong>{{ $renterName }}</strong>
+                    </div>
+                @endif
+                <div style="font-size:12px; overflow-wrap:break-word;">
+                    Noleggiante: <strong>{{ $lessorName }}</strong>
+                </div>
+            </td>
+            <td style="width:38%; padding:0; vertical-align:top; border:0;">
+        <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
             <tr>
-                <td style="width:50%; text-align:right; vertical-align:middle; padding-right:6px;">
+                <td style="width:50%; text-align:right; vertical-align:middle; padding:0 6px 0 0; border:0;">
                     @if(!empty($logos['amd']))
                         <img
                             src="{{ $logos['amd'] }}"
@@ -338,7 +350,7 @@
                     @endif
                 </td>
 
-                <td style="width:50%; text-align:right; vertical-align:middle;">
+                <td style="width:50%; text-align:right; vertical-align:middle; padding:0; border:0;">
                     @if(!empty($logos['era']))
                         <img
                             src="{{ $logos['era'] }}"
@@ -348,9 +360,9 @@
                 </td>
             </tr>
         </table>
-    </div>
-
-    <h1>Noleggiante: <strong>{{ $lessorName }}</strong><br></h1>
+            </td>
+        </tr>
+    </table>
 
     <h1>Contratto di noleggio veicolo</h1>
 

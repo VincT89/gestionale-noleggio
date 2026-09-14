@@ -281,6 +281,7 @@ class DashboardController extends Controller
             'franchigie'         => $franchigie,
             'clauses'            => $clauses,
             'vehicle_owner_name' => $lessorOrganization?->name ?? '',
+            'renter_name'        => $userOrganization?->name ?? '',
             'second_driver'      => $second_driver,
             'final_amount'       => null,
             'render_signatures'  => $render_signatures,

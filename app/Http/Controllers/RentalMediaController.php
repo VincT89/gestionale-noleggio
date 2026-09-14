@@ -27,15 +27,14 @@ class RentalMediaController extends Controller
     {
         $this->authorize('contractGenerate', $rental);
         $this->authorize('uploadMedia', $rental); // media.upload "generico"
+        $this->assertExtensionPriced($rental);
 
         $request->validate([
             'file' => ['required','file','mimes:pdf','max:20480'], // 20MB
         ]);
 
         // Versioniamo: ogni upload è una nuova entry
-        $media = $rental->addMediaFromRequest('file')
-            ->usingName('rental-contract')
-            ->toMediaCollection('contract');
+        $media = $this->storeContractMedia($request, $rental, 'rental-contract', 'contract');
 
         return response()->json([
             'ok' => true,
@@ -53,6 +52,7 @@ class RentalMediaController extends Controller
     {
         $this->authorize('contractUploadSigned', $rental);
         $this->authorize('uploadMedia', $rental);
+        $this->assertExtensionPriced($rental);
 
         $request->validate([
             'file' => ['required','file','mimetypes:application/pdf,image/jpeg,image/png','max:20480'],
@@ -62,12 +62,10 @@ class RentalMediaController extends Controller
 
         try {
             // 1) Salvo UNA volta sul Rental
-            $mediaRental = $rental->addMediaFromRequest('file')
-                ->usingName('rental-contract-signed')
-                ->toMediaCollection('signatures'); // se è singleFile(), sostituisce in sicurezza
+            $mediaRental = $this->storeContractMedia($request, $rental, 'rental-contract-signed', 'signatures');
 
             // 2) Duplico sulla checklist senza riusare l'UploadedFile
-            if ($pickup) {
+            if ($pickup && !$rental->contractRevision()) {
                 $mediaRental->copy($pickup, 'signatures');
             }
 
@@ -398,14 +396,13 @@ class RentalMediaController extends Controller
     public function storeCustomerSignature(Request $request, Rental $rental)
     {
         $this->authorize('uploadMedia', $rental);
+        $this->assertExtensionPriced($rental);
 
         $request->validate([
             'file' => ['required', 'file', 'mimetypes:image/png,image/jpeg', 'max:4096'],
         ]);
 
-        $media = $rental->addMediaFromRequest('file')
-            ->usingName('signature-customer')
-            ->toMediaCollection('signature_customer');
+        $media = $this->storeContractMedia($request, $rental, 'signature-customer', 'signature_customer');
 
         return response()->json([
             'ok'       => true,
@@ -427,6 +424,31 @@ class RentalMediaController extends Controller
         $rental->clearMediaCollection('signature_customer');
 
         return response()->json(['ok' => true]);
+    }
+
+    private function assertExtensionPriced(Rental $rental): void
+    {
+        if ($rental->extensions()->whereNull('additional_amount')->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'file' => 'Definisci il costo della proroga prima di caricare il contratto o acquisire la firma.',
+            ]);
+        }
+    }
+
+    private function storeContractMedia(Request $request, Rental $rental, string $name, string $collection): Media
+    {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $rental, $name, $collection) {
+            $rental = Rental::whereKey($rental->id)->lockForUpdate()->firstOrFail();
+            $this->assertExtensionPriced($rental);
+            $revision = $rental->contractRevision();
+            if ((int) $request->input('contract_revision', 0) !== $revision) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'file' => 'Il contratto è cambiato. Ricarica la scheda prima di acquisire la firma o caricare il documento.',
+                ]);
+            }
+            return $rental->addMediaFromRequest('file')->usingName($name)
+                ->withCustomProperties(['rental_extension_id' => $revision])->toMediaCollection($collection);
+        });
     }
 
     /**

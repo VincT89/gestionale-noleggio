@@ -11,12 +11,12 @@ class CustomerPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->can('customers.viewAny');
+        return $user->can('manage.renters') && $user->can('customers.viewAny');
     }
 
     public function view(User $user, Customer $customer): bool
     {
-        return $user->can('customers.view');
+        return $user->can('manage.renters') && $user->can('customers.view');
     }
 
     public function create(User $user): bool

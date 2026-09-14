@@ -19,8 +19,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Auth\Access\AuthorizationException;
 use Livewire\Component;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Locked;
+use App\Services\Rentals\RentalExtensionService;
+use App\Services\Rentals\RentalPaymentService;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
@@ -59,18 +63,23 @@ class Show extends Component
     /**
      * Contesto modale (legacy/compat): 'primary'|'second'
      */
+    #[Locked]
     public string $customerModalContext = 'primary';
 
     /** Ruolo del modale: primary (cliente) | second (seconda guida) */
+    #[Locked]
     public string $customerRole = 'primary';
 
     /** Modalità: create (crea/associa) | edit (modifica anagrafica già collegata) */
+    #[Locked]
     public string $customerModalMode = 'create';
 
     /** Se true, abbiamo selezionato un customer esistente (o stiamo editando). */
+    #[Locked]
     public bool $customerPopulated = false;
 
     /** Id customer selezionato/in modifica */
+    #[Locked]
     public ?int $customer_id = null;
 
     /**
@@ -144,11 +153,83 @@ class Show extends Component
     /** Override prezzo finale (rentals.final_amount_override) */
     public ?string $final_amount_override = null;
 
+    public bool $extensionOpen = false;
+    public string $extensionReturnAt = '';
+    public string $extensionAmount = '';
+    public string $extensionNotes = '';
+    #[Locked]
+    public string $extensionRequestKey = '';
+    #[Locked]
+    public string $extensionExpectedReturnAt = '';
+    #[Locked]
+    public ?string $extensionExpectedAmount = null;
+    #[Locked]
+    public ?string $extensionExpectedOverride = null;
+    #[Locked]
+    public ?int $extensionToPrice = null;
+
+    public function openExtension(): void
+    {
+        $this->rental->refresh();
+        $this->authorize('update', $this->rental);
+        $this->resetValidation();
+        $this->extensionReturnAt = '';
+        $this->extensionAmount = '';
+        $this->extensionNotes = '';
+        $this->extensionRequestKey = (string) \Illuminate\Support\Str::uuid();
+        $this->extensionExpectedReturnAt = $this->rental->planned_return_at?->format('Y-m-d H:i:s') ?? '';
+        $this->extensionExpectedAmount = $this->rental->amount === null ? null : (string) $this->rental->amount;
+        $this->extensionExpectedOverride = $this->rental->final_amount_override;
+        $this->extensionOpen = true;
+        $this->extensionToPrice = null;
+    }
+
+    public function openExtensionPrice(int $id): void
+    {
+        $this->openExtension();
+        $this->rental->extensions()->whereNull('additional_amount')->findOrFail($id);
+        $this->extensionToPrice = $id;
+    }
+
+    public function saveExtension(RentalExtensionService $service): void
+    {
+        $data = [
+            'extensionReturnAt' => $this->extensionReturnAt,
+            'extensionAmount' => $this->extensionAmount,
+            'extensionNotes' => $this->extensionNotes,
+            'extensionRequestKey' => $this->extensionRequestKey,
+            'extensionExpectedReturnAt' => $this->extensionExpectedReturnAt,
+            'extensionExpectedAmount' => $this->extensionExpectedAmount,
+            'extensionExpectedOverride' => $this->extensionExpectedOverride,
+        ];
+        if ($this->extensionToPrice) {
+            $service->defineAmount($this->rental, $this->extensionToPrice, $data, auth()->user());
+        } else {
+            $service->extend($this->rental, $data, auth()->user());
+        }
+        $this->rental->refresh();
+        $this->extensionOpen = false;
+        $this->final_amount_override = $this->rental->final_amount_override;
+        $this->dispatch('rental-amount-updated', base_amount: (float) ($this->rental->final_amount_override ?? $this->rental->amount));
+        $this->dispatch('rental-state-updated', rentalId: (int) $this->rental->id);
+        $message = $this->rental->extensions()->whereNull('additional_amount')->exists()
+            ? 'Data di rientro aggiornata. Ricorda di definire il costo della proroga e registrare il pagamento.'
+            : 'Proroga registrata. Registra il pagamento quando viene incassato.';
+        $this->dispatch('toast', type: 'success', message: $message);
+    }
+
+    public function getRentalExtensionsProperty(): \Illuminate\Support\Collection
+    {
+        $this->authorize('view', $this->rental);
+        return $this->rental->extensions()->with('creator:id,name')->latest('id')->get();
+    }
+
     /** Cache nomi luoghi per evitare query ripetute */
     private array $cargosLuogoNameCache = [];
 
     public function mount(Rental $rental): void
     {
+        $this->authorize('view', $rental);
         $this->rental = $rental->load([
             'customer',
             'secondDriver',
@@ -165,6 +246,43 @@ class Show extends Component
     public function switch(string $tab): void
     {
         $this->tab = $tab;
+    }
+
+    public function getRecordedPaymentsProperty(): \Illuminate\Support\Collection
+    {
+        $this->authorize('view', $this->rental);
+
+        return $this->rental->charges()->paid()->with('creator:id,name')
+            ->orderByDesc('payment_recorded_at')->orderByDesc('id')->get();
+    }
+
+    public function deletePayment(int $paymentId, RentalPaymentService $payments): void
+    {
+        $this->authorize('view', $this->rental);
+        $this->authorize('update', $this->rental);
+        $this->resetErrorBag('payment');
+        $payments->delete($this->rental, $paymentId, auth()->user());
+        $this->rental->refresh();
+        unset($this->recordedPayments);
+        $this->dispatch('rental-flags-updated',
+            has_base_payment: $this->rental->has_base_payment,
+            has_distance_overage_payment: $this->rental->has_distance_overage_payment,
+            base_paid_total: (float) $this->rental->base_paid_total,
+            has_combined_payment: $this->rental->has_combined_payment,
+            acconto_paid_total: (float) $this->rental->charges()->paid()->where('kind', 'acconto')->sum('amount'),
+        );
+        $this->dispatch('toast', type: 'success', message: 'Pagamento eliminato. Totali aggiornati.');
+    }
+
+    #[On('rental-payment-recorded')]
+    #[On('rental-state-updated')]
+    public function refreshRental(int $rentalId): void
+    {
+        if ($rentalId !== (int) $this->rental->id) {
+            return;
+        }
+        $this->authorize('view', $this->rental);
+        $this->rental->refresh();
     }
 
     /* -------------------------------------------------------------------------
@@ -485,10 +603,10 @@ class Show extends Component
             'customerForm.first_name' => ['required', 'string', 'max:191'],
             'customerForm.last_name'  => ['required', 'string', 'max:191'],
 
-            'customerForm.name'  => ['required', 'string', 'max:255'],
+            'customerForm.name'  => ['required', 'string', 'max:191'],
 
             'customerForm.email' => ['required', 'email', 'max:191'],
-            'customerForm.phone' => ['required', 'string', 'max:50'],
+            'customerForm.phone' => ['required', 'string', 'max:32'],
 
             'customerForm.birth_date' => ['nullable', 'date', 'after:1900-01-01', 'before_or_equal:today'],
 
@@ -501,14 +619,14 @@ class Show extends Component
 
             // Doc/patente
             'customerForm.identity_document_type_code' => ['nullable', 'string', 'max:64'],
-            'customerForm.doc_id_number'               => ['nullable', 'string', 'max:100'],
+            'customerForm.doc_id_number'               => ['nullable', 'string', 'max:64'],
 
             'customerForm.driver_license_number'       => ['nullable', 'string', 'max:64'],
             'customerForm.driver_license_expires_at'   => ['nullable', 'date', 'after:1900-01-01'],
 
             // Indirizzo
-            'customerForm.address' => ['nullable', 'string', 'max:255'],
-            'customerForm.zip'     => ['nullable', 'string', 'max:20'],
+            'customerForm.address' => ['nullable', 'string', 'max:191'],
+            'customerForm.zip'     => ['nullable', 'string', 'max:16'],
 
             // Fiscale
             'customerForm.tax_code' => ['nullable', 'string', 'max:32'],
@@ -540,9 +658,14 @@ class Show extends Component
 
     public function openCustomerModal(string $role = 'primary'): void
     {
+        $this->rental->refresh();
+        $this->authorize('view', $this->rental);
         $this->authorize('update', $this->rental);
 
-        if (!in_array($this->rental->status, ['draft', 'reserved'], true)) {
+        $editingPrimary = $role !== 'second' && $this->rental->customer_id !== null;
+        if ($editingPrimary) {
+            $this->authorize('updateCustomer', $this->rental);
+        } elseif (!in_array($this->rental->status, ['draft', 'reserved'], true)) {
             $this->dispatch('toast', type: 'error', message: 'Non è possibile modificare i dati conducente dopo l’avvio del noleggio.');
             return;
         }
@@ -673,12 +796,8 @@ class Show extends Component
 
     public function createOrUpdateCustomer(): void
     {
-        $this->authorize('update', $this->rental);
-
-        if (!in_array($this->rental->status, ['draft', 'reserved'], true)) {
-            $this->dispatch('toast', type: 'error', message: 'Non è possibile modificare i dati conducente dopo l’avvio del noleggio.');
-            return;
-        }
+        $this->rental->refresh();
+        $this->assertCustomerFormContext($this->rental);
 
         // name = first + last
         $this->syncComputedCustomerName();
@@ -701,10 +820,15 @@ class Show extends Component
 
         try {
             DB::transaction(function () use ($fk) {
+                $lockedRental = Rental::query()->lockForUpdate()->findOrFail($this->rental->id);
+                $this->assertCustomerFormContext($lockedRental);
+                $editing = $this->customerModalMode === 'edit';
 
                 // 1) Upsert customer
                 if ($this->customerPopulated === true && $this->customer_id) {
-                    $customer = Customer::query()->findOrFail($this->customer_id);
+                    $customer = Customer::query()->lockForUpdate()->findOrFail(
+                        $editing ? $lockedRental->{$fk} : $this->customer_id
+                    );
                 } else {
                     $customer = new Customer();
                     $customer->organization_id = $this->rental->organization_id;
@@ -726,8 +850,8 @@ class Show extends Component
                 $identityDocCargos = $this->nullIfBlank($this->customerForm['identity_document_type_code'] ?? null);
 
                 // doc_id_type (enum interno) -> se non lo inserisci manualmente, lo deriviamo dal codice CARGOS
-                $internalDocType = $this->nullIfBlank($this->customerForm['doc_id_type'] ?? null)
-                    ?? $this->mapCargosDocTypeToInternal($identityDocCargos);
+                $internalDocType = $this->mapCargosDocTypeToInternal($identityDocCargos)
+                    ?? $this->nullIfBlank($this->customerForm['doc_id_type'] ?? null);
 
                 $birthPlaceCode       = $this->toIntOrNull($this->customerForm['birth_place_code'] ?? null);
                 $policePlaceCode      = $this->toIntOrNull($this->customerForm['police_place_code'] ?? null);
@@ -735,6 +859,12 @@ class Show extends Component
 
                 $birthPlaceName = $this->cargosLuogoName($birthPlaceCode);
                 $citizenshipName = $this->cargosLuogoName($citizenshipPlaceCode);
+                if ($birthPlaceCode === null && $customer->birth_place_code === null) {
+                    $birthPlaceName = $customer->birth_place;
+                }
+                if ($citizenshipPlaceCode === null && $customer->citizenship_cargos_code === null) {
+                    $citizenshipName = $customer->citizenship;
+                }
 
                 $resDerived = $this->deriveResidenceFromPolicePlaceCode($policePlaceCode);
 
@@ -747,7 +877,8 @@ class Show extends Component
                 $this->customerForm['province']     = $resDerived['province']     ?? ($this->customerForm['province'] ?? null);
                 $this->customerForm['country_code'] = $resDerived['country_code'] ?? ($this->customerForm['country_code'] ?? null);
 
-                $driverLicenseDocType = $this->nullIfBlank($this->customerForm['driver_license_document_type_code'] ?? null) ?? 'PATEN';
+                // Il tipo patente non è modificabile nel modulo: conserva i dati esistenti.
+                $driverLicenseDocType = $customer->exists ? $customer->driver_license_document_type_code : 'PATEN';
 
                 // 2) Attributi (Wizard) + robustezza su colonne diverse
                 $attrs = [
@@ -805,7 +936,23 @@ class Show extends Component
                 $attrs = array_intersect_key($attrs, array_flip($cols));
 
                 // usa forceFill per robustezza
+                $before = $customer->getAttributes();
                 $customer->forceFill($attrs)->save();
+
+                $changes = array_diff_key($customer->getChanges(), ['updated_at' => true]);
+                if ($editing && $changes !== []) {
+                    activity('rental_customers')
+                        ->performedOn($lockedRental)
+                        ->causedBy(auth()->user())
+                        ->event('customer_updated')
+                        ->withProperties([
+                            'customer_id' => $customer->id,
+                            'role' => $this->customerRole,
+                            'old' => array_intersect_key($before, $changes),
+                            'attributes' => $changes,
+                        ])
+                        ->log('Anagrafica cliente aggiornata dal contratto');
+                }
 
                 // 3) Business rule: seconda guida != cliente principale
                 if ($this->isSecondDriverContext() && !empty($this->rental->customer_id)) {
@@ -815,8 +962,10 @@ class Show extends Component
                 }
 
                 // 4) Associazione sul rental
-                $this->rental->{$fk} = (int) $customer->id;
-                $this->rental->save();
+                if (!$editing) {
+                    $lockedRental->{$fk} = (int) $customer->id;
+                    $lockedRental->save();
+                }
             });
 
             $this->rental->refresh();
@@ -834,6 +983,8 @@ class Show extends Component
 
             $this->dispatch('toast', type: 'success', message: $msg);
             $this->dispatch('$refresh');
+        } catch (AuthorizationException | ValidationException $e) {
+            throw $e;
         } catch (\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         } catch (\Throwable $e) {
@@ -846,6 +997,30 @@ class Show extends Component
      |  RICERCA CUSTOMER (SOLO mode=create)
      * ------------------------------------------------------------------------- */
 
+    private function assertCustomerFormContext(Rental $rental): void
+    {
+        $this->authorize('view', $rental);
+        $this->authorize('update', $rental);
+
+        $editing = $this->customerModalMode === 'edit';
+        if ($editing && !$this->isSecondDriverContext()) {
+            $this->authorize('updateCustomer', $rental);
+        }
+
+        $linkedId = $rental->{$this->rentalForeignKeyForRole()};
+        $validLink = $editing
+            ? $linkedId !== null && (int) $linkedId === $this->customer_id
+            : $linkedId === null;
+        $validPhase = ($editing && !$this->isSecondDriverContext())
+            || in_array($rental->status, ['draft', 'reserved'], true);
+
+        if (!$this->customerModalOpen || !$validLink || !$validPhase) {
+            throw ValidationException::withMessages([
+                'customerForm.name' => 'Il contratto è cambiato. Chiudi il modulo e riaprilo prima di salvare.',
+            ]);
+        }
+    }
+
     public function getCustomerSearchResultsProperty(): array
     {
         $this->authorize('update', $this->rental);
@@ -857,6 +1032,8 @@ class Show extends Component
         if (mb_strlen($this->customerQuery) < 2) {
             return [];
         }
+
+        $this->assertCustomerFormContext($this->rental->fresh());
 
         $q = trim($this->customerQuery);
 
@@ -882,6 +1059,8 @@ class Show extends Component
         if ($this->customerModalMode !== 'create') {
             return;
         }
+
+        $this->assertCustomerFormContext($this->rental->fresh());
 
         $customer = Customer::query()->findOrFail($id);
 
@@ -942,7 +1121,8 @@ class Show extends Component
         $fk = $this->secondDriverForeignKey();
         $hasSecond = !empty($this->rental->{$fk});
 
-        $secondTotalCents = $hasSecond ? ($secondDailyCents * $days) : 0;
+        $secondTotalCents = $hasSecond
+            ? (int) ($snap['second_driver_total_cents'] ?? ($secondDailyCents * $days)) : 0;
         $computedCents = $tariffTotalCents + $secondTotalCents;
 
         DB::transaction(function () use ($computedCents) {
@@ -990,10 +1170,10 @@ class Show extends Component
         $media = null;
 
         if (method_exists($this->rental, 'getMedia')) {
-            $media = $this->rental->getMedia('signatures')->sortByDesc('created_at')->first();
+            $media = $this->rental->currentContractDocument('signatures');
 
             if (!$media) {
-                $media = $this->rental->getMedia('rental-contract-signed')->sortByDesc('created_at')->first();
+                $media = $this->rental->currentContractDocument('rental-contract-signed');
             }
         }
 
@@ -1160,6 +1340,12 @@ class Show extends Component
 
     public function generateContract(GenerateRentalContract $generator): void
     {
+        $this->rental->refresh();
+        $this->authorize('contractGenerate', $this->rental);
+        if ($this->rental->extensions()->whereNull('additional_amount')->exists()) {
+            $this->dispatch('toast', type: 'warning', message: 'Definisci il costo della proroga prima di generare il contratto aggiornato.');
+            return;
+        }
         if (!auth()->user()?->can('rentals.contract.generate') || !auth()->user()?->can('media.attach.contract')) {
             $this->dispatch('toast', type: 'error', message: 'Permesso negato.');
             return;
@@ -1170,7 +1356,8 @@ class Show extends Component
             return;
         }
 
-        if (!in_array($this->rental->status, ['draft', 'reserved'], true)) {
+        if (!in_array($this->rental->status, ['draft', 'reserved'], true)
+            && !$this->rental->extensions()->exists()) {
             $this->dispatch('toast', type: 'error', message: 'Non puoi generare il contratto in questa fase del noleggio.');
             return;
         }
@@ -1194,7 +1381,12 @@ class Show extends Component
 
     public function regenerateContractWithSignatures(GenerateRentalContract $generator): void
     {
+        $this->rental->refresh();
         $this->authorize('contractGenerate', $this->rental);
+        if ($this->rental->extensions()->whereNull('additional_amount')->exists()) {
+            $this->dispatch('toast', type: 'warning', message: 'Definisci il costo della proroga prima di generare il contratto aggiornato.');
+            return;
+        }
 
         if (empty($this->rental->customer_id)) {
             $this->dispatch('toast', type: 'warning', message: 'Associa prima un cliente al noleggio.');
@@ -1217,7 +1409,9 @@ class Show extends Component
             $generator->handle($this->rental, null, null, null, false, true);
 
             try {
-                $this->ensurePickupChecklistSignedPdf();
+                if (!$this->rental->contractRevision()) {
+                    $this->ensurePickupChecklistSignedPdf();
+                }
             } catch (\Throwable $e) {
                 report($e);
                 $this->dispatch('toast', type: 'warning', message: 'Contratto firmato generato, ma non sono riuscito a generare la checklist pickup firmata.');
@@ -1235,8 +1429,7 @@ class Show extends Component
 
     private function hasCustomerSignature(): bool
     {
-        return method_exists($this->rental, 'getFirstMedia')
-            && (bool) $this->rental->getFirstMedia('signature_customer');
+        return (bool) $this->rental->currentCustomerSignature();
     }
 
     /* -------------------------------------------------------------------------

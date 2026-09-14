@@ -28,8 +28,34 @@ class GenerateRentalContract
         ?array $franchise = null,
         ?int $expectedKm = null,
         bool $forceUnsigned = false,
+        bool $forceSigned = false
+    ) {
+        return DB::transaction(function () use ($rental, $coverage, $franchise, $expectedKm, $forceUnsigned, $forceSigned) {
+            $locked = Rental::whereKey($rental->id)->lockForUpdate()->firstOrFail();
+            return $this->generateLocked($locked, $coverage, $franchise, $expectedKm, $forceUnsigned, $forceSigned);
+        });
+    }
+
+    private function generateLocked(
+        Rental $rental,
+        ?array $coverage = null,
+        ?array $franchise = null,
+        ?int $expectedKm = null,
+        bool $forceUnsigned = false,
         bool $forceSigned = false 
     ) {
+        $rental->refresh();
+        $contractRevision = $rental->contractRevision();
+        if ($rental->extensions()->whereNull('additional_amount')->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'extensionAmount' => 'Definisci il costo della proroga prima di generare il contratto aggiornato.',
+            ]);
+        }
+        if ($forceSigned && $contractRevision && !$rental->currentCustomerSignature()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'signature' => 'Dopo la proroga occorre acquisire una nuova firma del cliente.',
+            ]);
+        }
         // ---------------------------------------------------------------------
         // 1) RELAZIONI BASE (INVARIATO)
         // ---------------------------------------------------------------------
@@ -325,7 +351,7 @@ class GenerateRentalContract
         $snapSecondDriverDailyCents = (int) ($pricingSnapshot['second_driver_daily_cents'] ?? 0);
 
         $snapSecondDriverTotalCents = $secondDriver
-            ? ($snapSecondDriverDailyCents * $snapDays)
+            ? (int) ($pricingSnapshot['second_driver_total_cents'] ?? ($snapSecondDriverDailyCents * $snapDays))
             : 0;
 
         $snapComputedTotalCents = $tariffEffectiveCents + $snapSecondDriverTotalCents;
@@ -496,9 +522,7 @@ class GenerateRentalContract
         // Output: data-uri (DOMPDF friendly)
         // ======================================================
 
-        $customerSignatureMedia = method_exists($rental, 'getFirstMedia')
-            ? $rental->getFirstMedia('signature_customer')
-            : null;
+        $customerSignatureMedia = $rental->currentCustomerSignature();
 
         // Organization del rental (renter) - fallback coerente con tab-contract
         $renterOrg = $rental->organization;
@@ -574,6 +598,7 @@ class GenerateRentalContract
 
             // NEW
             'vehicle_owner_name' => $rental->organization->name,
+            'renter_name' => $renterOrg?->name ?? '',
             'final_amount'       => $finalAmount,
             'second_driver'      => $secondDriver,
             'second_driver_fee'  => $secondDriverFeeDaily,
@@ -670,6 +695,7 @@ class GenerateRentalContract
             ->usingFileName($prefix.'-'.$rental->id.'-'.now()->format('Ymd_His').'.pdf')
             ->withCustomProperties([
                 'current' => true,
+                'rental_extension_id' => $contractRevision,
                 'generated_with_signatures' => $storeAsSigned,
                 'pricing_snapshot' => $pricingSnapshot,
             ])

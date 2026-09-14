@@ -11,6 +11,7 @@ use App\Services\Reports\ReportRunner;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
@@ -130,6 +131,10 @@ class RunAdHocReport extends Component
      * @var array<int, array<string, mixed>>
      */
     public array $reportRows = [];
+
+    /** Intestazione riferita all'ultima esecuzione, indipendente dalle modifiche al form. */
+    #[Locked]
+    public array $printContext = [];
 
     /**
      * Colonne tabella risultati.
@@ -905,6 +910,7 @@ class RunAdHocReport extends Component
         $this->hasRunReport = false;
         $this->reportRows = [];
         $this->reportColumns = [];
+        $this->printContext = [];
         $this->chartData = [];
         $this->canRenderChart = false;
         $this->chartInfoMessage = null;
@@ -950,6 +956,14 @@ class RunAdHocReport extends Component
                 : [];
 
             $this->prepareChartData($runtimePreset);
+            $this->printContext = [
+                'title' => 'Statistica senza salvataggio',
+                'report_type_label' => $this->getReportTypeLabel($runtimePreset->report_type),
+                'date_from' => Carbon::parse($runtimeFilters['date_from'])->format('d/m/Y'),
+                'date_to' => Carbon::parse($runtimeFilters['date_to'])->format('d/m/Y'),
+                'generated_at' => now()->format('d/m/Y H:i'),
+                'organization_names' => $reportRunner->organizationNamesFor($runtimePreset),
+            ];
             $this->hasRunReport = true;
         } catch (\InvalidArgumentException $exception) {
             $this->runError = $exception->getMessage();
@@ -1309,6 +1323,7 @@ class RunAdHocReport extends Component
             'vehicle_id',
             'closed_at',
             'actual_return_at',
+            'admin_fee_percent',
         ]) as $rental) {
             $feeReferenceDate = $rental->actual_return_at ?: $rental->closed_at;
 

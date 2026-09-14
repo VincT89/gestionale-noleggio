@@ -119,6 +119,8 @@
             </div>
         </div>
 
+        @include('pages.rentals.partials.extensions')
+
         {{-- Tab panels (MVP placeholders da completare) --}}
         @switch($tab)
             @case('data')
@@ -154,7 +156,7 @@
     {{-- Action Drawer (colonna destra) --}}
     <aside class="min-w-0 lg:col-span-3">
         <div class="card shadow sticky top-4">
-            <div class="card-body space-y-3">
+            <div class="card-body min-w-0 p-4 space-y-3">
                 <div class="card-title">Azioni</div>
 
                 {{-- Pulsanti transizione: form POST verso RentalController --}}
@@ -166,6 +168,7 @@
                 <x-media-uploader
                     label="Contratto (PDF)"
                     :action="route('rentals.media.contract.store', $rental)"
+                    :contract-revision="$rental->contractRevision()"
                     accept="application/pdf,image/jpeg,image/png"
                 />
 
@@ -173,6 +176,7 @@
                 <x-media-uploader
                     label="Contratto firmato (PDF/JPG/PNG)"
                     :action="route('rentals.media.contract.signed.store', $rental)"
+                    :contract-revision="$rental->contractRevision()"
                     accept="application/pdf,image/jpeg,image/png"
                 />
 

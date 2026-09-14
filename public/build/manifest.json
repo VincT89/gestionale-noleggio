@@ -1,0 +1,24 @@
+{
+  "resources/css/app.css": {
+    "file": "assets/app-BshEoY6p.css",
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/css/public-cars.css": {
+    "file": "assets/public-cars-CJRCvntA.css",
+    "src": "resources/css/public-cars.css",
+    "isEntry": true
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-sPHRRZGc.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true
+  },
+  "resources/js/public-cars.js": {
+    "file": "assets/public-cars-BWDvHiE8.js",
+    "name": "public-cars",
+    "src": "resources/js/public-cars.js",
+    "isEntry": true
+  }
+}
