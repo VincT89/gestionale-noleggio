@@ -84,13 +84,13 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                     <div>
                         <label class="block text-xs text-gray-600 dark:text-gray-300">Password</label>
-                        <input name="user_password" x-model="form.user_password" type="password" :required="mode==='create'"
+                        <x-password-input id="organization-user-password" name="user_password" x-model="form.user_password" x-bind:required="mode==='create'" autocomplete="new-password" aria-label="Password del noleggiatore"
                             class="mt-1 block w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100" />
                         @error('user_password') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="block text-xs text-gray-600 dark:text-gray-300">Conferma Password</label>
-                        <input name="user_password_confirmation" x-model="form.user_password_confirmation" type="password" :required="mode==='create'"
+                        <x-password-input id="organization-user-password-confirmation" name="user_password_confirmation" x-model="form.user_password_confirmation" x-bind:required="mode==='create'" autocomplete="new-password" aria-label="Conferma password del noleggiatore"
                             class="mt-1 block w-full px-3 py-2 border rounded-md bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100" />
                     </div>
                 </div>

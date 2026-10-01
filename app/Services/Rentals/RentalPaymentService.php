@@ -18,6 +18,12 @@ class RentalPaymentService
                 'request_key' => 'Pagina non aggiornata. Ricarica la pagina prima di registrare il pagamento.',
             ]);
         }
+        if (preg_match('/^stripe(?:-refund)?:/', (string) ($data['payment_reference'] ?? ''))) {
+            throw ValidationException::withMessages(['payment_reference' => 'Questo riferimento è riservato ai pagamenti registrati da Stripe.']);
+        }
+        if ($rental->booking_channel === 'amd_rent' && $data['kind'] === RentalCharge::KIND_BASE_PLUS_DISTANCE_OVERAGE) {
+            throw ValidationException::withMessages(['kind' => 'Per AMD Rent registra separatamente il saldo del noleggio e i chilometri extra, così le commissioni restano distinte.']);
+        }
         return DB::transaction(function () use ($rental, $data, $actor) {
             $rental = Rental::query()->lockForUpdate()->findOrFail($rental->id);
             Gate::forUser($actor)->authorize('update', $rental);
@@ -64,6 +70,8 @@ class RentalPaymentService
 
     public function isCommissionable(Rental $rental, string $kind): bool
     {
+        // The booked rental already has its platform commission. Additional services keep ERA's existing rules.
+        if ($rental->booking_channel === 'amd_rent' && in_array($kind, [RentalCharge::KIND_BASE, RentalCharge::KIND_ACCONTO, RentalCharge::KIND_BASE_PLUS_DISTANCE_OVERAGE], true)) return false;
         return $rental->assignment_id !== null
             && in_array($kind, RentalCharge::COMMISSIONABLE_KINDS, true);
     }
@@ -75,13 +83,17 @@ class RentalPaymentService
             Gate::forUser($actor)->authorize('view', $rental);
             Gate::forUser($actor)->authorize('update', $rental);
             $payment = $rental->charges()->withTrashed()->paid()->lockForUpdate()->findOrFail($paymentId);
+            if (str_starts_with((string) $payment->payment_reference, 'stripe:') || str_starts_with((string) $payment->payment_reference, 'stripe-refund:')) {
+                throw ValidationException::withMessages(['payment' => 'Il pagamento è registrato da Stripe. Un rimborso va eseguito in Stripe e viene riconciliato automaticamente; non eliminare la registrazione.']);
+            }
             if ($payment->trashed()) {
                 return;
             }
 
             $affectsCommission = $payment->is_commissionable && (float) $payment->amount !== 0.0;
             if ($affectsCommission && $rental->status === 'closed' && $rental->closed_at
-                && $rental->organization?->isRenter() && $rental->admin_fee_percent === null) {
+                && $rental->organization?->isRenter()
+                && ($rental->booking_channel === 'amd_rent' ? $rental->amd_extra_fee_percent : $rental->admin_fee_percent) === null) {
                 throw ValidationException::withMessages([
                     'payment' => 'La percentuale di commissione storica manca. Occorre verificarla prima di eliminare questo pagamento.',
                 ]);

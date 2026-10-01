@@ -19,16 +19,38 @@ class PublicCarSearchRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge(['budget' => is_string($this->budget) ? str_replace(',', '.', $this->budget) : $this->budget]);
+        if ($this->routeIs('public-cars.index', 'public-cars.preview.index') && $this->has('destination')) {
+            $destination = $this->input('destination');
+            // A new choice replaces both old filters, including when it is invalid or empty.
+            $this->merge(['place_id' => null, 'city' => null]);
+            if (is_string($destination)) {
+                $destination = trim($destination);
+                $this->merge(['destination' => $destination]);
+                if (str_starts_with($destination, 'city:')) {
+                    $this->merge(['city' => trim(substr($destination, 5))]);
+                } elseif (ctype_digit($destination)) {
+                    $this->merge(['place_id' => $destination]);
+                }
+            }
+        }
+        if (is_string($this->input('city'))) $this->merge(['city' => trim($this->input('city'))]);
+        // Normalize optional identifiers so the encrypted checkout matches HTTP form values exactly.
+        foreach (['place_id', 'supplier'] as $field) {
+            $value = $this->input($field);
+            if (is_scalar($value) && preg_match('/^[1-9][0-9]{0,9}$/', (string) $value)) $this->merge([$field => (int) $value]);
+        }
     }
 
     public function rules(): array
     {
-        $required = $this->filled('pickup_at') || $this->filled('return_at') || $this->route('offer');
+        $required = $this->filled('pickup_at') || $this->filled('return_at') || $this->route('pricelist');
 
-        return [
+        $rules = [
             'pickup_at' => ['bail', $required ? 'required' : 'nullable', 'string', 'date_format:Y-m-d\TH:i', 'after_or_equal:'.now()->format('Y-m-d\TH:i')],
             'return_at' => ['bail', $required ? 'required' : 'nullable', 'string', 'date_format:Y-m-d\TH:i'],
-            'city' => ['nullable', 'string', 'max:100'],
+            'city' => ['nullable', 'string', 'max:128'],
+            'place_id' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
+            'supplier' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
             'budget' => ['nullable', 'numeric', 'min:0', 'max:1000000', 'regex:/^\d+(\.\d{1,2})?$/'],
             'seats' => ['nullable', 'integer', 'min:1', 'max:20'],
             'transmission' => ['nullable', Rule::in(array_keys(Vehicle::TRANSMISSION_LABELS_IT))],
@@ -38,6 +60,12 @@ class PublicCarSearchRequest extends FormRequest
             'sort' => ['nullable', Rule::in(['price_asc', 'price_desc'])],
             'page' => ['nullable', 'integer', 'min:1', 'max:100000'],
         ];
+
+        if ($this->routeIs('public-cars.index', 'public-cars.preview.index')) {
+            $rules['destination'] = ['sometimes', 'required', 'string', 'max:133', 'regex:/^(?:[1-9][0-9]{0,9}|city:\\S(?:[^\\r\\n]*\\S)?)$/uD'];
+        }
+
+        return $rules;
     }
 
     public function withValidator($validator): void
@@ -70,6 +98,9 @@ class PublicCarSearchRequest extends FormRequest
             'return_at.string' => 'Controlla data e ora della riconsegna.',
             'return_at.date_format' => 'Controlla data e ora della riconsegna.',
             'budget.*' => 'Inserisci un budget valido in euro, con al massimo due decimali.',
+            'place_id.*' => 'Scegli un luogo di ritiro dall’elenco.',
+            'destination.*' => 'Scegli una città, un aeroporto, una stazione o una zona dall’elenco.',
+            'supplier.*' => 'Controlla il noleggiatore selezionato.',
         ];
     }
 }

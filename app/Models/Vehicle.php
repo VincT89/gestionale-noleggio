@@ -61,6 +61,7 @@ class Vehicle extends Model implements SpatieHasMedia
     ];
 
     // --- Relazioni ---
+    public function product()          { return $this->belongsTo(VehicleProduct::class, 'vehicle_product_id'); }
     public function adminOrganization() { return $this->belongsTo(Organization::class, 'admin_organization_id'); }
     public function defaultPickupLocation(){ return $this->belongsTo(Location::class, 'default_pickup_location_id'); }
     public function documents()         { return $this->hasMany(VehicleDocument::class); }

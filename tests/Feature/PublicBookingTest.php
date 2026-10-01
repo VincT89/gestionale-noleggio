@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Domain\Rentals\{PublicBookingService, PublicVehicleSearch};
 use App\Livewire\Rentals\CreateWizard;
-use App\Models\{Customer, PublicBooking, PublicRentalOffer, Rental, RentalContractSnapshot};
+use App\Models\{Customer, PublicBooking, Rental, RentalContractSnapshot};
 use App\Services\Rentals\RentalNumberAllocator;
 use Illuminate\Support\Facades\{Crypt, DB, Mail, URL};
 use Illuminate\Validation\ValidationException;
@@ -15,7 +15,7 @@ class PublicBookingTest extends PublicBookingTestCase
     private function form(int $offer = 1, bool $preview = false): array
     {
         $prefix = $preview ? 'public-cars.preview' : 'public-cars';
-        $url = route($prefix.'.booking.create', ['offer' => $offer] + $this->period());
+        $url = route($prefix.'.booking.create', ['pricelist' => $offer] + $this->period());
         $page = $this->get($url)->assertOk();
         $this->from($url);
         return $this->period() + ['checkout_token' => $page->viewData('checkoutToken'), 'first_name' => 'Cliente',
@@ -40,7 +40,7 @@ class PublicBookingTest extends PublicBookingTestCase
         $this->assertSame(1, (int) $booking->rental->number_id);
         $this->assertDatabaseCount('renter_contract_number_ledger', 1);
         $this->assertSame(30000, RentalContractSnapshot::first()->pricing_snapshot['tariff_total_cents']);
-        $this->assertSame(0, app(PublicVehicleSearch::class)->search(PublicRentalOffer::published(), $this->period())->count());
+        $this->assertSame(0, app(PublicVehicleSearch::class)->search(\App\Models\VehiclePricelist::forPublicRental(), $this->period())->count());
         $this->get($response->headers->get('Location'))->assertOk()->assertSee('Prenotazione confermata')->assertSee($booking->reference)
             ->assertDontSee('cliente@example.test')->assertDontSee('TESTPLATE');
         Mail::assertNothingSent();
@@ -114,19 +114,27 @@ class PublicBookingTest extends PublicBookingTestCase
         $this->assertDatabaseCount('customers', 0);
     }
 
-    public function test_drafts_can_be_consulted_but_never_confirmed_or_sent(): void
+    public function test_draft_pricelists_cannot_be_booked_even_in_management_preview(): void
     {
-        Mail::fake(); $this->offer(offer: ['is_published' => false, 'prices_include_vat' => false]);
-        $this->get(route('public-cars.booking.create', ['offer' => 1] + $this->period()))->assertNotFound();
+        Mail::fake(); $this->offer(price: ['status' => 'draft', 'active_flag' => null]);
+        $this->get(route('public-cars.booking.create', ['pricelist' => 1] + $this->period()))->assertNotFound();
         $this->actingAs($this->publisher());
-        $form = $this->form(preview: true);
-        $this->submit($form, preview: true)->assertSessionHasErrors('booking');
-        $this->submit($form)->assertNotFound();
+        $this->get(route('public-cars.preview.booking.create', ['pricelist' => 1] + $this->period()))->assertNotFound();
         foreach (['public_bookings', 'rentals', 'customers'] as $table) $this->assertDatabaseCount($table, 0);
         Mail::assertNothingSent();
     }
 
-    public function test_published_offer_can_be_booked_from_the_management_search(): void
+    public function test_legacy_unpublished_offer_does_not_block_booking_and_preview_token_is_scoped(): void
+    {
+        $this->offer(offer: ['is_published' => false, 'prices_include_vat' => false]);
+        $this->actingAs($this->publisher());
+        $form = $this->form(preview: true);
+        $this->submit($form)->assertSessionHasErrors('checkout_token');
+        $this->submit($form, preview: true)->assertStatus(303);
+        $this->assertDatabaseCount('public_bookings', 1);
+    }
+
+    public function test_active_pricelist_can_be_booked_from_the_management_search(): void
     {
         $this->offer(); $this->actingAs($this->publisher());
         $this->submit($this->form(preview: true), preview: true)->assertStatus(303);
@@ -203,9 +211,9 @@ class PublicBookingTest extends PublicBookingTestCase
         Mail::assertNothingSent();
     }
 
-    public function test_withdrawn_offer_is_not_bookable_even_with_an_existing_quote(): void
+    public function test_archived_pricelist_is_not_bookable_even_with_an_existing_quote(): void
     {
-        $offer = $this->offer(); $form = $this->form(); $offer->update(['is_published' => false]);
+        $offer = $this->offer(); $form = $this->form(); $offer->pricelist->update(['status' => 'archived', 'active_flag' => null]);
         $this->submit($form)->assertNotFound(); $this->assertDatabaseCount('rentals', 0);
     }
 
@@ -213,10 +221,7 @@ class PublicBookingTest extends PublicBookingTestCase
     {
         $this->offer(); $response = $this->submit($this->form()); $booking = PublicBooking::first();
         $this->actingAs($this->publisher());
-        $this->put(route('public-offers.update', 1), [
-            'pricelist_id' => 1, 'location_id' => 1, 'prices_include_vat' => 1, 'is_published' => 1, 'deposit_euros' => '750,25',
-        ])->assertRedirect(route('public-offers.index'));
-        DB::table('vehicle_pricelists')->where('id', 1)->update(['base_daily_cents' => 99000]);
+        DB::table('vehicle_pricelists')->where('id', 1)->update(['base_daily_cents' => 99000, 'deposit_cents' => 75025]);
         $this->assertSame(50000, $booking->fresh()->deposit_cents);
         $this->assertSame(50000, RentalContractSnapshot::first()->pricing_snapshot['deposit_cents']);
         $this->get(route('public-bookings.confirmation', $booking->reference))->assertForbidden();
@@ -275,7 +280,7 @@ class PublicBookingTest extends PublicBookingTestCase
         $this->offer(); $response = $this->submit($this->form());
         PublicBooking::first()->rental->update(['status' => 'cancelled']);
         $this->get($response->headers->get('Location'))->assertOk()->assertSee('Prenotazione annullata')->assertDontSee('l’auto è riservata');
-        $this->assertCount(1, app(PublicVehicleSearch::class)->search(PublicRentalOffer::published(), $this->period()));
+        $this->assertCount(1, app(PublicVehicleSearch::class)->search(\App\Models\VehiclePricelist::forPublicRental(), $this->period()));
     }
 
     public function test_internal_wizard_rechecks_before_saving_after_a_public_booking(): void

@@ -92,7 +92,9 @@ class RentalMediaController extends Controller
         if ($parent instanceof Rental || $parent instanceof RentalChecklist) {
             $this->authorize('view', $parent);
         } elseif ($parent instanceof Organization) {
-            // non devo controllare niente in particolare
+            $user = auth()->user();
+            abort_unless($user && ($user->hasRole('admin')
+                || (int) $user->organization_id === (int) $parent->getKey()), 403, 'Accesso negato.');
         } else {
             abort(403, 'Accesso negato.');
         }

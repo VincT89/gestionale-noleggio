@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Domain\Rentals\PublicVehiclePhoto;
 use App\Domain\Rentals\PublicVehicleSearch;
-use App\Models\PublicRentalOffer;
 use App\Models\Vehicle;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -32,24 +31,26 @@ class PublicVehiclePhotoTest extends PublicCarsTestCase
         $this->get(route('public-cars.index', $this->period()))->assertOk()
             ->assertSee('Immagine indicativa del modello')
             ->assertViewHas('results', fn ($results) => $results->first()['has_photo'] && $results->first()['photo_is_reference']);
-        $this->get(route('public-cars.show', ['offer' => $offer->id] + $this->period()))->assertOk()
+        $this->get(route('public-cars.show', ['pricelist' => $offer->id] + $this->period()))->assertOk()
             ->assertSee('Colore e allestimento possono variare.');
         $response = $this->get(route('public-cars.photo', $offer))->assertOk()
             ->assertHeader('Content-Type', 'image/png')->assertHeader('X-Content-Type-Options', 'nosniff');
         $this->assertSame($this->png(), $response->streamedContent());
     }
 
-    public function test_model_image_does_not_make_a_draft_offer_public(): void
+    public function test_photos_use_active_pricelists_without_legacy_publication(): void
     {
         $offer = $this->offer(vehicle: ['make' => 'Toyota', 'model' => 'Yaris'], offer: ['is_published' => false]);
         Storage::disk('car_models')->put('toyota-yaris.png', $this->png());
 
-        $this->get(route('public-cars.photo', $offer))->assertNotFound();
+        $this->get(route('public-cars.photo', $offer))->assertOk();
         $this->get(route('public-cars.preview.photo', $offer))->assertRedirect(route('login'));
         $this->actingAs($this->publisher())->get(route('public-cars.preview.photo', $offer))->assertOk();
         $this->get(route('public-cars.preview.index', $this->period()))->assertOk()
             ->assertSee('Immagine indicativa del modello')->assertDontSee('Anteprima riservata');
         $this->assertFalse($offer->fresh()->is_published);
+        $offer->pricelist->update(['status' => 'archived', 'active_flag' => null]);
+        $this->get(route('public-cars.photo', $offer))->assertNotFound();
     }
 
     public function test_real_photo_wins_even_when_an_earlier_attachment_is_missing(): void
@@ -82,7 +83,7 @@ class PublicVehiclePhotoTest extends PublicCarsTestCase
         $this->offer(2, vehicle: ['make' => 'Toyota', 'model' => 'Yaris Cross']);
         $this->offer(3, vehicle: ['make' => 'Altra marca', 'model' => 'Yaris']);
 
-        $results = app(PublicVehicleSearch::class)->search(PublicRentalOffer::published(), $this->period())->keyBy('id');
+        $results = app(PublicVehicleSearch::class)->search(\App\Models\VehiclePricelist::forPublicRental(), $this->period())->keyBy('id');
         $this->assertTrue($results[1]['photo_is_reference']);
         $this->assertFalse($results[2]['has_photo']);
         $this->assertFalse($results[3]['has_photo']);

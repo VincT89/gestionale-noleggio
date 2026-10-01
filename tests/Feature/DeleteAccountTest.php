@@ -21,11 +21,14 @@ class DeleteAccountTest extends TestCase
 
         $this->actingAs($user = User::factory()->create());
 
-        $component = Livewire::test(DeleteUserForm::class)
+        Livewire::test(DeleteUserForm::class)
             ->set('password', 'password')
-            ->call('deleteUser');
+            ->call('deleteUser')
+            ->assertHasNoErrors();
 
-        $this->assertNull($user->fresh());
+        $this->assertSoftDeleted('users', ['id' => $user->id]);
+        $this->assertNull(User::find($user->id));
+        $this->assertGuest('web');
     }
 
     public function test_correct_password_must_be_provided_before_account_can_be_deleted(): void
@@ -41,6 +44,7 @@ class DeleteAccountTest extends TestCase
             ->call('deleteUser')
             ->assertHasErrors(['password']);
 
-        $this->assertNotNull($user->fresh());
+        $this->assertNotSoftDeleted('users', ['id' => $user->id]);
+        $this->assertAuthenticatedAs($user);
     }
 }

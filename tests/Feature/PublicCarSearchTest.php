@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Domain\Pricing\VehiclePricingService;
 use App\Domain\Rentals\PublicVehicleSearch;
-use App\Models\PublicRentalOffer;
 use App\Models\VehiclePricelist;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -35,10 +34,10 @@ class PublicCarSearchTest extends PublicCarsTestCase
         $pricing->shouldNotReceive('quote');
         $this->app->instance(VehiclePricingService::class, $pricing);
         $this->get(route('public-cars.index'))->assertOk()->assertViewHas('searched', false)
-            ->assertSee('Indica le date per verificare la disponibilità.');
+            ->assertSee('Indica luogo, date e orari per confrontare i veicoli disponibili.');
     }
 
-    public function test_public_catalog_requires_explicit_publication_final_prices_and_valid_relations(): void
+    public function test_public_catalog_uses_active_pricelists_and_ignores_legacy_offer_flags(): void
     {
         $valid = $this->offer();
         $this->offer(2, offer: ['is_published' => false]);
@@ -52,10 +51,10 @@ class PublicCarSearchTest extends PublicCarsTestCase
         $this->offer(10, vehicle: ['deleted_at' => now()]);
 
         $response = $this->get($this->url(['preview' => 1, 'organization_id' => 3]));
-        $response->assertOk()->assertViewHas('results', fn ($results) => $results->pluck('id')->all() === [$valid->id]);
+        $response->assertOk()->assertViewHas('results', fn ($results) => $results->pluck('id')->all() === [1, 2, 3, 7, 8]);
         $response->assertDontSee('TESTPLATE')->assertDontSee('PRIVATE-VIN')->assertDontSee('lt_daily_cost')->assertDontSee('net_total_after_lt');
         $this->assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
-        $this->get(route('public-cars.show', ['offer' => 2] + $this->period()))->assertNotFound();
+        $this->get(route('public-cars.show', ['pricelist' => 2] + $this->period()))->assertOk();
         $this->get(route('public-cars.photo', 2))->assertNotFound();
         $this->get(route('public-cars.preview.index'))->assertRedirect(route('login'));
     }
@@ -124,12 +123,12 @@ class PublicCarSearchTest extends PublicCarsTestCase
     public function test_opening_a_result_rechecks_current_availability_and_price(): void
     {
         $offer = $this->offer();
-        $url = route('public-cars.show', ['offer' => $offer->id] + $this->period(['budget' => '300']));
-        $this->get($url)->assertOk()->assertSee('300,00 €')->assertSee('Prenota con pagamento al ritiro');
+        $url = route('public-cars.show', ['pricelist' => $offer->id] + $this->period(['budget' => '300']));
+        $this->get($url)->assertOk()->assertSee('300,00 €')->assertSee('Prenota con il 20% online');
         DB::table('vehicle_pricelists')->where('id', 1)->update(['base_daily_cents' => 11000]);
         $this->get($url)->assertOk()->assertSee('330,00 €')->assertSee('Il prezzo aggiornato supera il budget indicato.');
         DB::table('rentals')->insert(['vehicle_id' => 1, 'status' => 'reserved', 'planned_pickup_at' => '2026-09-11', 'planned_return_at' => '2026-09-12']);
-        $this->get($url)->assertOk()->assertSee('La disponibilità è cambiata')->assertDontSee('330,00 €')->assertDontSee('Prenota con pagamento al ritiro');
+        $this->get($url)->assertOk()->assertSee('La disponibilità è cambiata')->assertDontSee('330,00 €')->assertDontSee('Prenota con il 20% online');
     }
 
     public function test_invalid_periods_and_filters_return_useful_errors(): void
@@ -153,14 +152,15 @@ class PublicCarSearchTest extends PublicCarsTestCase
     public function test_public_data_is_an_explicit_allowlist(): void
     {
         $this->offer();
-        $result = app(PublicVehicleSearch::class)->search(PublicRentalOffer::published(), $this->period())->first();
+        $result = app(PublicVehicleSearch::class)->search(\App\Models\VehiclePricelist::forPublicRental(), $this->period())->first();
         $this->assertSame([
-            'id','title','year','segment','seats','transmission','fuel','organization','location','city','address',
+            'id','vehicle_id','title','year','segment','seats','transmission','fuel','organization','location','city','address',
             'description','has_photo','photo_is_reference','total_cents','days','deposit_cents','km_per_day','extra_km_cents','prices_include_vat',
+            'place_id','pickup_location_id','supplier_id','custom_delivery_enabled','delivery_area','product_id','product_name',
         ], array_keys($result));
     }
 
-    public function test_photos_follow_offer_visibility_and_missing_files_do_not_break_results(): void
+    public function test_photos_follow_pricelist_visibility_and_missing_files_do_not_break_results(): void
     {
         $offer = $this->offer();
         Storage::fake('public');
@@ -176,125 +176,44 @@ class PublicCarSearchTest extends PublicCarsTestCase
         Storage::disk('public')->put($photo->getPathRelativeToRoot(), base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jN5kAAAAASUVORK5CYII='));
         $this->get($imageUrl)->assertOk()->assertHeader('Content-Type', 'image/png')->assertHeader('X-Content-Type-Options', 'nosniff');
         $offer->update(['is_published' => false]);
+        $this->get($imageUrl)->assertOk();
+        $offer->pricelist->update(['status' => 'draft', 'active_flag' => null]);
         $this->get($imageUrl)->assertNotFound();
-        $this->actingAs($this->publisher())->get(route('public-cars.preview.photo', $offer))->assertOk();
+        $this->actingAs($this->publisher())->get(route('public-cars.preview.photo', $offer))->assertNotFound();
     }
 
-    public function test_publisher_can_save_draft_then_publish_after_confirming_public_prices(): void
+    public function test_old_catalog_redirects_to_delivery_places_and_cannot_write_prices(): void
     {
-        $offer = $this->offer(offer: ['is_published' => false, 'prices_include_vat' => false]);
+        $offer = $this->offer();
         $this->actingAs($this->publisher());
-        $this->get(route('public-offers.index'))->assertOk()->assertSee('Catalogo pubblico');
-        $this->get($this->url([], 'public-cars.preview.index'))->assertOk()->assertSee('Importo di listino, IVA da verificare');
-        $this->get($this->url())->assertOk()->assertViewHas('results', fn ($r) => $r->total() === 0);
-        $data = ['pricelist_id' => 1, 'location_id' => 1, 'is_published' => 1];
-        $this->put(route('public-offers.update', $offer), $data)->assertSessionHasErrors('prices_include_vat');
-        $this->assertFalse($offer->fresh()->is_published);
-        $this->put(route('public-offers.update', $offer), $data + ['prices_include_vat' => 1])->assertRedirect(route('public-offers.index'));
-        $this->assertTrue($offer->fresh()->is_published);
-        $this->get($this->url())->assertOk()->assertViewHas('results', fn ($r) => $r->total() === 1);
-        $this->put(route('public-offers.update', $offer), ['pricelist_id' => 1, 'location_id' => 1])->assertRedirect(route('public-offers.index'));
-        $this->assertFalse($offer->fresh()->is_published);
+        $this->get(route('public-offers.index'))->assertRedirect(route('public-deliveries.index'));
+        $this->post('/catalogo-pubblico', ['pricelist_id' => 1, 'deposit_euros' => '1'])->assertStatus(405);
+        $this->put('/catalogo-pubblico/'.$offer->id, ['pricelist_id' => 1, 'deposit_euros' => '1'])->assertNotFound();
+        $this->assertSame(50000, $offer->pricelist->fresh()->deposit_cents);
+        $this->get(route('public-deliveries.index'))->assertOk()->assertDontSee('Offerte del sito');
     }
 
-    public function test_renter_cannot_manage_other_organizations_or_spoof_price_and_location(): void
+    public function test_renter_preview_cannot_expand_to_other_organizations(): void
     {
-        $foreign = $this->offer();
-        $own = $this->offer(2, organization: 2, offer: ['is_published' => false]);
+        $this->offer();
+        $this->offer(2, organization: 2);
         DB::table('vehicle_assignments')->insert(['vehicle_id' => 2, 'renter_org_id' => 2, 'status' => 'active', 'start_at' => '2026-01-01', 'end_at' => null]);
         $this->actingAs($this->publisher(2, 'renter'));
-        $this->get(route('public-offers.index', ['edit' => $foreign->id]))->assertNotFound();
-        $this->put(route('public-offers.update', $foreign), ['pricelist_id' => 1, 'location_id' => 1])->assertNotFound();
-        $this->get(route('public-cars.preview.show', ['offer' => $foreign->id] + $this->period()))->assertNotFound();
-        $this->get($this->url([], 'public-cars.preview.index'))->assertOk()->assertViewHas('results', fn ($r) => $r->pluck('id')->all() === [$own->id]);
-        $this->put(route('public-offers.update', $own), ['pricelist_id' => 1, 'location_id' => 1])->assertSessionHasErrors('pricelist_id');
-        $this->put(route('public-offers.update', $own), ['pricelist_id' => 2, 'location_id' => 1])->assertSessionHasErrors('location_id');
-        $this->assertSame(2, $own->fresh()->organization_id);
+        $this->get(route('public-cars.preview.show', ['pricelist' => 1] + $this->period()))->assertNotFound();
+        $this->get($this->url(['organization_id' => 1], 'public-cars.preview.index'))->assertOk()
+            ->assertViewHas('results', fn ($r) => $r->pluck('id')->all() === [2]);
+        $this->get($this->url(['supplier' => 1], 'public-cars.preview.index'))->assertOk()
+            ->assertViewHas('results', fn ($r) => $r->isEmpty());
     }
 
-    public function test_permission_and_active_user_are_required_to_manage_offers(): void
+    public function test_permission_and_active_user_are_required_for_management_preview(): void
     {
         $this->actingAs($this->publisher(2, 'viewer'));
-        $this->get(route('public-offers.index'))->assertForbidden();
+        $this->get(route('public-deliveries.index'))->assertForbidden();
         $this->get($this->url([], 'public-cars.preview.index'))->assertForbidden();
         $admin = $this->publisher();
         $admin->update(['is_active' => false]);
         $this->flushSession();
-        $this->actingAs($admin)->get(route('public-offers.index'))->assertForbidden();
-    }
-
-    public function test_offer_management_filters_vehicle_and_organization_and_displays_real_prices(): void
-    {
-        $match = $this->offer(1, 2, price: ['base_daily_cents' => 4550, 'deposit_cents' => 35025], vehicle: ['make' => 'Toyota', 'model' => 'Yaris']);
-        $this->offer(2, 3, vehicle: ['make' => 'Toyota', 'model' => 'Yaris']);
-        $this->offer(3, 2, vehicle: ['make' => 'Fiat', 'model' => 'Panda']);
-        $this->actingAs($this->publisher());
-        $this->get(route('public-offers.index', ['q' => 'Toyota Yaris noleggiatore', 'organization_id' => 2]))
-            ->assertOk()->assertViewHas('offers', fn ($rows) => $rows->pluck('id')->all() === [$match->id])
-            ->assertSee('45,50 €')->assertSee('350,25 €')->assertSee('Tariffa base / giorno');
-        $this->get(route('public-offers.index', ['q' => 'TESTPLATE3']))->assertOk()
-            ->assertViewHas('offers', fn ($rows) => $rows->pluck('id')->all() === [3]);
-    }
-
-    public function test_offer_organization_filter_cannot_expand_renter_access(): void
-    {
-        $this->offer(1, 1);
-        $own = $this->offer(2, 2);
-        $this->actingAs($this->publisher(2, 'renter'));
-        $this->get(route('public-offers.index'))->assertOk()
-            ->assertViewHas('offers', fn ($rows) => $rows->pluck('id')->all() === [$own->id])
-            ->assertViewHas('organizations', fn ($rows) => $rows->pluck('id')->all() === [2]);
-        $this->get(route('public-offers.index', ['organization_id' => 1]))->assertOk()
-            ->assertViewHas('offers', fn ($rows) => $rows->isEmpty());
-    }
-
-    public function test_offer_deposit_can_be_changed_with_comma_decimals_or_removed_without_changing_rental_price(): void
-    {
-        $offer = $this->offer();
-        $this->actingAs($this->publisher());
-        $data = ['pricelist_id' => 1, 'location_id' => 1, 'prices_include_vat' => 1, 'is_published' => 1];
-        $this->put(route('public-offers.update', $offer), $data + ['deposit_euros' => '750,25'])
-            ->assertRedirect(route('public-offers.index'));
-        $this->assertSame(75025, $offer->pricelist->fresh()->deposit_cents);
-        $this->get(route('public-cars.show', ['offer' => $offer->id] + $this->period()))
-            ->assertOk()->assertSee('750,25 €')->assertSee('300,00 €');
-        $this->put(route('public-offers.update', $offer), $data + ['deposit_euros' => '0'])
-            ->assertRedirect(route('public-offers.index'));
-        $this->assertSame(0, $offer->pricelist->fresh()->deposit_cents);
-        foreach (['-1', '1.234', '', '1e3', '42949672.96'] as $invalid) {
-            $this->put(route('public-offers.update', $offer), $data + ['deposit_euros' => $invalid])
-                ->assertSessionHasErrors('deposit_euros');
-            $this->assertSame(0, $offer->pricelist->fresh()->deposit_cents);
-        }
-    }
-
-    public function test_rejected_offer_changes_never_modify_the_linked_or_foreign_deposit(): void
-    {
-        $foreign = $this->offer(1, 1);
-        $own = $this->offer(2, 2);
-        $this->actingAs($this->publisher(2, 'renter'));
-        $this->put(route('public-offers.update', $foreign), ['pricelist_id' => 1, 'location_id' => 1, 'deposit_euros' => '1'])
-            ->assertNotFound();
-        $this->put(route('public-offers.update', $own), ['pricelist_id' => 1, 'location_id' => 1, 'deposit_euros' => '1'])
-            ->assertSessionHasErrors('pricelist_id');
-        $this->put(route('public-offers.update', $own), ['pricelist_id' => 2, 'location_id' => 1, 'deposit_euros' => '1'])
-            ->assertSessionHasErrors('location_id');
-        $this->assertSame([50000, 50000], VehiclePricelist::orderBy('id')->pluck('deposit_cents')->all());
-    }
-
-    public function test_invalid_management_input_renders_errors_and_preserves_unchecked_publication(): void
-    {
-        $offer = $this->offer();
-        $this->actingAs($this->publisher());
-        $editUrl = route('public-offers.index', ['edit' => $offer->id]);
-        $this->from($editUrl)->put(route('public-offers.update', $offer), [
-            'pricelist_id' => 1, 'location_id' => 1, 'description' => ['invalid'], 'prices_include_vat' => 0, 'is_published' => 0,
-        ])->assertRedirect($editUrl)->assertSessionHasErrors('description');
-        $response = $this->get($editUrl)->assertOk();
-        $document = new \DOMDocument;
-        @$document->loadHTML($response->getContent());
-        $xpath = new \DOMXPath($document);
-        $this->assertSame(0, $xpath->query('//input[@type="checkbox" and @name="is_published" and @checked]')->length);
-        $this->assertTrue($offer->fresh()->is_published);
+        $this->actingAs($admin)->get($this->url([], 'public-cars.preview.index'))->assertForbidden();
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Domain\Rentals;
 
 use App\Models\PublicRentalOffer;
+use App\Models\VehiclePricelist;
 use App\Models\Rental;
 use App\Models\VehicleAssignment;
 use App\Models\VehicleBlock;
@@ -22,6 +23,17 @@ class VehicleAvailabilityService
      * @return list<int>
      */
     public function availableOfferIds(Collection $offers, CarbonImmutable $start, CarbonImmutable $end): array
+    {
+        return $this->availableIds($offers, $start, $end);
+    }
+
+    /** @param Collection<int, VehiclePricelist> $pricelists */
+    public function availablePricelistIds(Collection $pricelists, CarbonImmutable $start, CarbonImmutable $end): array
+    {
+        return $this->availableIds($pricelists, $start, $end);
+    }
+
+    private function availableIds(Collection $offers, CarbonImmutable $start, CarbonImmutable $end): array
     {
         if ($end <= $start) {
             throw new InvalidArgumentException('La riconsegna deve essere successiva al ritiro.');
@@ -66,18 +78,20 @@ class VehicleAvailabilityService
             ->where(fn ($q) => $q->whereNull('end_at')->orWhere('end_at', '>', $start))
             ->orderBy('start_at')->get()->groupBy('vehicle_id');
 
-        return $offers->filter(function (PublicRentalOffer $offer) use ($busy, $assignments, $start, $end) {
+        return $offers->filter(function (PublicRentalOffer|VehiclePricelist $offer) use ($busy, $assignments, $start, $end) {
             $vehicle = $offer->vehicle;
+            $organization = $offer instanceof VehiclePricelist ? $offer->renter : $offer->organization;
+            $organizationId = $offer instanceof VehiclePricelist ? $offer->renter_org_id : $offer->organization_id;
             if (!$vehicle || !$vehicle->is_active || isset($busy[$offer->vehicle_id])
-                || !$offer->organization?->is_active || !$vehicle->adminOrganization?->is_active) {
+                || !$organization?->is_active || !$vehicle->adminOrganization?->is_active) {
                 return false;
             }
 
             $periods = $assignments->get($offer->vehicle_id, collect());
-            if ($periods->contains(fn ($period) => (int) $period->renter_org_id !== (int) $offer->organization_id)) {
+            if ($periods->contains(fn ($period) => (int) $period->renter_org_id !== (int) $organizationId)) {
                 return false;
             }
-            if ((int) $vehicle->admin_organization_id === (int) $offer->organization_id) {
+            if ((int) $vehicle->admin_organization_id === (int) $organizationId) {
                 return true;
             }
 

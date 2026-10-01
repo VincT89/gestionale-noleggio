@@ -42,6 +42,11 @@ class AdminFeeService
      */
     public function snapshotOnClose(Rental $rental, ?\DateTimeInterface $at = null): void
     {
+        if ($rental->booking_channel === 'amd_rent') {
+            $calculation = app(\App\Domain\Fees\AdminFeeResolver::class)->calculateForRental($rental, $at ? CarbonImmutable::instance($at) : null);
+            $rental->forceFill(['admin_fee_percent' => $calculation['percent'], 'admin_fee_amount' => $calculation['amount'], 'amd_extra_fee_percent' => $calculation['extra_percent']])->save();
+            return;
+        }
         // Se c'è già uno snapshot, non sovrascrivo (idempotenza)
         if (!is_null($rental->admin_fee_percent) && !is_null($rental->admin_fee_amount)) {
             return;

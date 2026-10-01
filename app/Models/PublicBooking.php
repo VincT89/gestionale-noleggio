@@ -8,11 +8,14 @@ use Illuminate\Support\Facades\URL;
 class PublicBooking extends Model
 {
     protected $guarded = ['id'];
-    protected $hidden = ['request_hash'];
+    protected $hidden = ['request_hash', 'checkout_payload', 'checkout_url', 'stripe_session_id', 'stripe_payment_intent', 'payment_review_history'];
     protected $casts = [
         'quote_snapshot' => 'array', 'pickup_at' => 'datetime', 'return_at' => 'datetime',
         'accepted_at' => 'datetime', 'confirmation_email_sent_at' => 'datetime',
         'total_cents' => 'integer', 'deposit_cents' => 'integer',
+        'online_due_cents' => 'integer', 'online_paid_cents' => 'integer', 'refunded_cents' => 'integer',
+        'delivery_fee_cents' => 'integer', 'checkout_payload' => 'array', 'payment_expires_at' => 'datetime', 'paid_at' => 'datetime',
+        'payment_review_history' => 'array',
     ];
 
     public function rental() { return $this->belongsTo(Rental::class)->withTrashed(); }
@@ -55,7 +58,7 @@ class PublicBooking extends Model
             .'Sede: '.$car['location'].' - '.$car['city']."\n"
             .'Totale concordato: '.number_format($this->total_cents / 100, 2, ',', '.')." EUR\n"
             .'Cauzione separata: '.number_format($this->deposit_cents / 100, 2, ',', '.')." EUR\n"
-            .($this->status_label === 'Confermata' ? "Pagamento al ritiro.\n" : '')
+            .($this->payment_method === 'stripe' ? 'Quota online versata: '.number_format(($this->online_paid_cents - $this->refunded_cents) / 100, 2, ',', '.')." EUR\nSaldo previsto al ritiro: ".number_format($this->pickup_due_cents / 100, 2, ',', '.')." EUR\n" : ($this->status_label === 'Confermata' ? "Pagamento al ritiro.\n" : ''))
             .($confirmationUrl ? 'Riepilogo e conferma stampabile: '.$confirmationUrl : 'Conserva il riferimento della prenotazione.');
     }
 
@@ -75,6 +78,11 @@ class PublicBooking extends Model
 
     public function getStatusLabelAttribute(): string
     {
+        if ($this->payment_status === 'pending') return 'In attesa di pagamento';
+        if ($this->payment_status === 'expired') return 'Pagamento scaduto';
+        if ($this->payment_status === 'failed') return 'Pagamento non avviato';
+        if ($this->payment_status === 'review') return 'Pagamento da verificare';
+        if ($this->payment_status === 'refunded') return 'Annullata e rimborsata';
         if (!$this->rental || $this->rental->trashed()) return 'Annullata';
         return match ($this->rental->status) {
             'cancelled', 'no_show' => 'Annullata',
@@ -82,5 +90,12 @@ class PublicBooking extends Model
             'checked_in', 'closed' => 'Noleggio terminato',
             default => 'Confermata',
         };
+    }
+
+    public function getPickupDueCentsAttribute(): int
+    {
+        if (in_array($this->payment_status, ['expired', 'failed', 'refunded']) || $this->rental?->status === 'cancelled') return 0;
+        $online = $this->payment_status === 'pending' ? $this->online_due_cents : $this->online_paid_cents - $this->refunded_cents;
+        return max(0, $this->total_cents - $online);
     }
 }

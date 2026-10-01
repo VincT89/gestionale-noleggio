@@ -37,7 +37,7 @@ abstract class PublicCarsTestCase extends TestCase
         });
         Schema::create('locations', function (Blueprint $t) {
             $t->id(); $t->unsignedBigInteger('organization_id'); $t->string('name');
-            $t->string('city'); $t->string('address_line')->nullable(); $t->timestamps();
+            $t->string('city'); $t->string('address_line')->nullable(); $t->char('country_code', 2)->nullable(); $t->timestamps();
         });
         Schema::create('vehicles', function (Blueprint $t) {
             $t->id(); $t->unsignedBigInteger('admin_organization_id');
@@ -105,6 +105,8 @@ abstract class PublicCarsTestCase extends TestCase
         }
         Schema::create('role_has_permissions', function (Blueprint $t) { $t->unsignedBigInteger('role_id'); $t->unsignedBigInteger('permission_id'); });
         (require database_path('migrations/2026_09_08_120000_create_public_rental_offers_table.php'))->up();
+        (require database_path('migrations/2026_09_15_100000_create_public_pickup_places_table.php'))->up();
+        (require database_path('migrations/2026_09_15_120000_create_vehicle_products_table.php'))->up();
 
         foreach ([1 => 'Proprietario di prova', 2 => 'Noleggiatore di prova', 3 => 'Altro noleggiatore di prova'] as $id => $name) {
             DB::table('organizations')->insert(['id' => $id, 'name' => $name, 'type' => $id === 1 ? 'admin' : 'renter']);
@@ -130,10 +132,12 @@ abstract class PublicCarsTestCase extends TestCase
             'seats' => 5, 'fuel_type' => 'petrol', 'transmission' => 'manual', 'segment' => 'B', 'year' => 2024,
         ], $vehicle));
         DB::table('vehicle_pricelists')->insert(array_replace(['id' => $id, 'vehicle_id' => $id, 'renter_org_id' => $organization], $price));
-        return PublicRentalOffer::create(array_replace([
+        $result = PublicRentalOffer::create(array_replace([
             'vehicle_id' => $id, 'organization_id' => $organization, 'location_id' => $organization,
             'pricelist_id' => $id, 'prices_include_vat' => true, 'is_published' => true,
         ], $offer));
+        \App\Models\PublicDeliveryLocation::forLocation(\App\Models\Location::findOrFail($organization));
+        return $result;
     }
 
     protected function publisher(int $organization = 1, string $role = 'admin'): User

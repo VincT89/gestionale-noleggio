@@ -19,42 +19,56 @@ return [
     |--------------------------------------------------------------------------*/
     'sidebar' => [
         [
-            'section' => 'Anagrafiche',
-            'items'   => [
-                // Elenchi → viewAny
-                ['label' => 'Clienti',  'route' => 'customers.index',  'permission' => 'manage.renters'],
-                ['label' => 'Veicoli',  'route' => 'vehicles.index',   'permission' => 'vehicles.viewAny'],
-                ['label' => 'Sedi',     'route' => 'locations.index',  'permission' => 'locations.viewAny'],
-            ],
-        ],
-        [
             'section' => 'Noleggi',
             'items'   => [
-                ['label' => 'Contratti',     'route' => 'rentals.index',      'permission' => 'rentals.viewAny'],
-                //['label' => 'Blocchi',       'route' => 'blocks.index',       'permission' => 'blocks.viewAny'],
+                ['label' => 'Contratti', 'route' => 'rentals.index', 'active' => 'rentals.*', 'permission' => 'rentals.viewAny'],
             ],
         ],
         [
             'section' => 'Flotta',
             'items'   => [
-                // Lista documenti: viewAny; sezione gestione/upload: manage (se hai una vista separata)
-                ['label' => 'Documenti Veicolo', 'route' => 'vehicle-documents.index', 'permission' => 'vehicle_documents.viewAny'],
-                // Se prevedi una pagina “Gestione Documenti” separata:
-                // ['label' => 'Gestione Documenti', 'route' => 'vehicle-documents.manage', 'permission' => 'vehicle_documents.manage'],
+                ['label' => 'Veicoli', 'route' => 'vehicles.index', 'active' => 'vehicles.*', 'permission' => 'vehicles.viewAny'],
+                ['label' => 'Prodotti della flotta', 'route' => 'fleet-products.index', 'active' => 'fleet-products.*', 'permission' => 'manage.renters'],
+                ['label' => 'Assegna veicoli', 'route' => 'admin.assignments', 'permission' => 'manage.renters'],
+                ['label' => 'Documenti veicolo', 'route' => 'vehicle-documents.index', 'active' => 'vehicle-documents.*', 'permission' => 'vehicle_documents.viewAny'],
+            ],
+        ],
+        [
+            'section' => 'Anagrafiche',
+            'items' => [
+                ['label' => 'Clienti', 'route' => 'customers.index', 'active' => 'customers.*', 'permission' => 'manage.renters'],
+                ['label' => 'Sedi', 'route' => 'locations.index', 'active' => 'locations.*', 'permission' => 'locations.viewAny'],
+            ],
+        ],
+        [
+            'section' => 'AMD Rent',
+            'items' => [
+                ['label' => 'Panoramica', 'route' => 'amd-rent.index', 'active' => 'amd-rent.index', 'permission' => 'rentals.viewAny'],
+                ['label' => 'Prenotazioni e pagamenti', 'route' => 'public-bookings.index', 'active' => 'public-bookings.index', 'permission' => 'rentals.viewAny'],
+                ['label' => 'Pratiche e richieste', 'route' => 'amd-rent.enquiries.index', 'active' => 'amd-rent.enquiries.*', 'permission' => 'rentals.viewAny'],
+                ['label' => 'Luoghi di consegna', 'route' => 'public-deliveries.index', 'active' => 'public-deliveries.*', 'permission' => 'vehicle_pricing.update'],
+                ['label' => 'Impostazioni AMD Rent', 'route' => 'amd-rent.settings', 'active' => 'amd-rent.settings*', 'permission' => 'manage.renters'],
+                ['label' => 'Apri sito pubblico', 'route' => 'public-cars.index', 'new_tab' => true],
             ],
         ],
         [
             'section' => 'Report & Audit',
             'items'   => [
-                ['label' => 'Report', 'route' => 'reports.index', 'permission' => 'reports.view'],
+                ['label' => 'Report', 'route' => 'reports.index', 'active' => 'reports.*', 'permission' => 'reports.view'],
                 //['label' => 'Audit',  'route' => 'audit.index',   'permission' => 'audit.view'],
             ],
         ],
         [
             'section' => 'Amministrazione',
             'items'   => [
-                ['label'=>'Renter (Organizzazioni)', 'route'=>'organizations.index', 'permission'=>'manage.renters'],
-                ['label'=>'Assegna veicoli',         'route'=>'admin.assignments',   'permission'=>'manage.renters'],
+                ['label'=>'Renter (Organizzazioni)', 'route'=>'organizations.index', 'active'=>'organizations.*', 'permission'=>'manage.renters'],
+            ],
+        ],
+        [
+            'section' => 'Moduli di emergenza',
+            'items' => [
+                ['label' => 'Stampa contratto vuoto', 'route' => 'contracts.blank.print', 'permission' => 'rentals.viewAny', 'new_tab' => true],
+                ['label' => 'Stampa checklist vuota', 'route' => 'checklists.blank.print', 'permission' => 'rentals.viewAny', 'new_tab' => true],
             ],
         ],
         // NB: Se in futuro introdurrai permessi per utenti/ruoli, potrai riattivare una sezione ACL qui.

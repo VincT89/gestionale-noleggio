@@ -29,6 +29,10 @@ return [
     */
 
     'disks' => [
+        'amd_rent_private' => [
+            'driver' => 'local', 'root' => storage_path('app/amd-rent-private'),
+            'serve' => false, 'visibility' => 'private', 'throw' => true,
+        ],
 
         'local' => [
             'driver' => 'local',

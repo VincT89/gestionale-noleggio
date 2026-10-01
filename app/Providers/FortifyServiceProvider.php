@@ -2,104 +2,62 @@
 
 namespace App\Providers;
 
-use App\Actions\Fortify\CreateNewUser;
-use App\Actions\Fortify\ResetUserPassword;
-use App\Actions\Fortify\UpdateUserPassword;
-use App\Actions\Fortify\UpdateUserProfileInformation;
-use App\Actions\Fortify\RedirectIfOrganizationTrashed;
-use App\Models\Organization;
-use App\Models\User;
+use App\Actions\Fortify\{CreateNewUser, RedirectIfOrganizationTrashed, ResetUserPassword, UpdateUserPassword, UpdateUserProfileInformation};
+use App\Http\Requests\TwoFactorLoginRequest;
+use App\Support\AccountAccess;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\{Auth, RateLimiter};
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
-use Laravel\Fortify\Actions\AttemptToAuthenticate;
-use Laravel\Fortify\Actions\EnsureLoginIsNotThrottled;
-use Laravel\Fortify\Actions\PrepareAuthenticatedSession;
-use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
+use Laravel\Fortify\Actions\{AttemptToAuthenticate, EnsureLoginIsNotThrottled, PrepareAuthenticatedSession, RedirectIfTwoFactorAuthenticatable};
 use Laravel\Fortify\Fortify;
-use Illuminate\Support\Facades\Log;
-
+use Laravel\Fortify\Http\Requests\TwoFactorLoginRequest as FortifyTwoFactorLoginRequest;
 
 class FortifyServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
-        //
+        $this->app->bind(FortifyTwoFactorLoginRequest::class, TwoFactorLoginRequest::class);
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
-
         Fortify::createUsersUsing(CreateNewUser::class);
         Fortify::updateUserProfileInformationUsing(UpdateUserProfileInformation::class);
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::redirectUserForTwoFactorAuthenticationUsing(RedirectIfTwoFactorAuthenticatable::class);
 
-        /**
-         * Personalizzazione pipeline login:
-         * - esegue AttemptToAuthenticate (credenziali valide => utente autenticato)
-         * - poi blocca l’accesso se l’organizzazione renter è archiviata
-         * - infine prepara sessione se tutto ok
-         *
-         * Così evitiamo "auth.failed" e reindirizziamo correttamente alla pagina bloccata.
-         */
-        Fortify::authenticateThrough(function (Request $request) {
-            return array_filter([
-                /**
-                 * DEBUG: log prima del tentativo autenticazione
-                 * - ci dice se l'utente esiste
-                 * - se è soft-deleted
-                 * - se is_active è false
-                 * - se la sua organization è soft-deleted
-                 */
-                function (Request $request, $next) {
-                    $usernameField = Fortify::username();
-                    $identifier = (string) $request->input($usernameField);
+        Fortify::authenticateUsing(function (Request $request) {
+            $provider = Auth::guard(config('fortify.guard'))->getProvider();
+            $credentials = $request->only(Fortify::username(), 'password');
+            $user = $provider->retrieveByCredentials($credentials);
 
-                    $u = User::withTrashed()->where($usernameField, $identifier)->first();
+            if (! $user || ! $provider->validateCredentials($user, $credentials)) {
+                return null;
+            }
 
-                    $org = null;
-                    if ($u && !empty($u->organization_id)) {
-                        $org = Organization::withTrashed()->find($u->organization_id);
-                    }
+            // Comunica lo stato dell'account solo dopo aver verificato le credenziali.
+            if (! AccountAccess::allows($user)) {
+                throw new HttpResponseException(AccountAccess::deny($request));
+            }
 
-                    return $next($request);
-                },
+            if (config('hashing.rehash_on_login', true) && method_exists($provider, 'rehashPasswordIfRequired')) {
+                $provider->rehashPasswordIfRequired($user, $credentials);
+            }
 
-                // Rate limiting login (se configurato)
-                config('fortify.limiters.login') ? EnsureLoginIsNotThrottled::class : null,
-
-                // Gestione 2FA (se attiva)
-                RedirectIfTwoFactorAuthenticatable::class,
-
-                // Tenta autenticazione (se fallisce -> auth.failed standard)
-                AttemptToAuthenticate::class,
-
-                /**
-                 * DEBUG: log subito dopo AttemptToAuthenticate
-                 * - se qui NON arriva mai, significa che AttemptToAuthenticate fallisce
-                 */
-                function (Request $request, $next) {
-
-                    return $next($request);
-                },
-
-                // Blocco post-auth se org renter archiviata
-                RedirectIfOrganizationTrashed::class,
-
-                // Prepara sessione autenticata
-                PrepareAuthenticatedSession::class,
-            ]);
+            return $user;
         });
+
+        Fortify::authenticateThrough(fn (Request $request) => array_filter([
+            config('fortify.limiters.login') ? null : EnsureLoginIsNotThrottled::class,
+            RedirectIfTwoFactorAuthenticatable::class,
+            AttemptToAuthenticate::class,
+            RedirectIfOrganizationTrashed::class,
+            PrepareAuthenticatedSession::class,
+        ]));
 
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());

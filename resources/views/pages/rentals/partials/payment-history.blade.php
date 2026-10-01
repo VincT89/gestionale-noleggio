@@ -10,6 +10,9 @@
 
 <section aria-labelledby="payment-history-title" class="min-w-0 rounded-lg border border-gray-200 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
     <h2 id="payment-history-title" class="font-semibold">Storico pagamenti</h2>
+    @if($rental->booking_channel === 'amd_rent')
+        <p class="mt-2 text-sm">Prenotazione AMD Rent. Quota già incassata dalla piattaforma: <strong>{{ $money($rental->admin_fee_collected_amount) }}</strong>. I pagamenti Stripe sono riconciliati automaticamente.</p>
+    @endif
     @error('payment')
         <p role="alert" class="mt-2 text-sm text-red-700 dark:text-red-300">{{ $message }}</p>
     @enderror
@@ -34,7 +37,7 @@
                     </div>
                     <dl class="mt-1 space-y-1 break-words text-gray-600 dark:text-gray-300">
                         <div><dt class="sr-only">Data</dt><dd>{{ $payment->payment_recorded_at?->format('d/m/Y H:i') ?? 'Data non disponibile' }}</dd></div>
-                        <div><dt class="sr-only">Metodo</dt><dd>{{ $methodLabels[$payment->payment_method] ?? ($payment->payment_method ?: 'Metodo non disponibile') }}</dd></div>
+                        <div><dt class="sr-only">Metodo</dt><dd>{{ str_starts_with((string) $payment->payment_reference, 'stripe') ? 'Stripe · AMD Rent' : ($methodLabels[$payment->payment_method] ?? ($payment->payment_method ?: 'Metodo non disponibile')) }}</dd></div>
                         <div><dt class="sr-only">Commissione</dt><dd>{{ $payment->is_commissionable ? 'Incluso nella base commissioni' : 'Escluso dalla base commissioni' }}</dd></div>
                         @if($payment->description)
                             <div><dt class="font-medium">Note</dt><dd>{{ $payment->description }}</dd></div>
@@ -47,6 +50,7 @@
                         @endif
                     </dl>
                     @can('update', $rental)
+                    @unless(str_starts_with((string) $payment->payment_reference, 'stripe:') || str_starts_with((string) $payment->payment_reference, 'stripe-refund:'))
                         <button type="button"
                                 wire:click="deletePayment({{ $payment->id }})"
                                 wire:confirm="Eliminare il pagamento di {{ $money($payment->amount) }} del {{ $payment->payment_recorded_at?->format('d/m/Y H:i') ?? 'data non disponibile' }}? Il totale registrato e le eventuali commissioni verranno aggiornati."
@@ -55,6 +59,7 @@
                                 class="mt-2 min-h-11 rounded-md border border-red-300 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:opacity-50 dark:border-red-700 dark:text-red-300 dark:hover:bg-red-950">
                             Elimina pagamento
                         </button>
+                    @endunless
                     @endcan
                 </li>
             @endforeach

@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Rentals\{PublicBookingService, PublicVehicleSearch};
 use App\Http\Requests\{PublicBookingRequest, PublicCarSearchRequest};
-use App\Models\{PublicBooking, PublicRentalOffer};
+use App\Models\{PublicBooking, VehiclePricelist};
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -16,68 +16,115 @@ class PublicBookingController extends Controller
 {
     private function scope(Request $request, bool $preview): Builder
     {
-        if (!$preview) return PublicRentalOffer::published();
+        if (!$preview) return VehiclePricelist::forPublicRental();
         Gate::authorize('vehicle_pricing.update');
         abort_unless($request->user()?->is_active && $request->user()?->organization?->is_active, 403);
-        return PublicRentalOffer::eligible()->when(!$request->user()->hasRole('admin'),
-            fn ($q) => $q->where('organization_id', $request->user()->organization_id));
+        return VehiclePricelist::forPublicRental()->when(!$request->user()->hasRole('admin'),
+            fn ($q) => $q->where('renter_org_id', $request->user()->organization_id));
     }
 
-    public function create(PublicCarSearchRequest $request, PublicVehicleSearch $search, int $offer)
+    public function create(PublicCarSearchRequest $request, PublicVehicleSearch $search, int $pricelist)
     {
         $preview = $request->routeIs('public-cars.preview.*');
-        $scope = $this->scope($request, $preview)->whereKey($offer);
+        $scope = $this->scope($request, $preview)->whereKey($pricelist);
         abort_unless((clone $scope)->exists(), 404);
-        $period = $request->safe()->only(['pickup_at', 'return_at']);
+        $period = array_filter($request->safe()->only(['pickup_at', 'return_at', 'place_id']), fn ($value) => $value !== null);
         $car = $search->search($scope, $period)->first();
         $prefix = $preview ? 'public-cars.preview' : 'public-cars';
         if (!$car) return $this->page('public-cars.show', ['car' => null, 'filters' => $period, 'preview' => $preview, 'routePrefix' => $prefix]);
 
-        $intent = ['nonce' => (string) Str::uuid(), 'offer' => $offer, 'period' => $period, 'preview' => $preview,
+        $intent = ['nonce' => (string) Str::uuid(), 'source' => 'pricelist', 'pricelist' => $pricelist, 'period' => $period, 'preview' => $preview,
             'fingerprint' => PublicBookingService::fingerprint($car), 'expires_at' => now()->addMinutes(30)->timestamp];
         $known = $request->session()->get('public_booking_checkouts', []);
         $known[$intent['nonce']] = true;
         $request->session()->put('public_booking_checkouts', array_slice($known, -20, null, true));
         return $this->page('public-cars.booking', [
             'car' => $car, 'filters' => $period, 'preview' => $preview, 'routePrefix' => $prefix,
-            'bookable' => PublicRentalOffer::published()->whereKey($offer)->exists(),
             'checkoutToken' => Crypt::encryptString(json_encode($intent, JSON_THROW_ON_ERROR)),
         ]);
     }
 
-    public function store(PublicBookingRequest $request, PublicBookingService $service, PublicVehicleSearch $search, int $offer)
+    public function store(PublicBookingRequest $request, PublicBookingService $service, PublicVehicleSearch $search, int $pricelist)
+    {
+        try {
+            return $this->submitBooking($request, $service, $search, $pricelist);
+        } catch (ValidationException $exception) {
+            // Quote/payment checks run after FormRequest validation. An image request can
+            // overwrite the session's previous URL, so always return to the booking flow.
+            throw $exception->redirectTo($request->getRedirectUrl());
+        }
+    }
+
+    private function submitBooking(PublicBookingRequest $request, PublicBookingService $service, PublicVehicleSearch $search, int $pricelist)
     {
         $preview = $request->routeIs('public-cars.preview.*');
-        $scope = $this->scope($request, $preview)->whereKey($offer);
+        $scope = $this->scope($request, $preview)->whereKey($pricelist);
         abort_unless((clone $scope)->exists(), 404);
         try {
             $intent = json_decode(Crypt::decryptString($request->validated('checkout_token')), true, 32, JSON_THROW_ON_ERROR);
         } catch (DecryptException|\JsonException $exception) {
             throw ValidationException::withMessages(['checkout_token' => 'Il riepilogo non è valido. Riaprilo e riprova.']);
         }
-        if (($intent['offer'] ?? null) !== $offer || ($intent['preview'] ?? null) !== $preview
+        // MySQL reorders JSON object keys in saved delivery proposals. Compare the same
+        // fields and types without treating their storage order as a changed period.
+        $submittedPeriod = array_filter($request->safe()->only(['pickup_at', 'return_at', 'place_id']), fn ($value) => $value !== null);
+        $issuedPeriod = $intent['period'] ?? [];
+        ksort($submittedPeriod);
+        if (is_array($issuedPeriod)) ksort($issuedPeriod);
+        if (($intent['source'] ?? null) !== 'pricelist' || ($intent['pricelist'] ?? null) !== $pricelist || ($intent['preview'] ?? null) !== $preview
             || !$request->session()->get('public_booking_checkouts.'.($intent['nonce'] ?? 'missing'))
-            || ($intent['period'] ?? []) !== $request->safe()->only(['pickup_at', 'return_at'])) {
-            throw ValidationException::withMessages(['checkout_token' => 'La sessione o le date sono cambiate. Riapri il riepilogo e riprova.']);
+            || $issuedPeriod !== $submittedPeriod) {
+            throw ValidationException::withMessages(['checkout_token' => 'La sessione, il luogo o le date sono cambiati. Riapri il riepilogo e riprova.']);
         }
-        if ($preview) {
-            if (!PublicRentalOffer::published()->whereKey($offer)->exists()) {
-                throw ValidationException::withMessages(['booking' => 'Per confermare la prenotazione, l’offerta deve essere pubblicata con prezzi verificati.']);
+        $contact = $request->safe()->only(['first_name', 'last_name', 'email', 'phone']);
+        if ($request->boolean('request_delivery') && empty($intent['delivery_request_id'])) {
+            return app(PublicEnquiryController::class)->delivery($request, $intent, $contact, $search);
+        }
+        $booking = $service->reserve($intent, $contact);
+        if ($booking->payment_method === 'stripe') {
+            try { $url = app(\App\Services\AmdRent\BookingPayments::class)->checkout($booking); }
+            catch (\Throwable $e) {
+                $retry = !empty($booking->quote_snapshot['delivery_request_id'])
+                    ? 'Torna alla richiesta di consegna per riprovare'
+                    : 'Torna alla ricerca per riprovare';
+                return redirect()->to($booking->confirmationUrl(), 303)->with('payment_error', $booking->fresh()->payment_status === 'failed'
+                    ? 'Stripe non ha potuto aprire il pagamento. '.$retry.'; la prenotazione non è confermata.'
+                    : 'Il pagamento non è ancora stato confermato. Riprova da questa pagina; non inviare una seconda prenotazione.');
             }
+            if ($url) return redirect()->away($url, 303);
         }
-
-        $booking = $service->reserve($intent, $request->safe()->only(['first_name', 'last_name', 'email', 'phone']));
         return redirect()->to($booking->confirmationUrl(), 303);
     }
 
     public function confirmation(string $reference)
     {
         $booking = PublicBooking::with('rental')->where('reference', $reference)->firstOrFail();
+        $deliveryRequest = in_array($booking->payment_status, ['failed', 'expired'], true)
+            ? \App\Models\AmdRentEnquiry::where('type', 'delivery')->where('organization_id', $booking->organization_id)
+                ->find($booking->quote_snapshot['delivery_request_id'] ?? null)
+            : null;
         return $this->page('public-cars.booking-confirmation', [
-            'booking' => $booking, 'car' => $booking->quote_snapshot,
-            'filters' => ['pickup_at' => $booking->pickup_at->format('Y-m-d\TH:i'), 'return_at' => $booking->return_at->format('Y-m-d\TH:i')],
+            'booking' => $booking, 'car' => $booking->quote_snapshot, 'deliveryRequest' => $deliveryRequest,
+            'filters' => array_filter(['pickup_at' => $booking->pickup_at->format('Y-m-d\TH:i'), 'return_at' => $booking->return_at->format('Y-m-d\TH:i'),
+                'place_id' => $booking->quote_snapshot['place_id'] ?? null], fn ($value) => $value !== null),
             'preview' => false, 'routePrefix' => 'public-cars',
         ]);
+    }
+
+    public function legacyConfirmation(string $reference)
+    {
+        $booking = PublicBooking::where('reference', $reference)->firstOrFail();
+
+        return redirect()->to($booking->confirmationUrl())
+            ->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer');
+    }
+
+    public function legacyPdf(Request $request, string $reference)
+    {
+        $booking = PublicBooking::where('reference', $reference)->firstOrFail();
+
+        return redirect()->to($booking->pdfUrl($request->boolean('download')))
+            ->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer');
     }
 
     public function pdf(string $reference)
@@ -100,10 +147,12 @@ class PublicBookingController extends Controller
     public function index(Request $request)
     {
         Gate::authorize('rentals.viewAny');
+        \App\Support\AmdRentAccess::check($request->user());
         abort_unless($request->user()?->is_active && $request->user()?->organization?->is_active, 403);
-        $filters = $request->validate(['q' => ['nullable', 'string', 'max:100']]);
+        $filters = $request->validate(['q' => ['nullable', 'string', 'max:100'], 'payment' => ['nullable', \Illuminate\Validation\Rule::in(['pending', 'paid', 'expired', 'failed', 'review', 'refunded', 'pickup'])]]);
         $query = PublicBooking::with(['rental.vehicle', 'organization'])
             ->when(!$request->user()->hasRole('admin'), fn ($q) => $q->where('organization_id', $request->user()->organization_id));
+        if (!empty($filters['payment'])) $query->where('payment_status', $filters['payment']);
         if (!empty($filters['q'])) {
             $query->where(fn ($q) => $q->where('reference', 'like', '%'.$filters['q'].'%')
                 ->orWhere('email', 'like', '%'.$filters['q'].'%')->orWhere('last_name', 'like', '%'.$filters['q'].'%'));

@@ -1,0 +1,52 @@
+.amd-account-auth { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 56px; align-items: start; max-width: 1040px; margin: 16px auto; }
+.amd-account-intro { padding-top: 24px; }
+.amd-account-intro p { color: var(--amd-muted); }
+.amd-account-form { display: grid; gap: 20px; min-width: 0; padding: 32px; background: #fff; border: 1px solid var(--amd-border); border-radius: 8px; }
+.amd-account-form h2, .amd-account-form p { margin: 0; }
+.amd-account-form .amd-errors { margin: 0; }
+.amd-account-form .amd-button { justify-self: start; }
+.amd-account-form .password-field input { padding-right: 48px; }
+.amd-account-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.amd-account-notice { padding: 16px 20px; border-left: 4px solid var(--amd-blue); background: #edf3f8; line-height: 1.6; margin: 0 0 20px; overflow-wrap: anywhere; }
+.amd-account-form .amd-account-notice { margin: 0; }
+.amd-account-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; border-bottom: 1px solid var(--amd-border); padding-bottom: 16px; margin-bottom: 32px; }
+.amd-account-nav a { padding: 8px 0; text-decoration: none; }
+.amd-account-nav a[aria-current=page] { font-weight: 700; text-decoration: underline; }
+.amd-account-nav form { margin-left: auto; }
+.amd-account-logout { padding: 10px 0; border: 0; background: transparent; color: var(--amd-action); text-decoration: underline; text-underline-offset: 4px; font: inherit; cursor: pointer; }
+.amd-account-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 24px; }
+.amd-account-toolbar form { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.amd-account-toolbar h1 { margin: 0; }
+.amd-account-list { display: grid; gap: 20px; }
+.amd-account-record { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px 40px; padding: 28px; border: 1px solid var(--amd-border); background: #fff; border-radius: 8px; overflow-wrap: anywhere; }
+.amd-account-record h2 { font-size: 23px; margin: 6px 0 12px; }
+.amd-account-record p { margin: 6px 0; }
+.amd-account-record small { color: var(--amd-muted); }
+.amd-account-record dl { margin: 0 0 16px; }
+.amd-account-record dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; padding: 6px 0; }
+.amd-account-record dd { margin: 0; font-weight: 650; }
+.amd-account-empty { padding: 32px; background: #fff; border: 1px solid var(--amd-border); border-radius: 8px; }
+.amd-account-pagination { display: flex; justify-content: space-between; gap: 20px; align-items: center; margin-top: 24px; }
+.amd-account-documents { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--amd-border); }
+.amd-account-documents ul { list-style: none; padding: 0; }
+.amd-account-documents li { padding: 16px 0; border-bottom: 1px solid var(--amd-border); overflow-wrap: anywhere; }
+.amd-account-documents small { display: block; margin-top: 6px; }
+.amd-account-documents form { max-width: 640px; margin-top: 28px; }
+.amd-account-callout { margin: 28px 0 0; padding: 24px; border: 1px solid var(--amd-border); background: #f4f7fa; border-radius: 8px; }
+.amd-account-callout h2 { font-size: 21px; margin-top: 0; }
+.amd-account-profile { align-items: start; }
+@media (max-width: 760px) {
+    .amd-account-auth { grid-template-columns: 1fr; gap: 24px; margin: 0; }
+    .amd-account-intro { padding: 0; }
+    .amd-account-intro h1 { font-size: 30px; }
+    .amd-account-form { padding: 24px; }
+    .amd-account-record, .amd-account-profile { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+    .amd-account-grid { grid-template-columns: 1fr; }
+    .amd-account-form, .amd-account-record, .amd-account-empty, .amd-account-callout { padding: 20px; }
+    .amd-account-nav { gap: 8px 20px; }
+    .amd-account-nav form { margin-left: 0; }
+    .amd-account-toolbar form { width: 100%; }
+    .amd-account-toolbar .amd-field { flex: 1; }
+}

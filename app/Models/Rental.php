@@ -28,7 +28,7 @@ class Rental extends Model implements SpatieHasMedia
         'mileage_out','mileage_in','fuel_out_percent','fuel_in_percent',
         'notes','created_by', 'closed_at', 'closed_by',
         // facoltativi/denormalizzati se li usi:
-        'amount','admin_fee_percent','admin_fee_amount',
+        'amount','admin_fee_percent','admin_fee_amount','booking_channel','admin_fee_collected_amount','amd_extra_fee_percent',
         'second_driver_id',
         'final_amount_override',
         'number_id',

@@ -1,29 +1,16 @@
 <x-app-layout>
-    <x-slot name="header"><h2 class="font-semibold text-xl text-white">Prenotazioni dal sito</h2></x-slot>
-    <div class="max-w-7xl mx-auto space-y-5">
-        <div class="app-surface rounded border p-4 sm:p-6">
-            <h1 class="font-semibold text-lg">Prenotazioni con pagamento al ritiro</h1>
-            <p class="app-muted mt-2">Ogni prenotazione è già collegata a un noleggio e impegna il veicolo. Apri il noleggio per completare i dati del cliente, preparare il contratto e registrare il pagamento al ritiro.</p>
-            <form class="mt-4 flex flex-wrap items-end gap-3" method="get" action="{{ route('public-bookings.index') }}"><div class="flex-1 min-w-0"><label class="block text-sm mb-1" for="booking-search">Riferimento, cognome o email</label><input class="app-field rounded w-full" id="booking-search" name="q" type="search" maxlength="100" value="{{ $filters['q'] ?? '' }}"></div><button class="rounded bg-indigo-700 px-4 py-2 text-white" type="submit">Cerca</button><a class="underline py-2" href="{{ route('public-bookings.index') }}">Azzera</a></form>
-        </div>
-        @forelse($bookings as $booking)
-        <article class="app-surface rounded border p-4 sm:p-6">
-            <div class="flex flex-wrap justify-between gap-3"><h2 class="font-semibold text-lg break-all">{{ $booking->reference }}</h2><p>{{ $booking->status_label }}</p></div>
-            <div class="mt-4 grid gap-5 md:grid-cols-3">
-                <div><h3 class="font-semibold">Cliente</h3><p class="break-words">{{ $booking->first_name }} {{ $booking->last_name }}</p><p class="break-all">{{ $booking->email }}</p><p>{{ $booking->phone }}</p></div>
-                <div><h3 class="font-semibold">Auto e ritiro</h3><p>{{ $booking->quote_snapshot['title'] }}</p><p>{{ $booking->quote_snapshot['organization'] }}</p><p>{{ $booking->quote_snapshot['location'] }} — {{ $booking->quote_snapshot['city'] }}</p><p>{{ $booking->pickup_at->format('d/m/Y H:i') }} – {{ $booking->return_at->format('d/m/Y H:i') }}</p></div>
-                <div><h3 class="font-semibold">Importi concordati</h3><p>Noleggio: {{ number_format($booking->total_cents / 100, 2, ',', '.') }} €</p><p>Cauzione separata: {{ number_format($booking->deposit_cents / 100, 2, ',', '.') }} €</p><p>Pagamento previsto al ritiro.</p><p class="app-muted text-sm">I pagamenti effettivi sono registrati nel noleggio.</p></div>
-            </div>
-            @if($booking->rental && !$booking->rental->trashed()) @can('view', $booking->rental)<a class="inline-block mt-4 rounded bg-indigo-700 px-4 py-2 text-white" href="{{ route('rentals.show', $booking->rental_id) }}">Apri noleggio n. {{ $booking->rental->display_number }}</a>@endcan @endif
-            <div class="mt-4 flex flex-wrap gap-3">
-                <a class="rounded border border-gray-400 px-4 py-2" href="{{ $booking->pdfUrl(true) }}">Scarica PDF</a>
-                <a class="rounded border border-gray-400 px-4 py-2" href="{{ $booking->pdfUrl() }}" target="_blank" rel="noopener noreferrer">Stampa conferma</a>
-                <a class="rounded border border-gray-400 px-4 py-2" href="{{ $booking->emailComposeUrl() }}">Prepara email</a>
-                @if($booking->whatsappComposeUrl())<a class="rounded border border-gray-400 px-4 py-2" href="{{ $booking->whatsappComposeUrl() }}" target="_blank" rel="noopener noreferrer">Prepara WhatsApp</a>@endif
-            </div>
-            <p class="app-muted text-sm mt-2">Controlla il messaggio e premi Invia nell’app. Il PDF va allegato manualmente dopo averlo scaricato.@if($booking->shareableConfirmationUrl()) Il messaggio include anche il collegamento alla conferma.@endif @unless($booking->whatsappComposeUrl()) Per WhatsApp serve un numero con prefisso internazionale, ad esempio +39.@endunless</p>
-        </article>
-        @empty<div class="app-surface rounded border p-6"><p>Nessuna prenotazione dal sito{{ !empty($filters['q']) ? ' corrisponde alla ricerca' : ' presente' }}.</p></div>@endforelse
-        {{ $bookings->links() }}
-    </div>
-</x-app-layout>
+<x-slot name="header"><h1 class="font-semibold text-xl text-white">Prenotazioni e pagamenti AMD Rent</h1></x-slot>
+@php $money = fn ($cents) => number_format($cents / 100, 2, ',', '.').' €'; @endphp
+<div class="amr"><x-amd-rent-nav />@include('amd-rent.feedback')
+<section class="amr-panel app-surface"><h2>Dal pagamento online al ritiro</h2><p>Le nuove prenotazioni prevedono una quota online incassata da AMD Rent. Verifica lo stato del pagamento prima di preparare la consegna. Le prenotazioni precedenti conservano le condizioni accettate.</p>
+<form class="amr-filter" method="get"><div><label for="booking-search">Riferimento, cognome o email</label><input class="app-field" id="booking-search" name="q" maxlength="100" value="{{ $filters['q'] ?? '' }}"></div><div><label for="payment-filter">Pagamento</label><select class="app-field" id="payment-filter" name="payment"><option value="">Tutti</option>@foreach(['pending' => 'In attesa', 'paid' => 'Quota online pagata', 'review' => 'Da verificare', 'expired' => 'Scaduto', 'failed' => 'Non avviato', 'refunded' => 'Annullata e rimborsata', 'pickup' => 'Interamente al ritiro (precedenti)'] as $key => $label)<option value="{{ $key }}" @selected(($filters['payment'] ?? '') === $key)>{{ $label }}</option>@endforeach</select></div><button class="amr-button">Cerca</button><a class="amr-link" href="{{ route('public-bookings.index') }}">Azzera</a></form></section>
+@forelse($bookings as $booking)<article class="amr-panel app-surface"><div class="amr-row-title"><h2>{{ $booking->first_name }} {{ $booking->last_name }}</h2><strong>{{ $booking->status_label }}</strong></div><p class="app-muted">{{ $booking->reference }} · {{ $booking->quote_snapshot['organization'] }}</p>
+<div class="amr-columns"><div><h3>Auto e appuntamento</h3><p>{{ $booking->quote_snapshot['title'] }}<br>{{ $booking->pickup_at->format('d/m/Y H:i') }} – {{ $booking->return_at->format('d/m/Y H:i') }}</p><p>{{ $booking->quote_snapshot['location'] }} — {{ $booking->quote_snapshot['city'] }}</p>@if(!empty($booking->quote_snapshot['delivery_address']))<p>Consegna concordata: <strong>{{ $booking->quote_snapshot['delivery_address'] }}</strong></p>@endif<p>{{ $booking->email }}<br>{{ $booking->phone }}</p></div>
+<div><h3>Importi concordati</h3><p>Totale: <strong>{{ $money($booking->total_cents) }}</strong>@if($booking->delivery_fee_cents)<br>Di cui consegna: {{ $money($booking->delivery_fee_cents) }}@endif</p>
+@if($booking->payment_method === 'stripe')<p>Versato online ad AMD Rent: <strong>{{ $money($booking->online_paid_cents - $booking->refunded_cents) }}</strong><br>Saldo previsto al ritiro: <strong>{{ $money($booking->pickup_due_cents) }}</strong></p><p>La quota online copre la commissione AMD Rent. Non richiederla nuovamente al cliente.</p>@if($booking->refunded_cents)<p>Rimborsato da Stripe: {{ $money($booking->refunded_cents) }}. Verificare gli importi residui e la prenotazione con AMD Rent.</p>@endif
+@else<p>Pagamento concordato interamente al ritiro.</p>@endif<p>Cauzione separata: {{ $money($booking->deposit_cents) }}</p></div></div>
+<div class="amr-actions">@if($booking->rental && !$booking->rental->trashed())@can('view', $booking->rental)<a class="amr-button" href="{{ route('rentals.show', $booking->rental_id) }}">Apri noleggio n. {{ $booking->rental->display_number }}</a>@endcan @endif<a class="amr-link" href="{{ $booking->confirmationUrl() }}" target="_blank" rel="noopener noreferrer">Riepilogo cliente</a><a class="amr-link" href="{{ $booking->pdfUrl(true) }}">Scarica PDF</a></div>
+@if($booking->payment_status === 'pending')<p class="app-muted">L’auto è temporaneamente riservata; il pagamento non è ancora confermato. La scadenza viene riconciliata con Stripe prima di liberare l’auto.</p>@endif
+@if($booking->payment_status === 'review')<p class="amr-notice">Pagamento da verificare con AMD Rent: la prenotazione non va modificata prima della riconciliazione.</p>@include('amd-rent.payment-review')@endif
+<details class="amr-disclosure"><summary>Condividi il riepilogo</summary><div class="amr-actions"><a class="amr-link" href="{{ $booking->emailComposeUrl() }}">Prepara email</a>@if($booking->whatsappComposeUrl())<a class="amr-link" href="{{ $booking->whatsappComposeUrl() }}" target="_blank" rel="noopener noreferrer">Prepara WhatsApp</a>@endif<a class="amr-link" href="{{ $booking->pdfUrl() }}" target="_blank" rel="noopener noreferrer">Stampa riepilogo</a></div><p>Controlla il messaggio prima di inviarlo. Il PDF va allegato manualmente.</p></details>
+</article>@empty<section class="amr-panel app-surface"><p>Nessuna prenotazione corrisponde alla selezione.</p></section>@endforelse{{ $bookings->links() }}</div></x-app-layout>

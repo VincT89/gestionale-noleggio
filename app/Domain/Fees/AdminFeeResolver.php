@@ -56,6 +56,15 @@ class AdminFeeResolver
      */
     public function calculateForRental(Rental $rental, CarbonInterface|string|null $at = null): array
     {
+        if ($rental->booking_channel === 'amd_rent') {
+            $booking = \App\Models\PublicBooking::where('rental_id', $rental->id)->firstOrFail();
+            $extras = (float) $rental->charges()->paid()->where('is_commissionable', true)->sum('amount');
+            $extraPercent = $rental->closed_at ? $rental->amd_extra_fee_percent
+                : ($rental->assignment_id && $rental->organization_id ? $this->findActivePercent($rental->organization_id, $at ?? $rental->actual_return_at) : null);
+            return ['percent' => 20.0, 'extra_percent' => $extraPercent,
+                'commissionable_total' => round(($booking->total_cents - $booking->delivery_fee_cents) / 100 + $extras, 2),
+                'amount' => round(max(0, $booking->online_paid_cents - $booking->refunded_cents) / 100 + $extras * (float) $extraPercent / 100, 2)];
+        }
         $date = $this->normalizeDate($at ?? ($rental->actual_return_at ?: now()));
 
         // percentuale attiva per l'org del rental (se manca → null)

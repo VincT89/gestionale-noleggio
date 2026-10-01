@@ -237,6 +237,10 @@
 </div>
 
 {{-- Modale pagamento --}}
+@php
+    $paymentRules = app(\App\Services\Rentals\RentalPaymentService::class);
+    $commissionablePaymentKinds = array_values(array_filter(\App\Models\RentalCharge::COMMISSIONABLE_KINDS, fn ($kind) => $paymentRules->isCommissionable($rental, $kind)));
+@endphp
 <div
     x-data="paymentModal(
         '{{ route('rentals.record_payment', $rental) }}',
@@ -252,7 +256,9 @@
             kinds: [
                 {val:'base',              label:'Quota base / saldo'},
                 {val:'distance_overage',  label:'Km extra'},
+                @if($rental->booking_channel !== 'amd_rent')
                 {val:'base+distance_overage', label:'Quota base + Km extra'},
+                @endif
                 {val:'damage',            label:'Danni'},
                 {val:'surcharge',         label:'Sovrapprezzo'},
                 {val:'fine',              label:'Multe'},
@@ -297,7 +303,7 @@
                         Per un saldo o un versamento aggiuntivo del noleggio scegli Quota base / saldo.
                     </p>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-300" x-show="kind"
-                        x-text="@js($rental->assignment_id !== null) && @js(\App\Models\RentalCharge::COMMISSIONABLE_KINDS).includes(kind)
+                        x-text="@js($commissionablePaymentKinds).includes(kind)
                             ? 'Questo pagamento entra nella base delle commissioni.'
                             : 'Questo pagamento è escluso dalla base delle commissioni.'"></p>
                   </div>

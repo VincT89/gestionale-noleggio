@@ -10,6 +10,8 @@ use Tests\Support\MySqlQaGuard;
 $root = dirname(__DIR__, 2);
 require $root.'/vendor/autoload.php';
 $app = require $root.'/bootstrap/app.php';
+// Keep absolute isolated cache paths intact in child workers on Windows too.
+if (preg_match('/^[A-Za-z]:/', $root, $drive)) $app->addAbsoluteCachePathPrefix($drive[0]);
 $app->make(Kernel::class)->bootstrap();
 MySqlQaGuard::check();
 Http::preventStrayRequests();
@@ -26,6 +28,7 @@ DB::connection()->beforeExecuting(function ($query) use (&$reported) {
     }
 });
 try {
+    config(['amd_rent.payment_mode' => 'pickup']);
     $booking = app(PublicBookingService::class)->reserve($input['intent'], $input['contact']);
     echo 'RESULT '.json_encode(['status' => 'confirmed', 'id' => $booking->id], JSON_THROW_ON_ERROR).PHP_EOL;
 } catch (ValidationException $exception) {

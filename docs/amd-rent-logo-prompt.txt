@@ -1,0 +1,6 @@
+Use case: logo-brand.
+Asset type: production-ready logo proposal for the header of AMD Rent, an Italian public car rental booking website connected to a separate rental management system.
+Create one original, clean horizontal wordmark reading exactly "AMD Rent". A M D uppercase, one space, R uppercase followed by lowercase e n t. Make AMD confidently bold and Rent slightly lighter, both with highly legible custom sans-serif lettering. A restrained geometric treatment of the A may subtly suggest a road, integrated in the letter itself, not a separate ornamental illustration.
+Flat single dark navy color #112e51, matching the project's existing navy palette. A truly transparent background with alpha; no white rectangular background and no checkerboard baked into the pixels.
+The mark must work at 180–220 pixels wide in a white website navigation bar. Horizontal format, approximately 3:1, fill the canvas with the lockup and keep only a small even transparent margin. Crisp edges, excellent letter spacing, no fine details.
+Only one logo, no presentation sheet or mockup. No tagline, no Mobility text, no URL, no car drawing, no gradients, no shadows, no 3D, no metallic effects, no badge, no watermark. Use the exact words "AMD Rent".

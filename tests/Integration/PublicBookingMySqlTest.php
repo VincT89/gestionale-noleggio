@@ -3,7 +3,7 @@
 namespace Tests\Integration;
 
 use App\Domain\Rentals\{PublicBookingService, PublicVehicleSearch};
-use App\Models\{Location, Organization, PublicBooking, PublicRentalOffer, RentalContractSnapshot, User, Vehicle, VehicleAssignment, VehiclePricelist};
+use App\Models\{Location, Organization, PublicBooking, RentalContractSnapshot, User, Vehicle, VehicleAssignment, VehiclePricelist};
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\{Artisan, Crypt, DB, Http, Mail};
 use Spatie\Permission\Models\{Permission, Role};
@@ -16,6 +16,7 @@ class PublicBookingMySqlTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['amd_rent.payment_mode' => 'pickup']);
         MySqlQaGuard::check(empty: true);
         $this->assertSame(0, Artisan::call('migrate', ['--force' => true, '--no-interaction' => true]), Artisan::output());
         $this->withoutVite();
@@ -37,6 +38,7 @@ class PublicBookingMySqlTest extends TestCase
         $operator = Organization::create(['name' => 'Noleggiatore QA', 'type' => 'renter', 'is_active' => true]);
         $other = Organization::create(['name' => 'Altro noleggiatore QA', 'type' => 'renter', 'is_active' => true]);
         $location = Location::create(['organization_id' => $operator->id, 'name' => 'Sede QA', 'city' => 'Bari', 'address_line' => 'Indirizzo dimostrativo']);
+        \App\Models\PublicDeliveryLocation::forLocation($location);
         $vehicle = Vehicle::create(['admin_organization_id' => $owner->id, 'default_pickup_location_id' => $location->id,
             'plate' => 'QA001AA', 'make' => 'Toyota', 'model' => 'Yaris', 'fuel_type' => 'petrol',
             'transmission' => 'manual', 'seats' => 5, 'year' => 2024, 'segment' => 'compact', 'is_active' => true]);
@@ -46,8 +48,7 @@ class PublicBookingMySqlTest extends TestCase
             'name' => 'Listino QA', 'currency' => 'EUR', 'base_daily_cents' => 10000, 'weekend_pct' => 0,
             'km_included_per_day' => 100, 'extra_km_cents' => 30, 'deposit_cents' => 50000, 'rounding' => 'none',
             'version' => 1, 'status' => 'active', 'active_flag' => true, 'is_active' => true]);
-        $offer = PublicRentalOffer::create(['vehicle_id' => $vehicle->id, 'organization_id' => $operator->id,
-            'location_id' => $location->id, 'pricelist_id' => $price->id, 'prices_include_vat' => true, 'is_published' => true]);
+        $this->assertDatabaseCount('public_rental_offers', 0);
         $role = Role::findOrCreate('renter', 'web');
         foreach (['rentals.viewAny', 'rentals.view', 'rentals.cancel', 'vehicle_pricing.update'] as $permission) {
             $role->givePermissionTo(Permission::findOrCreate($permission, 'web'));
@@ -56,10 +57,10 @@ class PublicBookingMySqlTest extends TestCase
         $outsider = $this->operator($other, 'other@example.test', $role);
         $period = ['pickup_at' => '2026-09-10T10:00', 'return_at' => '2026-09-13T10:00'];
         $search = app(PublicVehicleSearch::class);
-        $this->assertCount(1, $search->search(PublicRentalOffer::published(), $period));
+        $this->assertCount(1, $search->search(\App\Models\VehiclePricelist::forPublicRental(), $period));
         $intents = [];
         for ($i = 0; $i < 2; $i++) {
-            $page = $this->get(route('public-cars.booking.create', ['offer' => $offer->id] + $period))->assertOk();
+            $page = $this->get(route('public-cars.booking.create', ['pricelist' => $price->id] + $period))->assertOk();
             $intents[] = json_decode(Crypt::decryptString($page->viewData('checkoutToken')), true, 32, JSON_THROW_ON_ERROR);
         }
         $contact = ['first_name' => 'Cliente', 'last_name' => 'Dimostrativo', 'email' => 'customer@example.test', 'phone' => '+393200000000'];
@@ -70,6 +71,7 @@ class PublicBookingMySqlTest extends TestCase
             $this->assertDatabaseCount($table, 1);
         }
         $this->assertDatabaseCount('rental_charges', 0);
+        $this->assertDatabaseCount('public_rental_offers', 1);
         $booking = PublicBooking::with('rental')->firstOrFail();
         $this->assertSame((int) $operator->id, (int) $booking->organization_id);
         $this->assertSame((int) $operator->id, (int) $booking->rental->organization_id);
@@ -79,7 +81,7 @@ class PublicBookingMySqlTest extends TestCase
         $this->assertSame('pay_at_pickup', $booking->payment_method);
         $this->assertSame(30000, $booking->total_cents);
         $this->assertSame(50000, $booking->deposit_cents);
-        $this->assertCount(0, $search->search(PublicRentalOffer::published(), $period));
+        $this->assertCount(0, $search->search(\App\Models\VehiclePricelist::forPublicRental(), $period));
         $winner = array_search('confirmed', array_column($results, 'status'), true);
         $retry = app(PublicBookingService::class)->reserve($intents[$winner], $contact);
         $this->assertSame($booking->id, $retry->id);
@@ -89,10 +91,8 @@ class PublicBookingMySqlTest extends TestCase
         $this->flushSession();
         $this->actingAs($outsider)->get(route('public-bookings.index'))->assertOk()->assertDontSee($booking->reference);
         $this->flushSession();
-        $this->actingAs($user)->put(route('public-offers.update', $offer), [
-            'pricelist_id' => $price->id, 'location_id' => $location->id, 'prices_include_vat' => 1,
-            'is_published' => 1, 'deposit_euros' => '750,25',
-        ])->assertRedirect(route('public-offers.index'));
+        $this->actingAs($user);
+        $price->update(['deposit_cents' => 75025]);
         $this->assertSame(75025, $price->fresh()->deposit_cents);
         $this->assertSame(50000, $booking->fresh()->deposit_cents);
         $this->assertSame(50000, RentalContractSnapshot::firstOrFail()->pricing_snapshot['deposit_cents']);
@@ -110,7 +110,7 @@ class PublicBookingMySqlTest extends TestCase
         $this->assertStringNotContainsString('localhost', $message);
         $this->postJson(route('rentals.cancel', $booking->rental_id))->assertOk()->assertJson(['status' => 'cancelled']);
         $this->get($confirmation)->assertOk()->assertSee('Prenotazione annullata')->assertDontSee('l’auto è riservata');
-        $this->assertCount(1, $search->search(PublicRentalOffer::published(), $period));
+        $this->assertCount(1, $search->search(\App\Models\VehiclePricelist::forPublicRental(), $period));
         $this->assertStringContainsString('Annullata', $booking->fresh()->shareText());
         Mail::assertNothingSent();
         Mail::assertNothingQueued();
