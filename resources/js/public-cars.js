@@ -1,4 +1,5 @@
 import './password-visibility';
+import './public-home-motion';
 
 const desktop = window.matchMedia('(min-width: 901px)');
 const mobileNav = document.querySelector('.amd-mobile-nav');

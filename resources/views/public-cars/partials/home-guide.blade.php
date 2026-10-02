@@ -1,13 +1,20 @@
+<svg class="amd-home-route" data-home-route aria-hidden="true" focusable="false" fill="none">
+    <defs><clipPath id="amd-home-coast-clip"><rect data-route-coast-clip /></clipPath></defs>
+    <path class="amd-home-route-coast" data-route-coast clip-path="url(#amd-home-coast-clip)" />
+    <path class="amd-home-route-bed" data-route-path />
+    <path class="amd-home-route-line" data-route-path pathLength="1" />
+</svg>
+
 <section id="luoghi-di-ritiro" class="amd-home-places" aria-labelledby="places-intro-title">
     <div class="amd-section-inner amd-places-layout">
-        <figure class="amd-places-photo">
+        <figure class="amd-places-photo" data-home-reveal="photo" data-home-photo>
             <img src="{{ asset('images/amd-rent-coastal-background-640.webp') }}"
                  srcset="{{ asset('images/amd-rent-coastal-background-640.webp') }} 640w, {{ asset('images/amd-rent-coastal-background-1536.webp') }} 1536w"
                  sizes="(max-width: 600px) calc(100vw - 40px), (max-width: 900px) calc(100vw - 48px), 576px"
                  width="1536" height="1024" loading="lazy" decoding="async"
                  alt="Una strada che segue la costa, tra il mare e la vegetazione mediterranea">
         </figure>
-        <div class="amd-places-copy">
+        <div class="amd-places-copy" data-home-reveal>
             <h2 id="places-intro-title">Da dove vuoi partire?</h2>
             <p class="amd-places-lead">Un aeroporto, una stazione o una città. Parti dalla tua destinazione e trova l’auto per il viaggio che stai organizzando.</p>
             <p>Indica luogo, date e orari per confrontare i veicoli disponibili. Nella scheda di ogni auto trovi il prezzo totale, i chilometri inclusi, la cauzione e le condizioni di ritiro.</p>
@@ -19,13 +26,13 @@
 
 <section class="amd-rental-options" aria-labelledby="rental-options-title">
     <div class="amd-section-inner amd-rental-options-inner">
-        <div>
+        <div data-home-reveal>
             <h2 id="rental-options-title">Un’auto per qualche giorno.<br>O per un progetto più lungo.</h2>
             <p>Per il tuo viaggio scegli tra le auto disponibili nelle date che ti servono. Se cerchi una soluzione a lungo termine, parti dalle tue esigenze: durata, chilometri e tipo di auto.</p>
             <a class="amd-button" href="{{ route('public-site.long-term') }}">Scopri il lungo termine</a>
         </div>
-        <div class="amd-delivery-feature">
-            <figure class="amd-delivery-photo">
+        <div class="amd-delivery-feature" data-home-reveal>
+            <figure class="amd-delivery-photo" data-home-reveal="photo" data-home-photo>
                 <img src="{{ asset('images/amd-rent-hotel-delivery-640.webp') }}"
                      srcset="{{ asset('images/amd-rent-hotel-delivery-640.webp') }} 640w, {{ asset('images/amd-rent-hotel-delivery-1200.webp') }} 1200w"
                      sizes="(max-width: 600px) calc(100vw - 40px), 520px"
@@ -43,7 +50,7 @@
 
 <section id="domande-frequenti" class="amd-home-explainer" aria-labelledby="booking-guide-title">
   <div class="amd-section-inner amd-booking-guide-layout">
-    <div class="amd-home-explainer-intro">
+    <div class="amd-home-explainer-intro" data-home-reveal>
         <h2 id="booking-guide-title">Prima di prenotare,<br>tutto in chiaro.</h2>
         <p>Confronta le auto, controlla le condizioni e scegli sapendo quanto pagherai e dove ritirare il veicolo.</p>
         <dl class="amd-booking-facts">
@@ -53,7 +60,7 @@
         </dl>
         <a href="{{ route('public-site.how-it-works') }}">Come funziona la prenotazione</a>
     </div>
-    <div class="amd-home-faq">
+    <div class="amd-home-faq" data-home-reveal>
         <details open>
             <summary>Quale prezzo vedo nella ricerca?</summary>
             <div><p>Il totale del noleggio per le date e gli orari scelti, IVA inclusa. La cauzione è indicata a parte e non viene sommata al prezzo del noleggio.</p><p>Prima di confermare puoi controllare il chilometraggio incluso e il costo degli eventuali chilometri extra. I prezzi e le condizioni dipendono dal noleggiatore e dall’auto selezionata.</p></div>

@@ -1,0 +1,138 @@
+/* Both layers use the photograph's original coordinates, even when it is cropped. */
+.amd-home-visual[data-home-scene] {
+    --amd-scene-min-width: 1129px;
+    --amd-scene-x: 100%;
+    --amd-scene-y: 50%;
+    contain: paint;
+}
+
+.amd-home-scene-plane {
+    position: absolute;
+    width: max(100%, var(--amd-scene-min-width));
+    aspect-ratio: 1942 / 809;
+    left: var(--amd-scene-x);
+    top: var(--amd-scene-y);
+    transform: translate(calc(-1 * var(--amd-scene-x)), calc(-1 * var(--amd-scene-y)));
+    pointer-events: none;
+}
+
+.amd-home-visual .amd-home-scene-background {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+}
+
+.amd-home-visual .amd-home-scene-vehicle {
+    position: absolute;
+    left: 54.4%;
+    top: 40.8%;
+    width: 32%;
+    transform-origin: 50% 85%;
+}
+
+.amd-home-visual .amd-home-scene-car { width: 100%; height: auto; max-width: none; object-fit: contain; }
+.amd-home-visual[data-scene-static] .amd-home-scene-vehicle { display: none; }
+.amd-car-glint { display: none; }
+
+@supports (mask-image: url("")) or (-webkit-mask-image: url("")) {
+    .amd-car-glint {
+        display: block;
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+        -webkit-mask: var(--amd-car-silhouette) center / 100% 100% no-repeat;
+        mask: var(--amd-car-silhouette) center / 100% 100% no-repeat;
+    }
+    .amd-car-glint::after {
+        content: '';
+        position: absolute;
+        top: -20%;
+        left: 0;
+        width: 13%;
+        height: 140%;
+        background: #fff;
+        filter: blur(5px);
+        opacity: 0;
+    }
+}
+
+/* One route connects the coastal photograph and hotel through the layout's gutters. */
+.amd-home-sections {
+    position: relative;
+    isolation: isolate;
+    overflow: clip;
+}
+
+.amd-home-sections > section > .amd-section-inner { position: relative; z-index: 2; }
+
+.amd-home-route {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.amd-home-route[data-route-ready] { visibility: visible; }
+.amd-home-route path { stroke-linecap: round; stroke-linejoin: round; }
+.amd-home-route-coast { fill: #edf3f7; }
+.amd-home-route-bed { stroke: #bfd1df; stroke-width: 4; opacity: .28; }
+.amd-home-route-line { stroke: #527e9e; stroke-width: 1.75; opacity: .85; }
+.amd-home-sections .amd-home-explainer { background: #f1f5f8; }
+.amd-home-route[data-route-animated] .amd-home-route-line {
+    stroke-dasharray: 1;
+    stroke-dashoffset: var(--amd-route-offset, 1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    [data-home-reveal] {
+        transition: opacity 700ms ease, transform 850ms cubic-bezier(.2, .75, .25, 1);
+    }
+    [data-home-reveal][data-reveal-pending] { opacity: 0; transform: translate3d(0, 30px, 0); }
+    [data-home-reveal]:focus-within { opacity: 1; transform: none; transition: none; }
+    /* Observe the full figure; clipping only its image keeps the reveal detectable. */
+    [data-home-reveal="photo"] { overflow: hidden; }
+    [data-home-reveal="photo"][data-reveal-pending] { opacity: 1; transform: none; }
+    [data-home-reveal="photo"] img { clip-path: inset(0); transition: clip-path 1150ms cubic-bezier(.2, .7, .25, 1); }
+    [data-home-reveal="photo"][data-reveal-pending] img { clip-path: inset(0 100% 0 0); transition: none; }
+    .amd-home-scene-vehicle[data-arrival-glint] .amd-car-glint::after { animation: amd-arrival-glint 1150ms ease-in-out both; }
+    [data-home-photo][data-photo-active] img {
+        transform: translate3d(0, var(--amd-photo-shift, 0px), 0) scale(1.09);
+    }
+    .amd-search-band--home .amd-hero-link,
+    .amd-home-sections a { transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
+    .amd-home-sections .amd-button:hover { box-shadow: 0 5px 16px #102e4d25; }
+}
+
+@keyframes amd-arrival-glint {
+    0% { transform: translate3d(-200%, 0, 0) skewX(-18deg); opacity: 0; }
+    20%, 75% { opacity: .25; }
+    100% { transform: translate3d(950%, 0, 0) skewX(-18deg); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .amd-home-visual .amd-home-scene-vehicle { display: none; }
+    [data-home-reveal] { opacity: 1; transform: none; transition: none; }
+}
+
+@media (max-width: 1150px) {
+    .amd-home-visual[data-home-scene] { --amd-scene-x: 80%; }
+}
+@media (max-width: 900px) {
+    .amd-home-visual[data-home-scene] { --amd-scene-min-width: 625px; --amd-scene-x: 70%; --amd-scene-y: 65%; }
+    .amd-home-route-coast { display: none; }
+    .amd-home-route-bed { stroke-width: 3; }
+    .amd-home-route-line { stroke-width: 1.25; }
+}
+@media (max-width: 600px) {
+    .amd-home-visual[data-home-scene] { --amd-scene-min-width: 514px; }
+}
+@media (max-width: 360px) {
+    .amd-home-visual[data-home-scene] { --amd-scene-min-width: 445px; }
+}

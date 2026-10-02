@@ -15,10 +15,25 @@
 @endphp
 <section class="amd-search-band {{ $searched ? 'amd-search-band--results' : 'amd-search-band--home' }}" aria-labelledby="search-title">
     @unless($searched)
-        <figure class="amd-home-visual">
-            <img src="{{ asset('images/amd-rent-coastal-drive-branded-1200.webp') }}"
-                srcset="{{ asset('images/amd-rent-coastal-drive-branded-640.webp') }} 640w, {{ asset('images/amd-rent-coastal-drive-branded-1200.webp') }} 1200w, {{ asset('images/amd-rent-coastal-drive-branded-1942.webp') }} 1942w"
-                sizes="(max-width: 900px) 100vw, (max-width: 2300px) 1150px, 50vw" width="1942" height="809" alt="" fetchpriority="high" decoding="async">
+        <figure class="amd-home-visual" data-home-scene aria-hidden="true">
+            <div class="amd-home-scene-plane">
+                <picture>
+                    <source media="(prefers-reduced-motion: reduce)"
+                        srcset="{{ asset('images/amd-rent-coastal-drive-branded-640.webp') }} 640w, {{ asset('images/amd-rent-coastal-drive-branded-1200.webp') }} 1200w, {{ asset('images/amd-rent-coastal-drive-branded-1942.webp') }} 1942w">
+                    <img class="amd-home-scene-background" src="{{ asset('images/amd-rent-coastal-scene-v2-1200.webp') }}"
+                        srcset="{{ asset('images/amd-rent-coastal-scene-v2-640.webp') }} 640w, {{ asset('images/amd-rent-coastal-scene-v2-1200.webp') }} 1200w, {{ asset('images/amd-rent-coastal-scene-v2-1942.webp') }} 1942w"
+                        data-scene-fallback="{{ asset('images/amd-rent-coastal-drive-branded-1200.webp') }}"
+                        sizes="(max-width: 600px) 514px, (max-width: 900px) 900px, (max-width: 2300px) 1150px, 50vw"
+                        width="1942" height="809" alt="" fetchpriority="high" decoding="async">
+                </picture>
+                <div class="amd-home-scene-vehicle" data-scene-vehicle>
+                    <img class="amd-home-scene-car" src="{{ asset('images/amd-rent-car-motion-v1-640.webp') }}"
+                        srcset="{{ asset('images/amd-rent-car-motion-v1-640.webp') }} 640w, {{ asset('images/amd-rent-car-motion-v1-1200.webp') }} 1200w"
+                        sizes="(max-width: 600px) 165px, (max-width: 900px) 288px, (max-width: 2300px) 368px, 16vw"
+                        width="1774" height="887" alt="" decoding="async" data-scene-car>
+                    <span class="amd-car-glint" data-car-glint></span>
+                </div>
+            </div>
         </figure>
     @endunless
     <div class="amd-search-band-inner">
