@@ -127,6 +127,35 @@ class DeliveryBookingRecoveryTest extends PublicBookingTestCase
         return ['checkout rejected' => ['failed'], 'checkout expired' => ['expired']];
     }
 
+    public function test_rejected_resumed_delivery_payment_points_back_to_the_delivery_request(): void
+    {
+        $case = $this->quotedDelivery();
+        $this->stripeResponds(500);
+        $booking = $this->bookDelivery($case);
+        $this->assertSame('pending', $booking->fresh()->payment_status);
+        $this->stripeResponds(400);
+        $this->post(URL::signedRoute('public-bookings.pay', ['reference' => $booking->reference]))
+            ->assertRedirect($booking->confirmationUrl())
+            ->assertSessionHas('payment_error', 'Stripe non ha potuto aprire il pagamento. Torna alla richiesta di consegna per riprovare.');
+        $this->assertSame('failed', $booking->fresh()->payment_status);
+        $this->get($booking->confirmationUrl())->assertOk()->assertSee('Torna alla richiesta di consegna')->assertDontSee('Torna alla ricerca per riprovare.');
+    }
+
+    public function test_rejected_resumed_standard_payment_still_points_back_to_search(): void
+    {
+        $this->offer();
+        $page = $this->get(route('public-cars.booking.create', ['pricelist' => 1] + $this->period()))->assertOk();
+        $this->stripeResponds(500);
+        $this->post(route('public-cars.booking.store', 1), $this->contact() + $this->period()
+            + ['checkout_token' => $page->viewData('checkoutToken')])->assertStatus(303);
+        $booking = PublicBooking::firstOrFail();
+        $this->stripeResponds(400);
+        $this->post(URL::signedRoute('public-bookings.pay', ['reference' => $booking->reference]))
+            ->assertRedirect($booking->confirmationUrl())
+            ->assertSessionHas('payment_error', 'Stripe non ha potuto aprire il pagamento. Torna alla ricerca per riprovare.');
+        $this->assertSame('failed', $booking->fresh()->payment_status);
+    }
+
     #[DataProvider('unsuccessfulAttempts')]
     public function test_customer_can_reopen_an_unpaid_delivery_and_book_again_without_losing_the_proposal(string $status): void
     {

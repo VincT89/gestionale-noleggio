@@ -8,7 +8,8 @@
         return is_scalar($input) ? (string) $input : '';
     };
     $money = fn ($cents) => number_format($cents / 100, 2, ',', '.').' €';
-    $baseFilters = array_filter(\Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at', 'place_id', 'city']), fn ($v) => $v !== null && $v !== '');
+    $baseFilters = array_filter(\Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at', 'place_id', 'city', 'request_delivery', 'delivery_address']), fn ($v) => $v !== null && $v !== '');
+    $customPickup = $value('request_delivery') === '1';
     $destinationValue = $value('destination', $value('place_id') ?: ($value('city') ? 'city:'.$value('city') : ''));
     $knownDestination = $destinations->contains(fn ($destination) => mb_strtolower($destination['value']) === mb_strtolower($destinationValue));
 @endphp
@@ -34,20 +35,26 @@
         <form id="car-search" class="amd-search" method="get" action="{{ route($routePrefix.'.index') }}" aria-label="Ricerca auto disponibili">
             @if($errors->any())<div class="amd-errors" role="alert"><strong>Controlla i dati della ricerca.</strong><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
             <div class="amd-search-primary">
-                <div class="amd-field amd-place-field"><label for="pickup-place">Luogo di ritiro e riconsegna</label>
+                <div class="amd-field amd-place-field"><label for="pickup-place" data-search-place-label>{{ $customPickup ? 'Luogo di riconsegna' : 'Luogo di ritiro' }}</label>
                     <select id="pickup-place" name="destination" required data-place-select aria-describedby="place-help">
                         <option value="">Cerca città, aeroporto, stazione o zona</option>
                         @foreach($destinations as $destination)<option value="{{ $destination['value'] }}" @selected(mb_strtolower($destinationValue) === mb_strtolower($destination['value']))>{{ $destination['label'] }}</option>@endforeach
                         @if(!$knownDestination && $selectedPlace && $destinationValue === (string) $selectedPlace->id)<option value="{{ $selectedPlace->id }}" selected>Punto di ritiro{{ $selectedPlace->city ? ' — '.$selectedPlace->city : ' selezionato' }}</option>@endif
                     </select>
-                    <small id="place-help">Scegli un luogo dall’elenco.</small>
+                    <small id="place-help">{{ $customPickup ? 'Scegli dove riconsegnare l’auto, per esempio un aeroporto servito.' : 'Scegli un luogo dall’elenco. Per il ritiro personalizzato, qui scegli dove riconsegnare l’auto.' }}</small>
+                    <label class="amd-search-delivery-choice" for="search-request-delivery"><input id="search-request-delivery" type="checkbox" name="request_delivery" value="1" data-search-delivery @checked($customPickup)><span>Voglio ritirare l’auto ad un indirizzo personalizzato</span></label>
+                    <div class="amd-field amd-search-delivery-address" data-search-delivery-field>
+                        <label for="search-delivery-address">Hotel o indirizzo completo di ritiro</label>
+                        <input id="search-delivery-address" name="delivery_address" type="text" minlength="8" maxlength="500" value="{{ $value('delivery_address') }}" aria-describedby="search-delivery-help" data-search-delivery-address @if($customPickup) required @endif>
+                        <small id="search-delivery-help">Indica anche la città. Il noleggiatore deve confermare l’indirizzo e l’eventuale supplemento prima del pagamento.</small>
+                    </div>
                 </div>
                 <div class="amd-field"><label for="pickup-at">Ritiro</label><input id="pickup-at" name="pickup_at" type="datetime-local" required value="{{ $value('pickup_at', now()->addDay()->setTime(10, 0)->format('Y-m-d\TH:i')) }}" min="{{ now()->format('Y-m-d\TH:i') }}" @if($errors->has('pickup_at')) aria-invalid="true" @endif></div>
                 <div class="amd-field"><label for="return-at">Riconsegna</label><input id="return-at" name="return_at" type="datetime-local" required value="{{ $value('return_at', now()->addDays(4)->setTime(10, 0)->format('Y-m-d\TH:i')) }}" min="{{ now()->format('Y-m-d\TH:i') }}" @if($errors->has('return_at')) aria-invalid="true" @endif></div>
                 <button class="amd-button amd-search-submit" type="submit">Cerca auto</button>
             </div>
             <div class="amd-search-foot">
-                <p class="amd-search-note">Ritiro e riconsegna nello stesso luogo. Date e orari italiani.</p>
+                <p class="amd-search-note">Date e orari italiani.</p>
                 @unless($searched)<p class="amd-search-note"><strong>20% online con Stripe.</strong> Saldo al ritiro.</p>@endunless
             </div>
         </form>
@@ -81,6 +88,7 @@
                 </form>
             </div>
             <p class="amd-result-period">Dal {{ \Carbon\CarbonImmutable::parse($filters['pickup_at'])->format('d/m/Y H:i') }} al {{ \Carbon\CarbonImmutable::parse($filters['return_at'])->format('d/m/Y H:i') }}. Prezzi per l’intero periodo.</p>
+            @if($customPickup)<p class="amd-result-period">Ritiro richiesto: <strong>{{ $value('delivery_address') }}</strong>. Mostriamo i noleggiatori che accettano richieste personalizzate: indirizzo e supplemento devono essere confermati. I prezzi indicati comprendono il noleggio; l’eventuale supplemento sarà nella proposta.</p>@endif
             @if($results->contains(fn ($car) => $car['product_id'] !== null))<p class="amd-result-period">Per ogni prodotto mostriamo l’auto disponibile con il prezzo totale più basso, nel rispetto dei filtri selezionati.</p>@endif
             @forelse($results as $car)
                 <article class="amd-car" aria-labelledby="car-{{ $car['id'] }}">
@@ -89,7 +97,7 @@
                         @if($car['product_name'] !== null && $car['product_name'] !== $car['title'])<p>{{ $car['title'] }}</p>@endif
                         <p class="amd-car-provider">Noleggiatore: <strong>{{ $car['organization'] }}</strong></p>
                         <dl class="amd-specs">@if($car['seats'])<div><dt>Posti</dt><dd>{{ $car['seats'] }}</dd></div>@endif @if($car['transmission'])<div><dt>Cambio</dt><dd>{{ $car['transmission'] }}</dd></div>@endif @if($car['fuel'])<div><dt>Alimentazione</dt><dd>{{ $car['fuel'] }}</dd></div>@endif</dl>
-                        <div class="amd-car-pickup"><span>Ritiro e riconsegna</span><p>{{ $car['location'] }}@if($car['city']), {{ $car['city'] }}@endif</p></div>
+                        <div class="amd-car-pickup"><span>{{ $customPickup ? 'Luogo di riconsegna' : 'Punto di ritiro' }}</span><p>{{ $car['location'] }}@if($car['city']), {{ $car['city'] }}@endif</p></div>
                         <p class="amd-car-mileage">{{ $car['km_per_day'] === null ? 'Chilometraggio illimitato' : $car['km_per_day'].' km inclusi al giorno' }}</p>
                     </div>
                     <div class="amd-car-price"><span>Totale per {{ $car['days'] }} {{ $car['days'] === 1 ? 'giorno' : 'giorni' }}</span><strong>{{ $money($car['total_cents']) }}</strong><small>{{ $car['prices_include_vat'] ? 'IVA inclusa' : 'Importo di listino, IVA da verificare' }}</small><small>Cauzione separata: {{ $money($car['deposit_cents']) }}</small><small>20% online con Stripe, saldo al ritiro</small><a class="amd-button" href="{{ route($routePrefix.'.show', ['pricelist' => $car['id']] + $filters) }}">Vedi auto e condizioni</a></div>

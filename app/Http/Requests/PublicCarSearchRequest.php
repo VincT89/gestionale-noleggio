@@ -51,6 +51,8 @@ class PublicCarSearchRequest extends FormRequest
             'city' => ['nullable', 'string', 'max:128'],
             'place_id' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
             'supplier' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
+            'request_delivery' => ['nullable', 'boolean'],
+            'delivery_address' => ['exclude_unless:request_delivery,1', 'required', 'string', 'min:8', 'max:500'],
             'budget' => ['nullable', 'numeric', 'min:0', 'max:1000000', 'regex:/^\d+(\.\d{1,2})?$/'],
             'seats' => ['nullable', 'integer', 'min:1', 'max:20'],
             'transmission' => ['nullable', Rule::in(array_keys(Vehicle::TRANSMISSION_LABELS_IT))],
@@ -101,6 +103,8 @@ class PublicCarSearchRequest extends FormRequest
             'place_id.*' => 'Scegli un luogo di ritiro dall’elenco.',
             'destination.*' => 'Scegli una città, un aeroporto, una stazione o una zona dall’elenco.',
             'supplier.*' => 'Controlla il noleggiatore selezionato.',
+            'request_delivery.*' => 'Controlla la scelta del ritiro personalizzato.',
+            'delivery_address.*' => 'Indica hotel o indirizzo completo di ritiro, con la città, da 8 a 500 caratteri.',
         ];
     }
 }

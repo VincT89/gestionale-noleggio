@@ -2,7 +2,15 @@
 <h2 id="booking-summary-title">Il tuo noleggio</h2>
 @if(!isset($booking) && $car['has_photo'])<img class="amd-booking-car-photo" src="{{ route($routePrefix.'.photo', $car['id']) }}" alt="{{ $car['photo_is_reference'] ? 'Immagine indicativa: '.$car['title'] : $car['title'] }}" width="360" height="200">@if($car['photo_is_reference'])<small>Immagine indicativa del modello</small>@endif @endif
 <h3>{{ $car['title'] }}</h3>
-<p class="amd-summary-label">{{ empty($car['delivery_address']) ? 'Ritiro e riconsegna nello stesso luogo' : 'Luogo di riconsegna' }}</p>@if(!empty($car['delivery_address']))<p>Consegna concordata: <strong>{{ $car['delivery_address'] }}</strong></p>@endif
+@if(!empty($car['delivery_address']))
+<p class="amd-summary-label">Ritiro concordato</p><p><strong>{{ $car['delivery_address'] }}</strong></p>
+@else
+<div data-summary-standard-pickup @if($requestDelivery ?? false) hidden @endif><p class="amd-summary-label">Luogo di ritiro</p><p>{{ $car['location'] }} — {{ $car['city'] }}<br>{{ $car['address'] }}</p></div>
+@if(!isset($booking) && ($car['custom_delivery_enabled'] ?? false))
+<div data-summary-custom-pickup @unless($requestDelivery ?? false) hidden @endunless><p class="amd-summary-label">Ritiro richiesto</p><p data-summary-delivery-address>{{ isset($inputValue) ? $inputValue('delivery_address') : '' }}</p><p>Indirizzo e supplemento da confermare dal noleggiatore.</p></div>
+@endif
+@endif
+<p class="amd-summary-label">Luogo di riconsegna</p>
 <p>{{ $car['location'] }} — {{ $car['city'] }}<br>{{ $car['address'] }}</p>
 <p>Servizio erogato da <strong>{{ $car['organization'] }}</strong>.</p>
 <dl class="amd-quote-lines">

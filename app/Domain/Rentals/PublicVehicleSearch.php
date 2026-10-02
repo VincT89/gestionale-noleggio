@@ -25,6 +25,7 @@ class PublicVehicleSearch
         $query = clone $scope;
 
         $deliveries = PublicDeliveryLocation::available()->with(['place', 'location'])
+            ->when(!empty($filters['request_delivery']), fn ($q) => $q->where('custom_delivery_enabled', true))
             ->when(!empty($filters['place_id']), fn ($q) => $q->where('public_pickup_place_id', $filters['place_id']))
             ->when(empty($filters['place_id']) && !empty($filters['city']), fn ($q) => $q
                 ->whereHas('place', fn ($place) => $place->whereRaw('LOWER(TRIM(city)) = ?', [mb_strtolower(trim($filters['city']))])))

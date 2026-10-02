@@ -1,7 +1,10 @@
 @extends('layouts.public-cars')
 @section('title', $car ? $car['title'] : 'Disponibilità aggiornata')
 @section('content')
-@php $money = fn($cents) => number_format($cents / 100, 2, ',', '.').' €'; @endphp
+@php
+    $money = fn($cents) => number_format($cents / 100, 2, ',', '.').' €';
+    $customPickup = !empty($filters['request_delivery']);
+@endphp
 <a class="amd-back" href="{{ route($routePrefix.'.index', $filters) }}">Torna ai risultati</a>
 @if(!$car)
     <div class="amd-empty"><h1>La disponibilità è cambiata</h1><p>Questa auto non è disponibile per tutto il periodo richiesto. Controlla le altre auto o modifica le date.</p><a class="amd-button" href="{{ route($routePrefix.'.index', $filters) }}">Cerca altre auto</a></div>
@@ -22,7 +25,8 @@
                 @if($car['fuel'])<div><dt>Alimentazione</dt><dd>{{ $car['fuel'] }}</dd></div>@endif
                 @if($car['year'])<div><dt>Anno</dt><dd>{{ $car['year'] }}</dd></div>@endif
             </dl>
-            <h2>Ritiro e riconsegna</h2><p><strong>{{ $car['location'] }}</strong><br>{{ $car['address'] }}<br>{{ $car['city'] }}</p><p>Offerta da {{ $car['organization'] }}.</p>
+            @if($customPickup)<h2>Ritiro richiesto</h2><p>{{ $filters['delivery_address'] }}</p><p>Indirizzo ed eventuale supplemento devono essere confermati dal noleggiatore. Zona del servizio: {{ $car['delivery_area'] }}</p>@endif
+            <h2>{{ $customPickup ? 'Luogo di riconsegna' : 'Luoghi del noleggio' }}</h2><p>@unless($customPickup)Ritiro: @endunless<strong>{{ $car['location'] }}</strong><br>{{ $car['address'] }}<br>{{ $car['city'] }}</p>@unless($customPickup)<p>Riconsegna: {{ $car['location'] }}.</p>@endunless<p>Offerta da {{ $car['organization'] }}.</p>
             @if($car['description'])<h2>Informazioni sull’offerta</h2><p class="amd-description">{{ $car['description'] }}</p>@endif
         </section>
         <aside class="amd-quote" aria-labelledby="quote-title"><h2 id="quote-title">Il tuo noleggio</h2>
@@ -31,8 +35,10 @@
             <dl class="amd-quote-lines"><div><dt>Cauzione separata</dt><dd>{{ $money($car['deposit_cents']) }}</dd></div><div><dt>Chilometri inclusi</dt><dd>{{ $car['km_per_day'] === null ? 'Illimitati' : $car['km_per_day'].' km/giorno' }}</dd></div>@if($car['km_per_day'] !== null)<div><dt>Chilometri extra</dt><dd>{{ $money($car['extra_km_cents']) }}/km</dd></div>@endif</dl>
             @if(isset($filters['budget']) && $car['total_cents'] > round((float)$filters['budget'] * 100))<p class="amd-errors" role="status">Il prezzo aggiornato supera il budget indicato. Puoi modificare la ricerca.</p>@endif
             <p class="amd-availability">Disponibile per il periodo selezionato.</p>
-            <a class="amd-button" href="{{ route($routePrefix.'.booking.create', ['pricelist' => $car['id']] + \Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at']) + ['place_id' => $car['place_id']]) }}">Prenota con il 20% online</a>
-            @if(!$preview)
+            <a class="amd-button" href="{{ route($routePrefix.'.booking.create', ['pricelist' => $car['id']] + \Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at', 'request_delivery', 'delivery_address']) + ['place_id' => $car['place_id']]) }}">{{ $customPickup ? 'Richiedi il ritiro a questo indirizzo' : 'Prenota con il 20% online' }}</a>
+            @if($customPickup)
+                <small>Prima invii la richiesta. Pagherai dopo aver visto la proposta con il supplemento e il totale aggiornato.</small>
+            @elseif(!$preview)
                 <small>Versi il 20% con Stripe. Conferma dopo il pagamento verificato; saldo al ritiro.</small>
             @endif
         </aside>

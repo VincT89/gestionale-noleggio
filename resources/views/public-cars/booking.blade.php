@@ -4,7 +4,8 @@
 @php
     $accountContact = auth('public_customer')->user();
     $contact = array_replace($accountContact?->hasVerifiedEmail() ? $accountContact->only(['first_name', 'last_name', 'email', 'phone']) : [], $contact ?? []);
-    $inputValue = function ($field) use ($contact) { $v = old($field, $contact[$field] ?? ''); return is_scalar($v) ? (string) $v : ''; };
+    $inputValue = function ($field) use ($contact, $filters) { $v = old($field, $contact[$field] ?? ($field === 'delivery_address' ? ($filters[$field] ?? '') : '')); return is_scalar($v) ? (string) $v : ''; };
+    $requestDelivery = (bool) old('request_delivery', $filters['request_delivery'] ?? false);
 @endphp
 <a class="amd-back" href="{{ route($routePrefix.'.show', ['pricelist' => $car['id']] + $filters) }}">Torna all’auto</a>
 <div class="amd-page-heading"><h1>Prenota la tua auto</h1><p>Controlla il riepilogo e inserisci i tuoi recapiti. Versi il 20% del noleggio online, il resto al ritiro. Un’eventuale consegna concordata è indicata separatamente.</p></div>
@@ -23,12 +24,20 @@
             @endforeach
         </div>
         @if(($car['custom_delivery_enabled'] ?? false) && empty($car['delivery_request_id']))
-        <fieldset class="amd-delivery-request"><legend>Consegna in hotel o a un indirizzo</legend><p>{{ $car['delivery_area'] }}</p><label class="amd-booking-accept"><input type="checkbox" name="request_delivery" value="1" data-delivery-choice @checked(old('request_delivery'))><span>Voglio richiedere una consegna personalizzata.</span></label><div class="amd-field"><label for="delivery-address">Hotel e indirizzo completo di consegna</label><input id="delivery-address" name="delivery_address" maxlength="500" value="{{ $inputValue('delivery_address') }}" data-delivery-address></div><div class="amd-field"><label for="delivery-notes">Indicazioni per la consegna (facoltative)</label><textarea id="delivery-notes" name="delivery_notes" rows="3" maxlength="2000">{{ $inputValue('delivery_notes') }}</textarea></div><p>In questo caso invii prima una richiesta: il noleggiatore conferma indirizzo e supplemento. Pagherai dopo aver visto la proposta e il totale aggiornato. La riconsegna resta a {{ $car['location'] }}.</p></fieldset>
+        <fieldset class="amd-delivery-request">
+            <legend>Consegna in hotel o a un indirizzo</legend>
+            <p>{{ $car['delivery_area'] }}</p>
+            <input type="hidden" name="request_delivery" value="0">
+            <label class="amd-booking-accept"><input type="checkbox" name="request_delivery" value="1" data-delivery-choice @checked($requestDelivery)><span>Voglio richiedere una consegna personalizzata.</span></label>
+            <div class="amd-field"><label for="delivery-address">Hotel e indirizzo completo di consegna</label><input id="delivery-address" name="delivery_address" minlength="8" maxlength="500" value="{{ $inputValue('delivery_address') }}" data-delivery-address @if($requestDelivery) required @endif></div>
+            <div class="amd-field"><label for="delivery-notes">Indicazioni per la consegna (facoltative)</label><textarea id="delivery-notes" name="delivery_notes" rows="3" maxlength="2000">{{ $inputValue('delivery_notes') }}</textarea></div>
+            <p>In questo caso invii prima una richiesta: il noleggiatore conferma indirizzo e supplemento. Pagherai dopo aver visto la proposta e il totale aggiornato. Luogo di riconsegna: {{ $car['location'] }}.</p>
+        </fieldset>
         @endif
         <div class="amd-booking-trap" aria-hidden="true"><label for="booking-website">Sito web</label><input id="booking-website" name="website" tabindex="-1" autocomplete="off"></div>
         <p class="amd-booking-help">I dati completi del conducente e i documenti saranno verificati dal noleggiatore prima della consegna. @if(config('public_cars.privacy_url'))<a href="{{ config('public_cars.privacy_url') }}" target="_blank" rel="noopener noreferrer">Informativa privacy</a>.@endif</p>
         <label class="amd-booking-accept" for="accept-summary"><input id="accept-summary" name="accept_summary" type="checkbox" value="1" required><span>Ho controllato date, sede, importi e condizioni dell’offerta. Accetto la quota online indicata nel riepilogo e il saldo al ritiro. Se richiedo una consegna personalizzata, attendo prima la proposta del noleggiatore.</span></label>
-        <button class="amd-button" type="submit" data-checkout-submit>{{ config('amd_rent.payment_mode') === 'stripe' ? 'Prosegui al pagamento' : 'Conferma prenotazione' }}</button>
+        <button class="amd-button" type="submit" data-checkout-submit data-standard-checkout-label="{{ config('amd_rent.payment_mode') === 'stripe' ? 'Prosegui al pagamento' : 'Conferma prenotazione' }}">{{ $requestDelivery ? 'Invia richiesta di consegna' : (config('amd_rent.payment_mode') === 'stripe' ? 'Prosegui al pagamento' : 'Conferma prenotazione') }}</button>
         <p class="amd-booking-help">Disponibilità e prezzo vengono ricontrollati alla conferma.</p>
     </form>
 </div>

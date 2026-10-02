@@ -187,7 +187,8 @@
                     accept="application/pdf,image/*"
                 >
                     {{-- SLOT: selezione tipo documento → salvato come collection_name in media --}}
-                    <select name="collection"
+                    <label for="rental-document-type" class="block text-sm font-medium text-gray-700">Tipo di documento</label>
+                    <select id="rental-document-type" name="collection"
                             class="mt-1 w-full rounded-md border-gray-300 shadow-sm appearance-none pr-8 focus:border-indigo-500 focus:ring-indigo-500">
                         <option value="documents">Documenti vari (precontrattuali)</option>
                         <option value="id_card">Documento identità</option>

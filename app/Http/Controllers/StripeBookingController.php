@@ -28,7 +28,14 @@ class StripeBookingController extends Controller
     {
         $booking = PublicBooking::where('reference', $reference)->firstOrFail();
         try { $url = $payments->checkout($booking); }
-        catch (\Throwable $e) { return redirect()->to($booking->confirmationUrl())->with('payment_error', $booking->fresh()->payment_status === 'failed' ? 'Stripe non ha potuto aprire il pagamento. Torna alla ricerca per riprovare.' : 'Pagamento non disponibile in questo momento. La prenotazione non risulta confermata; riprova da questa pagina.'); }
+        catch (\Throwable $e) {
+            $retry = !empty($booking->quote_snapshot['delivery_request_id'])
+                ? 'Torna alla richiesta di consegna per riprovare.'
+                : 'Torna alla ricerca per riprovare.';
+            return redirect()->to($booking->confirmationUrl())->with('payment_error', $booking->fresh()->payment_status === 'failed'
+                ? 'Stripe non ha potuto aprire il pagamento. '.$retry
+                : 'Pagamento non disponibile in questo momento. La prenotazione non risulta confermata; riprova da questa pagina.');
+        }
         return redirect()->to($url ?: $booking->confirmationUrl(), 303);
     }
 

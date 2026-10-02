@@ -272,7 +272,7 @@
 >
     <template x-teleport="body">
         <div x-show="open" x-transition.opacity class="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 px-4"
-             role="dialog" aria-modal="true" aria-labelledby="payment-modal-title" @keydown.escape.prevent.stop="close()">
+             role="dialog" aria-modal="true" aria-labelledby="payment-modal-title" x-trap.inert.noscroll="open" @keydown.escape.prevent.stop="close()">
             <div class="absolute inset-0" @click="close()"></div>
 
             <div x-show="open" x-transition.scale
@@ -281,7 +281,7 @@
               <!-- Header -->
               <div class="px-6 pt-6 pb-3 sticky top-0 bg-base-100/95 backdrop-blur supports-[backdrop-filter]:bg-base-100/80">
                 <h2 id="payment-modal-title" class="text-lg font-semibold">Registra Pagamento</h2>
-                <button type="button" class="absolute right-2 top-2 btn btn-ghost btn-xs" @click="close()">✕</button>
+                <button type="button" class="absolute right-2 top-2 btn btn-ghost btn-xs" @click="close()" aria-label="Chiudi finestra pagamenti">Chiudi</button>
               </div>
 
               <!-- Body (scrollable) -->

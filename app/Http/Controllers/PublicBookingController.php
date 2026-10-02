@@ -29,9 +29,10 @@ class PublicBookingController extends Controller
         $scope = $this->scope($request, $preview)->whereKey($pricelist);
         abort_unless((clone $scope)->exists(), 404);
         $period = array_filter($request->safe()->only(['pickup_at', 'return_at', 'place_id']), fn ($value) => $value !== null);
-        $car = $search->search($scope, $period)->first();
+        $filters = $period + $request->safe()->only(['request_delivery', 'delivery_address']);
+        $car = $search->search($scope, $filters)->first();
         $prefix = $preview ? 'public-cars.preview' : 'public-cars';
-        if (!$car) return $this->page('public-cars.show', ['car' => null, 'filters' => $period, 'preview' => $preview, 'routePrefix' => $prefix]);
+        if (!$car) return $this->page('public-cars.show', ['car' => null, 'filters' => $filters, 'preview' => $preview, 'routePrefix' => $prefix]);
 
         $intent = ['nonce' => (string) Str::uuid(), 'source' => 'pricelist', 'pricelist' => $pricelist, 'period' => $period, 'preview' => $preview,
             'fingerprint' => PublicBookingService::fingerprint($car), 'expires_at' => now()->addMinutes(30)->timestamp];
@@ -39,7 +40,7 @@ class PublicBookingController extends Controller
         $known[$intent['nonce']] = true;
         $request->session()->put('public_booking_checkouts', array_slice($known, -20, null, true));
         return $this->page('public-cars.booking', [
-            'car' => $car, 'filters' => $period, 'preview' => $preview, 'routePrefix' => $prefix,
+            'car' => $car, 'filters' => $filters, 'preview' => $preview, 'routePrefix' => $prefix,
             'checkoutToken' => Crypt::encryptString(json_encode($intent, JSON_THROW_ON_ERROR)),
         ]);
     }

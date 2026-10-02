@@ -142,6 +142,26 @@ document.querySelectorAll('[data-place-select]').forEach(select => {
     input.form.addEventListener('reset', () => { input.value = ''; select.value = ''; input.setCustomValidity(''); close(); });
 });
 
+const searchDelivery = document.querySelector('[data-search-delivery]');
+if (searchDelivery) {
+    const field = document.querySelector('[data-search-delivery-field]');
+    const address = document.querySelector('[data-search-delivery-address]');
+    const placeLabel = document.querySelector('[data-search-place-label]');
+    const placeHelp = document.getElementById('place-help');
+    const updateSearchDelivery = () => {
+        field.hidden = !searchDelivery.checked;
+        address.disabled = !searchDelivery.checked;
+        address.required = searchDelivery.checked;
+        placeLabel.textContent = searchDelivery.checked ? 'Luogo di riconsegna' : 'Luogo di ritiro';
+        placeHelp.textContent = searchDelivery.checked
+            ? 'Scegli dove riconsegnare l’auto, per esempio un aeroporto servito.'
+            : 'Scegli un luogo dall’elenco.';
+    };
+    searchDelivery.addEventListener('change', updateSearchDelivery);
+    window.addEventListener('pageshow', updateSearchDelivery);
+    updateSearchDelivery();
+}
+
 const compactFilters = window.matchMedia('(max-width: 900px)');
 document.querySelectorAll('[data-filter-disclosure]').forEach(panel => {
     panel.open = !compactFilters.matches;
@@ -157,12 +177,20 @@ pickupDate?.addEventListener('change', () => {
 const deliveryChoice = document.querySelector('[data-delivery-choice]');
 if (deliveryChoice) {
     const submit = document.querySelector('[data-checkout-submit]');
-    const originalLabel = submit?.textContent;
+    const originalLabel = submit?.dataset.standardCheckoutLabel || submit?.textContent;
     const address = document.querySelector('[data-delivery-address]');
     const updateDeliveryChoice = () => {
         if (submit) submit.textContent = deliveryChoice.checked ? 'Invia richiesta di consegna' : originalLabel;
         if (address) address.required = deliveryChoice.checked;
+        const standardPickup = document.querySelector('[data-summary-standard-pickup]');
+        const customPickup = document.querySelector('[data-summary-custom-pickup]');
+        const summaryAddress = document.querySelector('[data-summary-delivery-address]');
+        if (standardPickup) standardPickup.hidden = deliveryChoice.checked;
+        if (customPickup) customPickup.hidden = !deliveryChoice.checked;
+        if (summaryAddress) summaryAddress.textContent = address?.value || 'Indica l’indirizzo nel modulo.';
     };
     deliveryChoice.addEventListener('change', updateDeliveryChoice);
+    address?.addEventListener('input', updateDeliveryChoice);
+    window.addEventListener('pageshow', updateDeliveryChoice);
     updateDeliveryChoice();
 }

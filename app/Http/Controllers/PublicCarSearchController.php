@@ -118,7 +118,7 @@ class PublicCarSearchController extends Controller
             'suppliers' => $facets->pluck('renter')->whereIn('id', $matching->pluck('supplier_id'))->unique('id')->sortBy('name')->values(),
             'cities' => $places->pluck('city')->filter()->unique(fn ($city) => mb_strtolower($city))->sort()->values(),
             'segments' => $facets->pluck('vehicle.segment')->filter()->unique(fn ($segment) => mb_strtolower($segment))->sort()->values(),
-        ])->header('Cache-Control', 'private, no-store')->header('X-Robots-Tag', 'noindex, follow');
+        ])->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer')->header('X-Robots-Tag', 'noindex, follow');
     }
 
     private function detail(PublicCarSearchRequest $request, PublicVehicleSearch $search, int $pricelist, bool $preview)
@@ -132,7 +132,7 @@ class PublicCarSearchController extends Controller
         return response()->view('public-cars.show', [
             'car' => $result, 'filters' => $request->validated(), 'preview' => $preview,
             'routePrefix' => $preview ? 'public-cars.preview' : 'public-cars',
-        ])->header('Cache-Control', 'private, no-store')->header('X-Robots-Tag', 'noindex, follow');
+        ])->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer')->header('X-Robots-Tag', 'noindex, follow');
     }
 
     private function image(Request $request, int $pricelist, bool $preview)
