@@ -223,11 +223,19 @@
                             @endcan
                         @else
                             @can('updateMileage', $v)
-                                <button type="button" class="rounded bg-slate-100 px-2 py-1 mt-1"
-                                        x-data
-                                        x-on:click="$dispatch('open-mileage-modal', { id: {{ $v->id }}, current: {{ (int)$v->mileage_current }} })">
-                                    Agg. km
-                                </button>
+                                @role('admin')
+                                    <button type="button" class="rounded bg-slate-100 px-2 py-1 mt-1"
+                                            x-data
+                                            x-on:click="$dispatch('open-mileage-correction', { vehicleId: {{ $v->id }} })">
+                                        Correggi km
+                                    </button>
+                                @else
+                                    <button type="button" class="rounded bg-slate-100 px-2 py-1 mt-1"
+                                            x-data
+                                            x-on:click="$dispatch('open-mileage-modal', { id: {{ $v->id }}, current: {{ (int)$v->mileage_current }} })">
+                                        Agg. km
+                                    </button>
+                                @endrole
                             @endcan
 
                             @can('manageMaintenance', $v)
@@ -361,11 +369,19 @@
                         <h3 class="font-semibold">Azioni rapide</h3>
                         <div class="flex items-center gap-2">
                             @can('vehicles.update', $drawer['v'])
-                                <button type="button" class="rounded bg-slate-100 px-2 py-1"
-                                        x-data
-                                        x-on:click="$dispatch('open-mileage-modal', { id: {{ $drawer['v']->id }}, current: {{ (int)$drawer['v']->mileage_current }} })">
-                                    Agg. km
-                                </button>
+                                @role('admin')
+                                    <button type="button" class="rounded bg-slate-100 px-2 py-1"
+                                            x-data
+                                            x-on:click="$dispatch('open-mileage-correction', { vehicleId: {{ $drawer['v']->id }} })">
+                                        Correggi km
+                                    </button>
+                                @else
+                                    <button type="button" class="rounded bg-slate-100 px-2 py-1"
+                                            x-data
+                                            x-on:click="$dispatch('open-mileage-modal', { id: {{ $drawer['v']->id }}, current: {{ (int)$drawer['v']->mileage_current }} })">
+                                        Agg. km
+                                    </button>
+                                @endrole
                                 @if(($drawer['currentState'] ?? null) !== 'maintenance')
                                     <button type="button" class="rounded bg-amber-600 px-2 py-1 text-white" wire:click="setMaintenance({{ $drawer['v']->id }})">
                                         Manutenzione
@@ -382,6 +398,10 @@
             </div>
         </div>
     @endif
+
+    @role('admin')
+        <livewire:vehicles.correct-mileage />
+    @endrole
 
     {{-- Modal: Aggiorna km (semplice, non interferisce col drawer) --}}
     <div x-data="{ open:false, id:null, current:0, value:'' }"
