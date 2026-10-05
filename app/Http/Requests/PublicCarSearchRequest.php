@@ -6,6 +6,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use App\Models\Vehicle;
+use App\Services\Geocoding\PlaceSelection;
 
 class PublicCarSearchRequest extends FormRequest
 {
@@ -52,7 +53,10 @@ class PublicCarSearchRequest extends FormRequest
             'place_id' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
             'supplier' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
             'request_delivery' => ['nullable', 'boolean'],
-            'delivery_address' => ['exclude_unless:request_delivery,1', 'required', 'string', 'min:8', 'max:500'],
+            'delivery_address' => ['exclude_unless:request_delivery,1', 'required', 'string', 'min:3', 'max:500'],
+            'delivery_place' => ['exclude_unless:request_delivery,1', 'nullable', 'uuid',
+                Rule::requiredIf($this->boolean('request_delivery') && $this->isMethod('GET')
+                    && !$this->routeIs('public-cars.index', 'public-cars.preview.index'))],
             'budget' => ['nullable', 'numeric', 'min:0', 'max:1000000', 'regex:/^\d+(\.\d{1,2})?$/'],
             'seats' => ['nullable', 'integer', 'min:1', 'max:20'],
             'transmission' => ['nullable', Rule::in(array_keys(Vehicle::TRANSMISSION_LABELS_IT))],
@@ -64,7 +68,7 @@ class PublicCarSearchRequest extends FormRequest
         ];
 
         if ($this->routeIs('public-cars.index', 'public-cars.preview.index')) {
-            $rules['destination'] = ['sometimes', 'required', 'string', 'max:133', 'regex:/^(?:[1-9][0-9]{0,9}|city:\\S(?:[^\\r\\n]*\\S)?)$/uD'];
+            $rules['destination'] = ['sometimes', $this->boolean('request_delivery') ? 'nullable' : 'required', 'string', 'max:133', 'regex:/^(?:[1-9][0-9]{0,9}|city:\\S(?:[^\\r\\n]*\\S)?)$/uD'];
         }
 
         return $rules;
@@ -73,6 +77,11 @@ class PublicCarSearchRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
+            if ($this->boolean('request_delivery') && $this->filled('delivery_place')
+                && !$validator->errors()->hasAny(['delivery_place', 'delivery_address'])
+                && !app(PlaceSelection::class)->resolve($this->input('delivery_place'), $this->input('delivery_address'))) {
+                $validator->errors()->add('delivery_place', 'La selezione del luogo è scaduta o è cambiata. Cerca e conferma nuovamente l’indirizzo.');
+            }
             if ($validator->errors()->has('pickup_at') || $validator->errors()->has('return_at')
                 || !$this->filled('pickup_at') || !$this->filled('return_at')) {
                 return;
@@ -100,11 +109,12 @@ class PublicCarSearchRequest extends FormRequest
             'return_at.string' => 'Controlla data e ora della riconsegna.',
             'return_at.date_format' => 'Controlla data e ora della riconsegna.',
             'budget.*' => 'Inserisci un budget valido in euro, con al massimo due decimali.',
-            'place_id.*' => 'Scegli un luogo di ritiro dall’elenco.',
+            'place_id.*' => $this->boolean('request_delivery') ? 'Scegli un luogo di riconsegna dall’elenco.' : 'Scegli un luogo di ritiro dall’elenco.',
             'destination.*' => 'Scegli una città, un aeroporto, una stazione o una zona dall’elenco.',
             'supplier.*' => 'Controlla il noleggiatore selezionato.',
             'request_delivery.*' => 'Controlla la scelta del ritiro personalizzato.',
-            'delivery_address.*' => 'Indica hotel o indirizzo completo di ritiro, con la città, da 8 a 500 caratteri.',
+            'delivery_address.*' => 'Indica un indirizzo, hotel o B&B, possibilmente con il comune, da 3 a 500 caratteri.',
+            'delivery_place.*' => 'Cerca e conferma il luogo di ritiro prima di scegliere l’auto.',
         ];
     }
 }

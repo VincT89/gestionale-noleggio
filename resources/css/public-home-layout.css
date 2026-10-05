@@ -1,0 +1,158 @@
+/* The public palette stays within AMD blue, white and charcoal. */
+:root { --amd-canvas: #fff; --amd-charcoal: #172330; --amd-surface: #f4f4f4; --amd-primary: #2454cf; --amd-primary-hover: #193fa3; --amd-panel-blue: #194a94; }
+/* The photograph and working search form share one scroll stage. */
+.amd-home-hero { background: var(--amd-blue); padding: 36px 32px 40px; }
+.amd-home-hero-layout { max-width: 1280px; margin: auto; }
+.amd-home-intro { display: flex; justify-content: space-between; align-items: flex-end; gap: 40px; margin: 0 24px 32px; }
+.amd-home-intro h1 { margin: 0; font-size: clamp(48px, 5.2vw, 76px); font-weight: 650; letter-spacing: -.065em; line-height: .99; color: #fff; }
+.amd-home-intro h1 span { color: #fff; font-weight: 450; }
+.amd-home-intro-copy { padding-bottom: 4px; }
+.amd-home-intro p { margin: 0; font-size: 18px; line-height: 1.55; color: #f1f3f5; }
+.amd-home-search-link { display: inline-block; margin-top: 18px; color: #fff; text-underline-offset: 6px; font-size: 15px; font-weight: 650; }
+.amd-home-hero .amd-scene-track { padding: 0; }
+.amd-home-hero [data-scene-hold]::after { content: ''; display: block; height: var(--amd-scene-hold, 0px); }
+.amd-home-hero .amd-scene-sticky { position: relative; top: auto; }
+.amd-home-hero [data-scene-hold] .amd-scene-sticky { position: sticky; top: var(--amd-stage-top, 74px); }
+.amd-home-hero .amd-home-visual[data-home-scene] { position: relative; z-index: 0; inset: auto; width: 100%; height: clamp(280px, 43svh, 440px); margin: 0; border-radius: 4px; --amd-scene-min-width: 1060px; --amd-scene-x: 100%; --amd-scene-y: 56%; }
+.amd-home-search-panel { position: relative; z-index: 2; width: calc(100% - 64px); margin: -28px auto 0; }
+.amd-home-search-panel .amd-search { border: 1px solid #d4dddF; border-radius: 4px; padding: 24px 28px 18px; box-shadow: 0 14px 32px #081f3433; }
+.amd-search-intro { margin-bottom: 20px; }
+.amd-search-intro h2 { margin: 0; font-size: 23px; line-height: 1.2; letter-spacing: -.035em; }
+.amd-home-search-panel .amd-search-primary { display: grid; grid-template-columns: minmax(260px, 1.5fr) minmax(205px, 1fr) minmax(205px, 1fr) auto; gap: 20px; }
+.amd-home-search-panel .amd-field { min-width: 0; }
+.amd-home-search-panel .amd-field > input, .amd-home-search-panel .amd-field > select { width: 100%; min-width: 0; }
+.amd-home-search-panel .amd-search-delivery-choice { margin-top: 12px; font-size: 13px; line-height: 1.5; }
+.amd-home-search-panel .amd-search-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 20px; margin-top: 18px; padding-top: 12px; }
+.amd-home-search-panel .amd-search-foot .amd-search-note { margin: 0; font-size: 13px; line-height: 1.6; }
+.amd-home-search-panel .amd-search-submit { min-height: 52px; margin-top: 28px; }
+.amd-home-sections { background: var(--amd-canvas); }
+.amd-home-pickup { padding: 76px 0 0; background: var(--amd-canvas); }
+.amd-pickup-layout { display: grid; grid-template-columns: minmax(0, .86fr) minmax(0, 1.14fr); align-items: center; gap: 72px; }
+.amd-home-pickup h2, .amd-home-long-term h2, .amd-home-answers h2 { margin: 0 0 22px; font-size: clamp(36px, 3.4vw, 48px); line-height: 1.06; letter-spacing: -.05em; font-weight: 650; }
+.amd-pickup-lead { max-width: 370px; font-size: 17px; line-height: 1.65; margin: 0 0 24px; color: var(--amd-muted); }
+.amd-pickup-tabs { display: flex; border-bottom: 1px solid #bdc5ce; margin-bottom: 22px; }
+.amd-pickup-tabs button { flex: 1; color: var(--amd-ink); padding: 14px 4px; min-height: 48px; border: 0; border-bottom: 3px solid transparent; background: transparent; font: inherit; font-size: 15px; font-weight: 650; cursor: pointer; }
+.amd-pickup-tabs button[aria-selected="true"] { color: #fff; background: var(--amd-blue); border-color: var(--amd-primary); }
+.amd-pickup-panel { min-height: 240px; }
+.amd-pickup-panel h3 { font-size: 22px; margin: 0 0 12px; letter-spacing: -.03em; }
+.amd-pickup-panel p { line-height: 1.7; margin: 0 0 22px; color: var(--amd-muted); }
+.amd-pickup-panel small { display: block; margin-top: 14px; line-height: 1.6; color: var(--amd-muted); font-size: 13px; }
+.amd-pickup-gallery { min-width: 0; }
+.amd-pickup-photos { position: relative; display: grid; gap: 18px; }
+.amd-pickup-photos figure { margin: 0; min-width: 0; aspect-ratio: 3 / 2; overflow: hidden; border-radius: 4px; background: #e8eef2; }
+.amd-pickup-photos figure img { display: block; width: 100%; height: 100%; object-fit: contain; }
+[data-pickup-active] .amd-pickup-photos { gap: 0; }
+[data-pickup-active] .amd-pickup-photos figure { grid-area: 1 / 1; }
+[data-pickup-active="pickup-point"] .amd-delivery-photo,
+[data-pickup-active="pickup-address"] .amd-places-photo { opacity: 0; visibility: hidden; }
+.amd-photo-note { margin: 12px 0 0; color: var(--amd-muted); font-size: 12px; line-height: 1.5; }
+.amd-home-long-term { padding: 92px 0 64px; background: var(--amd-charcoal); }
+.amd-home-long-term-layout { display: grid; grid-template-columns: 1fr 1fr; align-items: center; }
+.amd-home-long-term-layout::before { content: ''; position: absolute; z-index: -1; inset: 0 32px; background: var(--amd-panel-blue); border-radius: 4px; }
+.amd-long-term-photo { margin: 0; width: 100%; aspect-ratio: 3 / 2; overflow: hidden; border-radius: 4px 0 0 4px; }
+.amd-long-term-photo img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.amd-long-term-copy { color: white; background: var(--amd-panel-blue); border-radius: 0 4px 4px 0; padding: 36px 44px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
+.amd-long-term-copy h2 { color: white; font-size: clamp(32px, 3vw, 44px); }
+.amd-long-term-copy p { line-height: 1.75; color: #e5ecf4; margin: 0 0 24px; }
+.amd-long-term-copy .amd-button { border-color: #fff; background: #fff; color: var(--amd-panel-blue); }
+.amd-long-term-copy .amd-button:hover { border-color: #e2e5e9; background: #e2e5e9; }
+.amd-home-answers { padding: 64px 0 76px; background: var(--amd-surface); }
+.amd-home-answers h2 { color: var(--amd-blue); }
+.amd-home-answers .amd-answers-layout > div > p { color: var(--amd-muted); }
+.amd-home-answers .amd-text-link { color: var(--amd-primary); }
+.amd-home-answers .amd-text-link:focus-visible { outline-color: var(--amd-primary); }
+.amd-answers-layout { display: grid; grid-template-columns: .8fr 1.2fr; gap: 72px; }
+.amd-answers-layout > div > p { color: var(--amd-muted); line-height: 1.65; }
+.amd-home-answers .amd-home-faq { padding: 0 24px; border: 0; box-shadow: none; border-radius: 4px; background: #fff; }
+.amd-home-answers .amd-home-faq details { border-bottom: 1px solid #cbd5df; margin: 0; padding: 0; }
+.amd-home-answers .amd-home-faq details:first-child { border-top: 0; }
+.amd-home-answers .amd-home-faq details:last-child { border-bottom: 0; }
+.amd-home-answers .amd-home-faq details[open] { background: #f0f1f3; }
+.amd-home-hero .amd-home-search-link:focus-visible { outline-color: #fff; }
+.amd-home-search-link:hover { color: #fff; }
+.amd-pickup-tabs button:not([aria-selected="true"]):hover { background: #f0f1f3; }
+.amd-home-sections .amd-home-route-bed { stroke: #cbd1d8; }
+.amd-home-sections .amd-home-route-line { stroke: #365778; }
+.amd-home-answers .amd-home-faq summary { position: relative; padding: 22px 32px 22px 0; font-size: 17px; line-height: 1.45; cursor: pointer; list-style: none; }
+.amd-home-answers .amd-home-faq summary::-webkit-details-marker { display: none; }
+.amd-home-answers .amd-home-faq summary::after { content: '+'; position: absolute; right: 4px; font-size: 24px; top: 17px; font-weight: 400; }
+.amd-home-answers .amd-home-faq details[open] summary::after { content: '−'; }
+.amd-home-answers .amd-home-faq details p { margin: 0; padding: 0 22px 24px 0; line-height: 1.75; color: var(--amd-muted); }
+.amd-return-choice { margin: 24px 0; }
+.amd-return-choice .amd-field { margin-bottom: 18px; }
+.amd-return-choice .amd-button { width: 100%; }
+@media (prefers-reduced-motion: no-preference) {
+    .amd-pickup-photos figure { transition: opacity 480ms ease, visibility 480ms; }
+    .amd-pickup-tabs button { transition: border-color 180ms, color 180ms; }
+}
+@media (max-width: 1150px) {
+    .amd-home-hero { padding: 30px 24px 36px; }
+    .amd-home-intro { margin-inline: 8px; }
+    .amd-home-search-panel { width: calc(100% - 32px); }
+    .amd-home-search-panel .amd-search { padding-inline: 22px; }
+    .amd-home-search-panel .amd-search-primary { grid-template-columns: minmax(220px, 1.4fr) minmax(180px, 1fr) minmax(180px, 1fr); gap: 18px; }
+    .amd-home-search-panel .amd-place-field { grid-row: 1 / span 2; }
+    .amd-home-search-panel .amd-search-submit { grid-column: 2 / -1; margin-top: 0; }
+    .amd-pickup-layout, .amd-answers-layout { gap: 40px; }
+    .amd-pickup-panel { min-height: 265px; }
+    .amd-long-term-copy { padding: 32px; }
+    .amd-home-long-term-layout::before { inset-inline: 24px; }
+}
+@media (max-width: 900px) {
+    .amd-home-search-panel .amd-search-primary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .amd-home-search-panel .amd-place-field { grid-column: 1 / -1; grid-row: auto; }
+    .amd-home-search-panel .amd-search-submit { grid-column: 1 / -1; }
+    .amd-home-intro { align-items: center; gap: 24px; }
+    .amd-home-intro h1 { font-size: 52px; }
+    .amd-home-intro p { font-size: 16px; }
+    .amd-home-hero .amd-home-visual[data-home-scene] { height: 300px; --amd-scene-min-width: 860px; --amd-scene-y: 64%; }
+}
+@media (max-width: 800px) {
+    .amd-home-intro { display: block; margin-bottom: 24px; }
+    .amd-home-intro-copy { margin-top: 18px; }
+    .amd-home-intro p br { display: none; }
+    .amd-home-search-link { margin-top: 12px; }
+    .amd-home-pickup { padding-top: 54px; }
+    .amd-pickup-layout { grid-template-columns: 1fr; gap: 28px; }
+    .amd-pickup-copy { display: contents; }
+    .amd-pickup-layout h2 { margin-bottom: -12px; }
+    .amd-pickup-lead { max-width: 520px; margin: 0; }
+    .amd-pickup-tabs { margin: 0; }
+    .amd-pickup-gallery { grid-row: 4; }
+    .amd-pickup-panel { min-height: 0; }
+    .amd-home-long-term-layout { grid-template-columns: 1fr; }
+    .amd-long-term-photo { border-radius: 4px 4px 0 0; }
+    .amd-long-term-copy { padding: 32px; border-radius: 0 0 4px 4px; }
+    .amd-home-long-term { padding: 64px 0 48px; }
+    .amd-answers-layout { grid-template-columns: 1fr; gap: 32px; }
+    .amd-home-answers { padding: 48px 0 56px; }
+}
+@media (max-width: 600px) {
+    .amd-home-hero { padding: 26px 20px 32px; }
+    .amd-home-intro { margin-inline: 0; }
+    .amd-home-intro h1 { font-size: clamp(39px, 10.9vw, 56px); }
+    .amd-home-intro p { max-width: 320px; font-size: 16px; }
+    .amd-home-hero .amd-home-visual[data-home-scene] { height: 236px; --amd-scene-min-width: 660px; --amd-scene-x: 90%; }
+    .amd-home-search-panel { width: 100%; margin-top: 0; }
+    .amd-home-search-panel .amd-search { border-top: 0; border-radius: 0 0 4px 4px; padding: 24px 18px 18px; }
+    .amd-home-hero .amd-home-visual[data-home-scene] { border-radius: 4px 4px 0 0; }
+    .amd-home-search-panel .amd-search-primary { grid-template-columns: 1fr; }
+    .amd-home-search-panel .amd-search-foot { display: block; }
+    .amd-home-search-panel .amd-search-foot .amd-search-note + .amd-search-note { margin-top: 4px; }
+    .amd-search-intro h2 { font-size: 22px; }
+    .amd-home-long-term-layout::before { inset-inline: 20px; }
+    .amd-long-term-copy { padding: 32px 24px; }
+    .amd-home-pickup h2, .amd-home-answers h2 { font-size: 38px; }
+}
+@media (max-width: 360px) {
+    .amd-home-hero { padding-inline: 16px; }
+    .amd-home-search-panel .amd-search { padding-inline: 14px; }
+    .amd-home-hero .amd-home-visual[data-home-scene] { --amd-scene-min-width: 600px; }
+    .amd-pickup-tabs button { font-size: 14px; }
+    .amd-home-long-term-layout::before { inset-inline: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .amd-home-hero .amd-scene-track { padding-bottom: 0; }
+    .amd-home-hero [data-scene-hold] .amd-scene-sticky { position: relative; top: auto; }
+    .amd-pickup-photos figure { transition: none; }
+}

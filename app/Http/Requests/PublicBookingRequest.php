@@ -34,6 +34,10 @@ class PublicBookingRequest extends PublicCarSearchRequest
             if (is_string($value) && strlen($value) < 30) $period[$field] = $value;
         }
         if (is_int($this->input('place_id')) && $this->input('place_id') > 0) $period['place_id'] = $this->input('place_id');
+        $selection = $this->input('delivery_place');
+        if (is_string($selection) && $point = app(\App\Services\Geocoding\PlaceSelection::class)->resolve($selection)) {
+            $period += ['request_delivery' => 1, 'delivery_address' => $point['label'], 'delivery_place' => $selection];
+        }
         return route(($this->routeIs('public-cars.preview.*') ? 'public-cars.preview' : 'public-cars').'.booking.create', ['pricelist' => $this->route('pricelist')] + $period);
     }
 

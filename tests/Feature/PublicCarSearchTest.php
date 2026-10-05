@@ -34,7 +34,8 @@ class PublicCarSearchTest extends PublicCarsTestCase
         $pricing->shouldNotReceive('quote');
         $this->app->instance(VehiclePricingService::class, $pricing);
         $this->get(route('public-cars.index'))->assertOk()->assertViewHas('searched', false)
-            ->assertSee('Indica luogo, date e orari per confrontare i veicoli disponibili.');
+            ->assertSee('Trova l’auto, scegli la tua partenza.')
+            ->assertDontSee('id="public-search-results"', false);
     }
 
     public function test_public_catalog_uses_active_pricelists_and_ignores_legacy_offer_flags(): void

@@ -1,5 +1,6 @@
 import './password-visibility';
 import './public-home-motion';
+import './public-interface';
 
 const desktop = window.matchMedia('(min-width: 901px)');
 const mobileNav = document.querySelector('.amd-mobile-nav');
@@ -95,6 +96,11 @@ document.querySelectorAll('[data-place-select]').forEach(select => {
         select.dispatchEvent(new Event('change', { bubbles: true }));
         close();
     };
+    select.addEventListener('change', () => {
+        input.value = select.value ? select.selectedOptions[0].textContent : '';
+        input.setCustomValidity('');
+        close();
+    });
     const show = () => {
         const words = select.value ? [] : normalize(input.value).trim().split(/\s+/).filter(Boolean);
         matches = options.filter(option => words.every(word => normalize(option.textContent).includes(word)));
@@ -153,21 +159,19 @@ if (searchDelivery) {
         field.hidden = !searchDelivery.checked;
         address.disabled = !searchDelivery.checked;
         address.required = searchDelivery.checked;
-        placeLabel.textContent = searchDelivery.checked ? 'Luogo di riconsegna' : 'Luogo di ritiro';
+        const placeInput = document.getElementById('pickup-place-search');
+        if (placeInput) placeInput.required = !searchDelivery.checked;
+        const searchSubmit = document.querySelector('[data-search-submit]');
+        if (searchSubmit) searchSubmit.textContent = searchDelivery.checked ? 'Cerca noleggiatori' : 'Cerca auto';
+        placeLabel.textContent = searchDelivery.checked ? 'Luogo di riconsegna (facoltativo)' : 'Luogo di ritiro';
         placeHelp.textContent = searchDelivery.checked
-            ? 'Scegli dove riconsegnare l’auto, per esempio un aeroporto servito.'
+            ? 'Puoi scegliere ora oppure dopo aver trovato l’auto.'
             : 'Scegli un luogo dall’elenco.';
     };
     searchDelivery.addEventListener('change', updateSearchDelivery);
     window.addEventListener('pageshow', updateSearchDelivery);
     updateSearchDelivery();
 }
-
-const compactFilters = window.matchMedia('(max-width: 900px)');
-document.querySelectorAll('[data-filter-disclosure]').forEach(panel => {
-    panel.open = !compactFilters.matches;
-    compactFilters.addEventListener('change', () => { panel.open = !compactFilters.matches; });
-});
 
 const pickupDate = document.getElementById('pickup-at');
 const returnDate = document.getElementById('return-at');

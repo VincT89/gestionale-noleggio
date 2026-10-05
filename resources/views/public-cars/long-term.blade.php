@@ -3,7 +3,7 @@
 @section('main-class', 'amd-info-page')
 @section('content')
 <div class="amd-info-heading"><div class="amd-section-inner amd-photo-heading">
-    <div><h1>Un’auto per i tuoi prossimi progetti.</h1><p>Raccontaci cosa ti serve. Prepariamo la tua richiesta di noleggio a lungo termine e seguiamo con te il preventivo e la pratica.</p></div>
+    <div><h1>Un’auto per i tuoi prossimi progetti.</h1><p>Ogni giorno, per lavoro o per te. Raccontaci che auto cerchi e ricevi una proposta di noleggio a lungo termine da valutare con calma.</p></div>
     @include('public-cars.partials.context-photo', ['photoScene' => 'long-term'])
 </div></div>
 <div class="amd-section-inner amd-long-term-layout"><aside class="amd-information"><h2>Prima una proposta,<br>poi la tua scelta.</h2><p>Indica l’auto desiderata, la durata e i chilometri previsti. La richiesta può riguardare un privato, un professionista o un’azienda.</p><h3>Cosa succede alla richiesta</h3><p>AMD Rent la prende in carico e può affidarla a un noleggiatore. I preventivi riportano società fornitrice, canone, anticipo, durata, chilometri e condizioni.</p><h3>Il contratto si conclude di persona</h3><p>L’invio del modulo non prenota un veicolo e non richiede un pagamento online. La proposta e i documenti vengono verificati prima della firma in presenza.</p><p>Disponibilità, servizi e importi saranno indicati nel preventivo: non sono garantiti dalla sola richiesta.</p></aside>

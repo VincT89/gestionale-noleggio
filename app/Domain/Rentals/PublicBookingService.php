@@ -34,7 +34,9 @@ class PublicBookingService
             if ($pricelist->vehicle_id !== $candidate->vehicle_id || $pricelist->renter_org_id !== $candidate->renter_org_id) {
                 throw ValidationException::withMessages(['booking' => 'L’offerta è cambiata. Riapri il riepilogo prima di confermare.']);
             }
-            $car = $this->search->search(VehiclePricelist::forPublicRental()->whereKey($pricelist->id), $intent['period'])->first();
+            $searchPeriod = $intent['period'];
+            if (!empty($intent['delivery_destination'])) $searchPeriod += ['request_delivery' => 1, 'delivery_point' => $intent['delivery_destination']];
+            $car = $this->search->search(VehiclePricelist::forPublicRental()->whereKey($pricelist->id), $searchPeriod)->first();
             $deliveryRequest = null;
             if (!empty($intent['delivery_request_id'])) {
                 [$deliveryRequest, $attempts] = app(\App\Services\AmdRent\DeliveryBookingRecovery::class)->lockRequest($intent['delivery_request_id']);

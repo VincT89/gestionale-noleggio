@@ -1,0 +1,118 @@
+@import './public-home-layout.css';
+/* Shared public interactions; home geometry is scoped in public-home-layout.css. */
+[hidden] { display: none !important; }
+html { scroll-padding-top: 84px; }
+html:has(.amd-home-hero) { scrollbar-width: none; }
+html:has(.amd-home-hero)::-webkit-scrollbar { display: none; }
+#car-search, #public-search-results { scroll-margin-top: 16px; }
+.amd-header .amd-header-inner { padding-block: 5px; }
+.amd-header .amd-logo { flex-basis: 116px; }
+.amd-header .amd-logo img { width: 116px; }
+.amd-scene-sticky { top: 78px; }
+@media (max-width: 900px) {
+    .amd-header .amd-logo { flex-basis: 104px; }
+    .amd-header .amd-logo img { width: 104px; }
+    .amd-scene-sticky { top: 72px; }
+}
+.amd-header { position: sticky; top: 0; background: #fff; transition: box-shadow .2s ease; }
+.amd-header--scrolled { box-shadow: 0 5px 20px #18324e15; }
+.amd-button { transition: background-color .18s, border-color .18s, box-shadow .18s, transform .18s; }
+.amd-button:active { transform: translateY(1px); }
+.amd-field input, .amd-field select { transition: border-color .18s, box-shadow .18s; }
+.amd-field input:focus, .amd-field select:focus { box-shadow: 0 0 0 3px #175b991a; }
+.amd-text-link { display: inline-block; font-weight: 650; text-underline-offset: 5px; padding-block: 8px; }
+@media (prefers-reduced-motion: no-preference) {
+    /* Pointer focus must not snap an entering panel away between pointerdown and click. */
+    .amd-home-sections [data-home-reveal]:focus-within:not(:has(:focus-visible)) {
+        transition: opacity 700ms ease, transform 850ms cubic-bezier(.2, .75, .25, 1);
+    }
+}
+.amd-destination-shortcuts { list-style: none; margin: 24px 0 20px; padding: 0; border-top: 1px solid var(--amd-border); }
+.amd-destination-shortcuts li { border-bottom: 1px solid var(--amd-border); }
+.amd-destination-shortcuts a { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 17px 0; text-decoration: none; font-weight: 650; transition: padding .2s, background-color .2s; }
+.amd-destination-shortcuts a:hover, .amd-destination-shortcuts a:focus-visible { padding-inline: 12px; background: #edf3f7; }
+.amd-destination-shortcuts a > span:first-child { overflow-wrap: anywhere; }
+.amd-destination-action { flex: 0 0 auto; font-size: 12px; font-weight: 500; }
+.amd-rental-tabs { display: flex; gap: 24px; margin: 28px 0; border-bottom: 1px solid #ffffff4d; }
+.amd-rental-tabs button { background: none; border: 0; border-bottom: 3px solid transparent; color: #d6e2ed; padding: 12px 0; font: inherit; font-weight: 600; cursor: pointer; }
+.amd-rental-tabs button[aria-selected="true"] { color: #fff; border-bottom-color: #fff; }
+.amd-rental-tabs button:focus-visible { outline: 2px solid #fff; outline-offset: 5px; }
+.amd-rental-panel { min-height: 245px; }
+.amd-rental-panel h3 { color: #fff; font-size: 25px; line-height: 1.35; }
+.amd-rental-options p.amd-rental-detail { font-size: 13px; margin-bottom: 0; max-width: 440px; }
+.amd-delivery-feature-copy p.amd-delivery-condition { margin: 12px 0 0; font-size: 13px; line-height: 1.65; }
+.amd-home-faq details { transition: background-color .2s; }
+.amd-home-faq details[open] { background: #f5f8fb; }
+.amd-home-faq summary { padding-right: 12px; }
+.amd-search-band--results .amd-page-heading { margin-bottom: 20px; }
+.amd-search-recap { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 20px 24px; border: 1px solid var(--amd-border); background: #fff; border-radius: 8px; }
+.amd-search-recap > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.amd-search-recap strong { font-size: 17px; overflow-wrap: anywhere; }
+.amd-search-recap span { color: var(--amd-muted); font-size: 14px; }
+.amd-search-recap .amd-button { flex-shrink: 0; }
+.amd-search-recap + .amd-search { margin-top: 16px; }
+.amd-live-status { position: fixed; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; }
+.amd-live-status--visible { z-index: 40; top: 96px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); height: auto; overflow: visible; clip-path: none; white-space: normal; padding: 12px 20px; background: #193e66; color: #fff; box-shadow: 0 5px 20px #18324e26; border-radius: 6px; font-size: 14px; }
+.amd-results-main[aria-busy="true"] { opacity: .6; cursor: progress; }
+.amd-results-main { transition: opacity .15s; }
+.amd-results-heading { border: 0; padding: 0 0 16px; border-bottom: 1px solid var(--amd-border); border-radius: 0; background: transparent; }
+.amd-result-period { border: 0; border-radius: 0; background: transparent; padding: 0; margin: 16px 0 22px; }
+.amd-car-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.amd-car-grid .amd-car { display: flex; flex-direction: column; gap: 0; padding: 0; margin: 0; overflow: hidden; box-shadow: none; transition: border-color .2s, box-shadow .2s, transform .2s; }
+.amd-car-grid .amd-car:hover, .amd-car-grid .amd-car:focus-within { border-color: #6d92b4; box-shadow: 0 12px 24px #18324e12; }
+.amd-car-grid .amd-car-photo { align-self: stretch; border-radius: 0; min-height: 200px; }
+.amd-car-grid .amd-car-photo img { height: 210px; transition: transform .35s ease; }
+.amd-car-grid .amd-car-info { padding: 22px 24px; flex: 1; }
+.amd-car-grid .amd-car-info h3 { font-size: 25px; }
+.amd-car-grid .amd-car-price { border: 0; border-top: 1px solid var(--amd-border); border-radius: 0; background: #f1f5f8; padding: 22px 24px; }
+.amd-car-grid .amd-car-price .amd-button { margin-top: 14px; }
+.amd-car-grid > .amd-empty { grid-column: 1 / -1; }
+.amd-delivery-suppliers > p:not(.amd-map-attribution) { max-width: 850px; }
+.amd-delivery-provider { transition: border-color .2s, box-shadow .2s; }
+.amd-delivery-provider:hover, .amd-delivery-provider:focus-within { border-color: #6d92b4; box-shadow: 0 8px 24px #18324e12; }
+.amd-location-choices form { transition: border-color .2s, background-color .2s; }
+.amd-location-choices form:hover, .amd-location-choices form:focus-within { background: #f3f7fb; border-color: #6d92b4; }
+.amd-detail-figure { position: relative; }
+.amd-photo-open { display: block; margin: 12px auto 0; }
+.amd-photo-dialog { padding: 24px; border: 0; border-radius: 10px; width: min(960px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); color: var(--amd-ink); }
+.amd-photo-dialog::backdrop { background: #10283bd9; }
+.amd-photo-dialog > button { display: block; margin-left: auto; }
+.amd-photo-dialog figure { margin: 16px 0 0; }
+.amd-photo-dialog img { display: block; width: 100%; max-height: 68dvh; object-fit: contain; }
+.amd-photo-dialog figcaption { text-align: center; font-size: 14px; margin-top: 16px; }
+body:has(.amd-photo-dialog[open]) { overflow: hidden; }
+@media (min-width: 901px) {
+    .amd-quote { top: 115px; }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .amd-car-grid .amd-car:hover { transform: translateY(-3px); }
+    .amd-car-grid .amd-car:hover .amd-car-photo img { transform: scale(1.025); }
+}
+@media (max-width: 1100px) and (min-width: 901px) {
+    .amd-car-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+    html { scroll-padding-top: 76px; }
+    #car-search, #public-search-results { scroll-margin-top: 12px; }
+    .amd-car-grid { grid-template-columns: 1fr; gap: 20px; }
+    .amd-search-recap { align-items: stretch; flex-direction: column; gap: 16px; padding: 20px; }
+    .amd-search-recap .amd-button { align-self: flex-start; }
+    .amd-destination-shortcuts a { align-items: flex-start; flex-direction: column; gap: 4px; }
+    .amd-rental-tabs { gap: 22px; }
+    .amd-rental-panel { min-height: 280px; }
+    .amd-rental-panel h3 { font-size: 24px; }
+    .amd-live-status--visible { top: 85px; }
+    .amd-photo-dialog { padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .amd-header, .amd-button, .amd-field input, .amd-field select, .amd-destination-shortcuts a,
+    .amd-home-faq details, .amd-results-main, .amd-car-grid .amd-car, .amd-car-grid .amd-car-photo img,
+    .amd-delivery-provider, .amd-location-choices form { transition: none; }
+    .amd-button:active { transform: none; }
+}
+
+/* A brighter blue identifies the main public search action. */
+.amd-search .amd-search-submit { color: #fff; background: var(--amd-primary); border-color: var(--amd-primary); }
+.amd-search .amd-search-submit:hover { color: #fff; background: var(--amd-primary-hover); border-color: var(--amd-primary-hover); }
+.amd-footer .amd-footer-brand { color: #fff; }
+.amd-footer a:hover { color: #fff; }

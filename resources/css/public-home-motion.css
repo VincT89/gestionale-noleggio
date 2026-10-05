@@ -3,7 +3,7 @@
     --amd-scene-min-width: 1129px;
     --amd-scene-x: 100%;
     --amd-scene-y: 50%;
-    contain: paint;
+    isolation: isolate;
 }
 
 .amd-home-scene-plane {
@@ -18,6 +18,7 @@
 
 .amd-home-visual .amd-home-scene-background {
     position: absolute;
+    z-index: 0;
     inset: 0;
     width: 100%;
     height: 100%;
@@ -26,13 +27,17 @@
 
 .amd-home-visual .amd-home-scene-vehicle {
     position: absolute;
+    z-index: 1;
     left: 54.4%;
     top: 40.8%;
     width: 32%;
+    aspect-ratio: 2 / 1;
+    line-height: 0;
+    transition: none;
     transform-origin: 50% 85%;
 }
 
-.amd-home-visual .amd-home-scene-car { width: 100%; height: auto; max-width: none; object-fit: contain; }
+.amd-home-visual .amd-home-scene-car { display: block; width: 100%; height: auto; max-width: none; object-fit: contain; }
 .amd-home-visual[data-scene-static] .amd-home-scene-vehicle { display: none; }
 .amd-car-glint { display: none; }
 
@@ -59,7 +64,7 @@
     }
 }
 
-/* One route connects the coastal photograph and hotel through the layout's gutters. */
+/* The route follows the space between the pickup and longer-rental photographs. */
 .amd-home-sections {
     position: relative;
     isolation: isolate;
@@ -81,8 +86,7 @@
 
 .amd-home-route[data-route-ready] { visibility: visible; }
 .amd-home-route path { stroke-linecap: round; stroke-linejoin: round; }
-.amd-home-route-coast { fill: #edf3f7; }
-.amd-home-route-bed { stroke: #bfd1df; stroke-width: 4; opacity: .28; }
+.amd-home-route-bed { stroke: #e9f0f5; stroke-width: 24; }
 .amd-home-route-line { stroke: #527e9e; stroke-width: 1.75; opacity: .85; }
 .amd-home-sections .amd-home-explainer { background: #f1f5f8; }
 .amd-home-route[data-route-animated] .amd-home-route-line {
@@ -102,8 +106,8 @@
     [data-home-reveal="photo"] img { clip-path: inset(0); transition: clip-path 1150ms cubic-bezier(.2, .7, .25, 1); }
     [data-home-reveal="photo"][data-reveal-pending] img { clip-path: inset(0 100% 0 0); transition: none; }
     .amd-home-scene-vehicle[data-arrival-glint] .amd-car-glint::after { animation: amd-arrival-glint 1150ms ease-in-out both; }
-    [data-home-photo][data-photo-active] img {
-        transform: translate3d(0, var(--amd-photo-shift, 0px), 0) scale(1.09);
+    [data-home-photo][data-photo-active] {
+        transform: translate3d(0, var(--amd-photo-shift, 0px), 0);
     }
     .amd-search-band--home .amd-hero-link,
     .amd-home-sections a { transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
@@ -126,8 +130,7 @@
 }
 @media (max-width: 900px) {
     .amd-home-visual[data-home-scene] { --amd-scene-min-width: 625px; --amd-scene-x: 70%; --amd-scene-y: 65%; }
-    .amd-home-route-coast { display: none; }
-    .amd-home-route-bed { stroke-width: 3; }
+    .amd-home-route-bed { stroke-width: 14; }
     .amd-home-route-line { stroke-width: 1.25; }
 }
 @media (max-width: 600px) {

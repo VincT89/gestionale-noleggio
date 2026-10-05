@@ -40,7 +40,7 @@ class PublicAutomaticCatalogTest extends PublicBookingTestCase
             ->assertViewHas('places', fn ($places) => $places->pluck('id')->sort()->values()->all() === [$a->public_pickup_place_id, $b->public_pickup_place_id])
             ->assertViewHas('destinations', fn ($destinations) => $destinations->pluck('value')->all() === ['city:Bari'])
             ->assertSee('Bari — Tutti i punti di ritiro')->assertDontSee($a->place->name)->assertDontSee($b->place->name)
-            ->assertSee('Da dove vuoi partire?')->assertDontSee('offerte pubblicate');
+            ->assertSee('id="pickup-place" name="destination"', false)->assertDontSee('offerte pubblicate');
         $this->get(route('public-cars.index', $this->period(['place_id' => $a->public_pickup_place_id])))->assertOk()
             ->assertViewHas('results', fn ($rows) => $rows->isEmpty())
             ->assertViewHas('places', fn ($places) => $places->count() === 2)

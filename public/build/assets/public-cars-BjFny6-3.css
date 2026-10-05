@@ -1,7 +1,188 @@
-@import './password-visibility.css';
-@import './public-account.css';
-@import './public-home-motion.css';
-
+.password-field { position: relative; display: block; min-width: 0; flex: 1 1 0%; }
+.password-field > input { width: 100%; padding-right: 48px !important; }
+.password-toggle { position: absolute; inset-inline-end: 2px; top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; justify-content: center; width: 44px; min-height: 40px; padding: 8px; border: 0; border-radius: 4px; background: transparent; color: inherit; cursor: pointer; }
+.password-toggle:hover { background: #71809620; }
+.password-toggle:focus-visible { outline: 2px solid currentColor; outline-offset: -3px; }
+.password-toggle:disabled { opacity: .5; cursor: default; }
+.password-toggle[hidden], .password-toggle svg[hidden] { display: none !important; }
+.amd-account-auth { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 56px; align-items: start; max-width: 1040px; margin: 16px auto; }
+.amd-account-intro { padding-top: 24px; }
+.amd-account-intro p { color: var(--amd-muted); }
+.amd-account-form { display: grid; gap: 20px; min-width: 0; padding: 32px; background: #fff; border: 1px solid var(--amd-border); border-radius: 8px; }
+.amd-account-form h2, .amd-account-form p { margin: 0; }
+.amd-account-form .amd-errors { margin: 0; }
+.amd-account-form .amd-button { justify-self: start; }
+.amd-account-form .password-field input { padding-right: 48px; }
+.amd-account-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.amd-account-notice { padding: 16px 20px; border-left: 4px solid var(--amd-blue); background: #edf3f8; line-height: 1.6; margin: 0 0 20px; overflow-wrap: anywhere; }
+.amd-account-form .amd-account-notice { margin: 0; }
+.amd-account-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; border-bottom: 1px solid var(--amd-border); padding-bottom: 16px; margin-bottom: 32px; }
+.amd-account-nav a { padding: 8px 0; text-decoration: none; }
+.amd-account-nav a[aria-current=page] { font-weight: 700; text-decoration: underline; }
+.amd-account-nav form { margin-left: auto; }
+.amd-account-logout { padding: 10px 0; border: 0; background: transparent; color: var(--amd-action); text-decoration: underline; text-underline-offset: 4px; font: inherit; cursor: pointer; }
+.amd-account-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 24px; }
+.amd-account-toolbar form { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
+.amd-account-toolbar h1 { margin: 0; }
+.amd-account-list { display: grid; gap: 20px; }
+.amd-account-record { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px 40px; padding: 28px; border: 1px solid var(--amd-border); background: #fff; border-radius: 8px; overflow-wrap: anywhere; }
+.amd-account-record h2 { font-size: 23px; margin: 6px 0 12px; }
+.amd-account-record p { margin: 6px 0; }
+.amd-account-record small { color: var(--amd-muted); }
+.amd-account-record dl { margin: 0 0 16px; }
+.amd-account-record dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; padding: 6px 0; }
+.amd-account-record dd { margin: 0; font-weight: 650; }
+.amd-account-empty { padding: 32px; background: #fff; border: 1px solid var(--amd-border); border-radius: 8px; }
+.amd-account-pagination { display: flex; justify-content: space-between; gap: 20px; align-items: center; margin-top: 24px; }
+.amd-account-documents { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--amd-border); }
+.amd-account-documents ul { list-style: none; padding: 0; }
+.amd-account-documents li { padding: 16px 0; border-bottom: 1px solid var(--amd-border); overflow-wrap: anywhere; }
+.amd-account-documents small { display: block; margin-top: 6px; }
+.amd-account-documents form { max-width: 640px; margin-top: 28px; }
+.amd-account-callout { margin: 28px 0 0; padding: 24px; border: 1px solid var(--amd-border); background: #f4f7fa; border-radius: 8px; }
+.amd-account-callout h2 { font-size: 21px; margin-top: 0; }
+.amd-account-profile { align-items: start; }
+@media (max-width: 760px) {
+    .amd-account-auth { grid-template-columns: 1fr; gap: 24px; margin: 0; }
+    .amd-account-intro { padding: 0; }
+    .amd-account-intro h1 { font-size: 30px; }
+    .amd-account-form { padding: 24px; }
+    .amd-account-record, .amd-account-profile { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+    .amd-account-grid { grid-template-columns: 1fr; }
+    .amd-account-form, .amd-account-record, .amd-account-empty, .amd-account-callout { padding: 20px; }
+    .amd-account-nav { gap: 8px 20px; }
+    .amd-account-nav form { margin-left: 0; }
+    .amd-account-toolbar form { width: 100%; }
+    .amd-account-toolbar .amd-field { flex: 1; }
+}
+/* Both layers use the photograph's original coordinates, even when it is cropped. */
+.amd-home-visual[data-home-scene] {
+    --amd-scene-min-width: 1129px;
+    --amd-scene-x: 100%;
+    --amd-scene-y: 50%;
+    contain: paint;
+}
+.amd-home-scene-plane {
+    position: absolute;
+    width: max(100%, var(--amd-scene-min-width));
+    aspect-ratio: 1942 / 809;
+    left: var(--amd-scene-x);
+    top: var(--amd-scene-y);
+    transform: translate(calc(-1 * var(--amd-scene-x)), calc(-1 * var(--amd-scene-y)));
+    pointer-events: none;
+}
+.amd-home-visual .amd-home-scene-background {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    -o-object-fit: fill;
+       object-fit: fill;
+}
+.amd-home-visual .amd-home-scene-vehicle {
+    position: absolute;
+    left: 54.4%;
+    top: 40.8%;
+    width: 32%;
+    transform-origin: 50% 85%;
+}
+.amd-home-visual .amd-home-scene-car { width: 100%; height: auto; max-width: none; -o-object-fit: contain; object-fit: contain; }
+.amd-home-visual[data-scene-static] .amd-home-scene-vehicle { display: none; }
+.amd-car-glint { display: none; }
+@supports ((-webkit-mask-image: url("")) or (mask-image: url(""))) or (-webkit-mask-image: url("")) {
+    .amd-car-glint {
+        display: block;
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        pointer-events: none;
+        -webkit-mask: var(--amd-car-silhouette) center / 100% 100% no-repeat;
+        mask: var(--amd-car-silhouette) center / 100% 100% no-repeat;
+    }
+    .amd-car-glint::after {
+        content: '';
+        position: absolute;
+        top: -20%;
+        left: 0;
+        width: 13%;
+        height: 140%;
+        background: #fff;
+        filter: blur(5px);
+        opacity: 0;
+    }
+}
+/* One route connects the coastal photograph and hotel through the layout's gutters. */
+.amd-home-sections {
+    position: relative;
+    isolation: isolate;
+    overflow: clip;
+}
+.amd-home-sections > section > .amd-section-inner { position: relative; z-index: 2; }
+.amd-home-route {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    visibility: hidden;
+    pointer-events: none;
+}
+.amd-home-route[data-route-ready] { visibility: visible; }
+.amd-home-route path { stroke-linecap: round; stroke-linejoin: round; }
+.amd-home-route-coast { fill: #edf3f7; }
+.amd-home-route-bed { stroke: #bfd1df; stroke-width: 4; opacity: .28; }
+.amd-home-route-line { stroke: #527e9e; stroke-width: 1.75; opacity: .85; }
+.amd-home-sections .amd-home-explainer { background: #f1f5f8; }
+.amd-home-route[data-route-animated] .amd-home-route-line {
+    stroke-dasharray: 1;
+    stroke-dashoffset: var(--amd-route-offset, 1);
+}
+@media (prefers-reduced-motion: no-preference) {
+    [data-home-reveal] {
+        transition: opacity 700ms ease, transform 850ms cubic-bezier(.2, .75, .25, 1);
+    }
+    [data-home-reveal][data-reveal-pending] { opacity: 0; transform: translate3d(0, 30px, 0); }
+    [data-home-reveal]:focus-within { opacity: 1; transform: none; transition: none; }
+    /* Observe the full figure; clipping only its image keeps the reveal detectable. */
+    [data-home-reveal="photo"] { overflow: hidden; }
+    [data-home-reveal="photo"][data-reveal-pending] { opacity: 1; transform: none; }
+    [data-home-reveal="photo"] img { clip-path: inset(0); transition: clip-path 1150ms cubic-bezier(.2, .7, .25, 1); }
+    [data-home-reveal="photo"][data-reveal-pending] img { clip-path: inset(0 100% 0 0); transition: none; }
+    .amd-home-scene-vehicle[data-arrival-glint] .amd-car-glint::after { animation: amd-arrival-glint 1150ms ease-in-out both; }
+    [data-home-photo][data-photo-active] img {
+        transform: translate3d(0, var(--amd-photo-shift, 0px), 0) scale(1.09);
+    }
+    .amd-search-band--home .amd-hero-link,
+    .amd-home-sections a { transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
+    .amd-home-sections .amd-button:hover { box-shadow: 0 5px 16px #102e4d25; }
+}
+@keyframes amd-arrival-glint {
+    0% { transform: translate3d(-200%, 0, 0) skewX(-18deg); opacity: 0; }
+    20%, 75% { opacity: .25; }
+    100% { transform: translate3d(950%, 0, 0) skewX(-18deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .amd-home-visual .amd-home-scene-vehicle { display: none; }
+    [data-home-reveal] { opacity: 1; transform: none; transition: none; }
+}
+@media (max-width: 1150px) {
+    .amd-home-visual[data-home-scene] { --amd-scene-x: 80%; }
+}
+@media (max-width: 900px) {
+    .amd-home-visual[data-home-scene] { --amd-scene-min-width: 625px; --amd-scene-x: 70%; --amd-scene-y: 65%; }
+    .amd-home-route-coast { display: none; }
+    .amd-home-route-bed { stroke-width: 3; }
+    .amd-home-route-line { stroke-width: 1.25; }
+}
+@media (max-width: 600px) {
+    .amd-home-visual[data-home-scene] { --amd-scene-min-width: 514px; }
+}
+@media (max-width: 360px) {
+    .amd-home-visual[data-home-scene] { --amd-scene-min-width: 445px; }
+}
 :root {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     color: #283a4b;
@@ -15,7 +196,6 @@
     --amd-width: 1280px;
     --amd-paper: #fff;
 }
-
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; min-height: 100vh; display: flex; flex-direction: column; background: #f5f6f8; }
 body > main { flex: 1; }
@@ -30,27 +210,23 @@ h2 { font-size: 25px; font-weight: 650; letter-spacing: -.015em; }
 h3 { font-size: 21px; font-weight: 650; }
 p { line-height: 1.65; }
 small { font-size: 13px; line-height: 1.5; }
-
 .amd-skip { position: absolute; left: 16px; top: 0; transform: translateY(-150%); z-index: 30; background: #fff; padding: 12px; }
 .amd-skip:focus { transform: none; }
 .amd-visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-
 /* The public header and content share the same alignment. */
 .amd-header { background: #fff; border-bottom: 1px solid var(--amd-border); position: relative; z-index: 20; }
 .amd-header-inner { width: 100%; max-width: var(--amd-width); margin: auto; padding: 10px 32px; display: flex; align-items: center; justify-content: space-between; gap: 32px; }
 .amd-logo { display: block; flex: 0 0 166px; }
-.amd-logo img { display: block; width: 166px; object-fit: contain; }
+.amd-logo img { display: block; width: 166px; -o-object-fit: contain; object-fit: contain; }
 .amd-desktop-nav { margin-left: auto; }
 .amd-nav-items { display: flex; align-items: center; gap: 24px; margin: 0; padding: 0; list-style: none; }
 .amd-nav-items > li > a { display: block; padding: 12px 4px; color: var(--amd-blue); text-decoration: none; font-size: 14px; font-weight: 600; line-height: 22px; border-bottom: 2px solid transparent; white-space: nowrap; }
 .amd-nav-items a:hover, .amd-nav-items a[aria-current=page] { border-bottom-color: var(--amd-action); color: var(--amd-action); }
 .amd-mobile-nav, .amd-nojs-nav { display: none; }
 .amd-mobile-nav [hidden] { display: none; }
-
 .amd-main { width: 100%; max-width: var(--amd-width); margin: 0 auto; padding: 44px 32px 64px; }
 .amd-page-heading { margin-bottom: 30px; }
 .amd-page-heading p { font-size: 17px; max-width: 760px; margin: 0; color: var(--amd-muted); }
-
 /* Brand navy frames the search form, which retains a light surface. */
 .amd-search-band { background: #183b64; border-bottom: 1px solid #183b64; }
 .amd-search-band-inner { max-width: var(--amd-width); margin: auto; padding: 48px 32px 36px; }
@@ -70,6 +246,7 @@ small { font-size: 13px; line-height: 1.5; }
 .amd-field label { display: block; font-weight: 600; font-size: 14px; line-height: 20px; margin-bottom: 8px; color: #283f56; }
 .amd-field input, .amd-field select, .amd-sort select { width: 100%; height: 48px; border: 1px solid #8294a6; border-radius: 6px; padding: 10px 12px; background: #fff; color: #253e55; min-width: 0; }
 .amd-field input:hover, .amd-field select:hover, .amd-sort select:hover { border-color: #527597; }
+.amd-field input::-moz-placeholder { color: #647689; opacity: 1; }
 .amd-field input::placeholder { color: #647689; opacity: 1; }
 .amd-field small { display: block; color: var(--amd-muted); margin-top: 7px; }
 .amd-search .amd-field input, .amd-search .amd-field select { height: 52px; }
@@ -79,26 +256,23 @@ small { font-size: 13px; line-height: 1.5; }
 .amd-money-input input { padding-right: 34px; }
 .amd-money-input span { position: absolute; right: 12px; top: 13px; color: var(--amd-muted); }
 .amd-characteristics { margin-top: 22px; border-top: 1px solid var(--amd-border); padding-top: 18px; }
-.amd-characteristics summary { cursor: pointer; color: var(--amd-blue); font-weight: 600; width: fit-content; padding: 4px 0; }
+.amd-characteristics summary { cursor: pointer; color: var(--amd-blue); font-weight: 600; width: -moz-fit-content; width: fit-content; padding: 4px 0; }
 .amd-search-secondary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; margin-top: 20px; }
 .amd-model-field { grid-column: span 2; }
 .amd-search-actions { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-top: 24px; }
 .amd-search-actions p { font-size: 13px; color: var(--amd-muted); margin: 0; }
 .amd-search-actions > div { display: flex; align-items: center; gap: 20px; }
 .amd-reset { font-size: 14px; }
-
 .amd-button { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; border: 1px solid var(--amd-action); border-radius: 6px; padding: 11px 20px; background: var(--amd-action); color: #fff; text-decoration: none; font-weight: 650; font-size: 15px; text-align: center; cursor: pointer; line-height: 1.5; }
 .amd-button:hover { background: #124b80; border-color: #124b80; color: #fff; }
 .amd-button-secondary { background: #fff; color: var(--amd-action); border-color: #a6bacf; }
 .amd-button-secondary:hover { background: #edf3f9; color: var(--amd-action); border-color: var(--amd-action); }
 .amd-button:disabled { opacity: .65; cursor: wait; }
 .amd-search .amd-search-submit { min-height: 52px; }
-
 .amd-errors { background: #fff2f0; color: #912a20; border: 1px solid #ce8d85; border-radius: 6px; padding: 16px; margin-bottom: 22px; font-size: 14px; }
 .amd-errors ul { margin-bottom: 0; padding-left: 22px; }
 .amd-field [aria-invalid=true] { border-color: #a72d25; }
 .amd-field small.amd-field-error { color: #a11212; }
-
 .amd-place-field { position: relative; }
 .amd-place-select-native[hidden] { display: none; }
 .amd-place-options { position: absolute; z-index: 12; top: 84px; left: 0; min-width: 100%; width: 430px; max-width: calc(100vw - 80px); background: #fff; color: #253e55; box-shadow: 0 8px 24px #193e6626; border: 1px solid #9bafc3; border-radius: 6px; max-height: 300px; overflow-y: auto; padding: 4px; margin: 0; list-style: none; }
@@ -106,18 +280,16 @@ small { font-size: 13px; line-height: 1.5; }
 .amd-place-options [role=option] { padding: 12px; line-height: 1.5; font-size: 14px; cursor: pointer; border-radius: 3px; overflow-wrap: anywhere; }
 .amd-place-options [aria-selected=true] { background: #eaf1f8; color: var(--amd-blue); }
 .amd-place-none { padding: 12px; color: var(--amd-muted); font-size: 14px; line-height: 1.5; }
-
 /* Only locations provided by the connected rental companies appear here. */
 .amd-search-hint { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 72px; padding: 4px 0 0; }
 .amd-search-hint h2 { margin: 0 0 16px; font-size: 28px; max-width: 360px; }
 .amd-search-hint p { color: var(--amd-muted); margin: 0; font-size: 15px; }
 .amd-search-locations { min-width: 0; }
 .amd-search-locations h3 { margin: 0 0 10px; font-size: 18px; }
-.amd-place-links { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; }
+.amd-place-links { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); -moz-column-gap: 28px; column-gap: 28px; }
 .amd-place-links li { min-width: 0; border-bottom: 1px solid var(--amd-border); }
 .amd-place-links a { display: block; padding: 16px 0; line-height: 1.55; font-size: 14px; text-decoration: none; overflow-wrap: anywhere; }
 .amd-place-links a:hover { text-decoration: underline; }
-
 .amd-results-main { padding-top: 40px; }
 .amd-results-layout { display: grid; grid-template-columns: 224px minmax(0, 1fr); gap: 28px; align-items: start; }
 .amd-results { min-width: 0; }
@@ -138,7 +310,7 @@ small { font-size: 13px; line-height: 1.5; }
 .amd-result-period { font-size: 14px; color: var(--amd-muted); margin: 16px 0 22px; }
 .amd-car { display: grid; grid-template-columns: 200px minmax(0, 1fr) 200px; gap: 20px; background: var(--amd-paper); border: 1px solid var(--amd-border); border-radius: 10px; padding: 24px; margin-bottom: 20px; box-shadow: 0 8px 24px #18324e08; }
 .amd-car-photo { align-self: start; margin: 0; min-height: 180px; background: #f4f7fa; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 6px; overflow: hidden; }
-.amd-car-photo img { object-fit: contain; width: 100%; height: 180px; background: #fff; }
+.amd-car-photo img { -o-object-fit: contain; object-fit: contain; width: 100%; height: 180px; background: #fff; }
 .amd-car-photo span { font-size: 13px; color: var(--amd-muted); padding: 16px; text-align: center; }
 .amd-car-photo figcaption, .amd-detail-figure figcaption { font-size: 12px; line-height: 1.5; color: var(--amd-muted); text-align: center; padding: 8px 10px; }
 .amd-car-info { min-width: 0; }
@@ -167,13 +339,12 @@ small { font-size: 13px; line-height: 1.5; }
 .amd-empty-edit { display: block; margin-top: 20px; }
 .amd-pagination { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 20px; padding: 20px 0; }
 .amd-pagination a { display: block; padding: 12px; border: 1px solid #a6bacf; background: #fff; border-radius: 6px; }
-
 /* Vehicle details and forms use quiet surfaces with clear pricing and readable fields. */
 .amd-back { display: inline-block; margin-bottom: 24px; padding: 8px 12px; background: #fff; font-size: 14px; }
 .amd-detail { display: grid; grid-template-columns: minmax(0, 1fr) 365px; gap: 28px; align-items: start; }
 .amd-detail-info, .amd-quote { background: var(--amd-paper); padding: 28px; border: 1px solid var(--amd-border); border-radius: 10px; min-width: 0; box-shadow: 0 8px 28px #18324e08; }
 .amd-detail-figure { margin: 0 0 24px; padding: 12px; background: #f5f6f8; border: 1px solid var(--amd-border); border-radius: 8px; }
-.amd-detail-photo { display: block; width: 100%; height: 320px; object-fit: contain; background: #fff; }
+.amd-detail-photo { display: block; width: 100%; height: 320px; -o-object-fit: contain; object-fit: contain; background: #fff; }
 .amd-detail-info h2 { font-size: 22px; margin: 28px 0 16px; }
 .amd-detail-info h2:first-child { margin-top: 0; }
 .amd-specs-detail { margin: 0; gap: 22px 36px; }
@@ -204,9 +375,8 @@ small { font-size: 13px; line-height: 1.5; }
 .amd-booking-payment { border-top: 1px solid var(--amd-border); padding-top: 16px; font-weight: 600; }
 .amd-booking-reference { overflow-wrap: anywhere; }
 .amd-booking-trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
-.amd-booking-car-photo { width: 100%; height: 200px; object-fit: contain; margin-bottom: 8px; }
+.amd-booking-car-photo { width: 100%; height: 200px; -o-object-fit: contain; object-fit: contain; margin-bottom: 8px; }
 .amd-summary-label { font-size: 12px; color: var(--amd-muted); margin: 20px 0 4px; }
-
 .amd-information { max-width: 780px; padding: 0 0 12px; }
 .amd-information .amd-information-intro { font-size: 20px; color: var(--amd-muted); }
 .amd-information h2 { margin: 34px 0 12px; }
@@ -221,7 +391,6 @@ small { font-size: 13px; line-height: 1.5; }
 .amd-footer .amd-footer-brand { font-size: 22px; font-weight: 650; line-height: 1.2; }
 .amd-footer nav { display: flex; flex-wrap: wrap; gap: 10px 28px; }
 .amd-footer nav a { display: inline-block; padding: 8px 0; }
-
 @media (max-width: 1150px) {
     .amd-search-primary { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr); }
     .amd-search-submit { grid-column: 1 / -1; justify-self: end; margin-top: 0; min-width: 160px; }
@@ -234,7 +403,6 @@ small { font-size: 13px; line-height: 1.5; }
     .amd-search-hint { gap: 40px; }
     .amd-place-links { grid-template-columns: 1fr; }
 }
-
 @media (max-width: 900px) {
     .amd-desktop-nav { display: none; }
     .amd-mobile-nav { display: block; }
@@ -264,7 +432,6 @@ small { font-size: 13px; line-height: 1.5; }
     .amd-booking-layout { grid-template-areas: "summary" "form"; }
     .amd-search-hint { grid-template-columns: 1fr 1.2fr; gap: 32px; }
 }
-
 @media (max-width: 600px) {
     h1 { font-size: 30px; }
     .amd-header-inner { padding: 10px 20px; gap: 20px; }
@@ -307,14 +474,12 @@ small { font-size: 13px; line-height: 1.5; }
     .amd-booking-form .amd-button { width: 100%; }
     .amd-footer-inner { padding: 24px 20px; align-items: flex-start; flex-direction: column; gap: 12px; }
 }
-
 @media (max-width: 360px) {
     .amd-header-inner, .amd-main, .amd-search-band-inner, .amd-search-band--results .amd-search-band-inner, .amd-footer-inner { padding-left: 16px; padding-right: 16px; }
     .amd-search, .amd-car, .amd-detail-info, .amd-quote, .amd-booking-form { padding: 16px; }
     .amd-search-band h1 { font-size: 30px; }
     .amd-search-band--results h1 { font-size: 26px; }
 }
-
 .amd-place-confirmation, .amd-delivery-suppliers { padding: 12px 0 36px; }
 .amd-place-confirmation h2, .amd-delivery-suppliers h2 { margin-top: 0; color: var(--amd-ink); font-size: 28px; }
 .amd-place-confirmation p, .amd-delivery-suppliers > p { line-height: 1.65; max-width: 950px; overflow-wrap: anywhere; }
@@ -334,11 +499,10 @@ small { font-size: 13px; line-height: 1.5; }
     .amd-location-choices .amd-button { margin-top: 14px; }
     .amd-delivery-provider { grid-template-columns: 1fr; gap: 10px; }
 }
-
 /* Photography is confined to the main image and editorial panels next to relevant content. */
 .amd-search-band--home { position: relative; isolation: isolate; }
 .amd-home-visual { position: absolute; z-index: -1; inset: 0 0 auto auto; width: 50%; height: 470px; margin: 0; overflow: hidden; background: #426c86; }
-.amd-home-visual img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: right center; }
+.amd-home-visual img { display: block; width: 100%; height: 100%; -o-object-fit: cover; object-fit: cover; -o-object-position: right center; object-position: right center; }
 .amd-search-band--home .amd-search-band-inner { padding-top: 54px; padding-bottom: 42px; }
 .amd-search-band--home .amd-page-heading { width: 47%; min-height: 330px; margin-bottom: 28px; padding: 12px 32px 22px 0; background: #183b64; }
 .amd-search-band--home h1 { font-size: clamp(40px, 3.9vw, 56px); font-weight: 650; line-height: 1.08; letter-spacing: -.035em; margin-bottom: 22px; }
@@ -359,7 +523,7 @@ small { font-size: 13px; line-height: 1.5; }
 .amd-destination-group { padding-block: 24px; border-top: 1px solid var(--amd-border); }
 .amd-destination-group:last-child { border-bottom: 1px solid var(--amd-border); }
 .amd-destination-group h3 { margin: 0 0 12px; font-size: 26px; overflow-wrap: anywhere; }
-.amd-destination-group .amd-place-links { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 28px; }
+.amd-destination-group .amd-place-links { grid-template-columns: repeat(2, minmax(0, 1fr)); -moz-column-gap: 28px; column-gap: 28px; }
 .amd-destination-group .amd-place-links li { border-color: var(--amd-border); }
 .amd-destination-group .amd-place-links a { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 14px 4px; color: var(--amd-blue); font-size: 16px; line-height: 1.55; }
 .amd-destination-group .amd-place-links a > span { min-width: 0; }
@@ -387,7 +551,6 @@ small { font-size: 13px; line-height: 1.5; }
 .amd-home-faq details > div { padding: 0 4px 24px 22px; }
 .amd-home-faq p { margin: 0; color: var(--amd-muted); font-size: 15px; line-height: 1.8; }
 .amd-home-faq p + p { margin-top: 12px; }
-
 /* A shared footer keeps the public site useful beyond the first search. */
 .amd-footer { background: #102d4b; border-top: 0; color: #e9eff5; }
 .amd-footer-inner { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, .75fr) minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; gap: 40px; padding: 62px 32px 48px; }
@@ -408,7 +571,6 @@ small { font-size: 13px; line-height: 1.5; }
 .amd-footer-bottom { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 28px; width: calc(100% - 64px); max-width: calc(var(--amd-width) - 64px); margin-inline: auto; padding: 22px 0 28px; border-top: 1px solid #35506b; font-size: 13px; line-height: 1.6; }
 .amd-footer .amd-footer-bottom p { flex: 1 1 240px; margin: 0; color: #c6d5e2; }
 .amd-footer-bottom > a { padding-block: 6px; }
-
 /* Navy headings and neutral surfaces keep information pages focused on their content. */
 .amd-info-heading { background: #183b64; padding-block: 58px; }
 .amd-info-heading h1 { max-width: 780px; color: #fff; font-size: clamp(32px, 3.5vw, 44px); line-height: 1.15; margin-bottom: 20px; }
@@ -424,13 +586,12 @@ small { font-size: 13px; line-height: 1.5; }
 .amd-information h2[id] { scroll-margin-top: 30px; }
 .amd-info-layout .amd-information h2:first-child { margin-top: 0; }
 .amd-information .amd-button { margin-top: 14px; }
-
 @media (max-width: 1150px) {
     .amd-search-band--home .amd-page-heading { width: 48%; padding-right: 26px; }
-    .amd-home-visual img { object-position: 80% center; }
+    .amd-home-visual img { -o-object-position: 80% center; object-position: 80% center; }
     .amd-section-heading { gap: 40px; }
     .amd-booking-guide-layout { gap: 48px; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); }
-    .amd-destination-group .amd-place-links { column-gap: 24px; }
+    .amd-destination-group .amd-place-links { -moz-column-gap: 24px; column-gap: 24px; }
     .amd-destination-group .amd-place-links a { align-items: flex-start; flex-direction: column; gap: 4px; }
     .amd-destination-group .amd-place-links small { text-align: left; max-width: none; }
     .amd-footer-inner { gap: 30px; grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr) minmax(0, 1fr) minmax(0, 1fr); }
@@ -438,7 +599,7 @@ small { font-size: 13px; line-height: 1.5; }
 }
 @media (max-width: 900px) {
     .amd-home-visual { inset: 0 0 auto; width: 100%; height: 260px; }
-    .amd-home-visual img { object-position: 70% 65%; }
+    .amd-home-visual img { -o-object-position: 70% 65%; object-position: 70% 65%; }
     .amd-search-band--home .amd-search-band-inner { padding-top: 288px; }
     .amd-search-band--home .amd-page-heading { width: 100%; min-height: 0; padding: 0; margin-bottom: 28px; }
     .amd-search-band--home .amd-page-heading h1 { font-size: 40px; max-width: none; line-height: 1.12; margin-bottom: 16px; }
@@ -499,7 +660,6 @@ small { font-size: 13px; line-height: 1.5; }
     .amd-footer-inner { gap: 28px 18px; padding-inline: 16px; }
     .amd-footer-bottom { width: calc(100% - 32px); margin-inline: 16px; }
 }
-
 /* Separate paths for short rentals, delivery enquiries and long-term cases. */
 .amd-long-term-layout > .amd-long-term-form { grid-area: auto; min-width: 0; }
 .amd-rental-options { background: #183b64; padding: 64px 0; }
@@ -523,7 +683,6 @@ small { font-size: 13px; line-height: 1.5; }
 .amd-delivery-request p { font-size: 14px; line-height: 1.65; }
 .amd-enquiry-summary { max-width: 900px; margin-bottom: 56px; }
 .amd-long-term-quote { padding: 24px 0; border-top: 1px solid #c1cdd7; margin-top: 24px; }
-
 /* Two bounded photo panels give context without sitting behind text or forms. */
 .amd-home-places { background: #fff; }
 .amd-home-explainer { background: #f5f6f8; }
@@ -534,10 +693,10 @@ small { font-size: 13px; line-height: 1.5; }
 .amd-places-copy .amd-places-lead { font-size: 18px; }
 .amd-places-copy .amd-button { margin-top: 8px; }
 .amd-places-photo { margin: 0; border-radius: 8px; overflow: hidden; background: #e9edf1; }
-.amd-places-photo img { display: block; width: 100%; height: 380px; object-fit: cover; object-position: 72% center; }
+.amd-places-photo img { display: block; width: 100%; height: 380px; -o-object-fit: cover; object-fit: cover; -o-object-position: 72% center; object-position: 72% center; }
 .amd-rental-options-inner > .amd-delivery-feature { padding: 0; overflow: hidden; }
 .amd-delivery-photo { margin: 0; background: #e9edf1; }
-.amd-delivery-photo img { display: block; width: 100%; height: 220px; object-fit: cover; object-position: center 58%; }
+.amd-delivery-photo img { display: block; width: 100%; height: 220px; -o-object-fit: cover; object-fit: cover; -o-object-position: center 58%; object-position: center 58%; }
 .amd-delivery-feature-copy { padding: 28px 32px 32px; }
 .amd-delivery-feature-copy a { font-weight: 600; line-height: 1.7; }
 .amd-home-explainer-intro { padding: 0; }
@@ -553,13 +712,11 @@ small { font-size: 13px; line-height: 1.5; }
 .amd-search-foot { margin-top: 18px; border-top: 1px solid #d2dce0; }
 .amd-search-foot .amd-search-note { margin-top: 12px; }
 .amd-booking-car-photo { background: #fff; border: 1px solid #c4d4dc; border-radius: 6px; }
-
 /* Contextual photos are confined to page headings; vehicle images stay tied to the selected car. */
 .amd-photo-heading { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 48px; align-items: center; }
 .amd-photo-heading > div { min-width: 0; }
 .amd-context-photo { margin: 0; overflow: hidden; border-radius: 8px; background: #e9edf1; }
-.amd-context-photo img { display: block; width: 100%; height: 180px; object-fit: cover; object-position: center 58%; }
-
+.amd-context-photo img { display: block; width: 100%; height: 180px; -o-object-fit: cover; object-fit: cover; -o-object-position: center 58%; object-position: center 58%; }
 @media (max-width: 900px) {
     .amd-long-term-layout { grid-template-columns: 1fr; gap: 28px; }
     .amd-photo-heading { grid-template-columns: minmax(0, 1fr) 230px; gap: 28px; }

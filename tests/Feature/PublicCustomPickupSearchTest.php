@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\{AmdRentEnquiry, Location, PublicDeliveryLocation, PublicPickupPlace};
 use Illuminate\Support\Facades\{DB, Http};
 use Tests\Support\PublicBookingTestCase;
+use App\Services\Geocoding\PlaceSelection;
 
 class PublicCustomPickupSearchTest extends PublicBookingTestCase
 {
@@ -17,14 +18,19 @@ class PublicCustomPickupSearchTest extends PublicBookingTestCase
             'address_line' => 'Punto di riconsegna dimostrativo', 'country_code' => 'IT'];
         $place = PublicPickupPlace::create($data + ['identity_key' => PublicPickupPlace::identity($data)]);
         $location = Location::create(['organization_id' => 1] + $place->only(['name', 'city', 'address_line', 'country_code']));
+        $location->update(['lat' => 41.12, 'lng' => 16.86]);
         return PublicDeliveryLocation::create(['organization_id' => 1, 'public_pickup_place_id' => $place->id,
             'location_id' => $location->id, 'is_active' => true, 'custom_delivery_enabled' => true,
+            'delivery_origin_location_id' => $location->id, 'delivery_radius_km' => 10,
             'delivery_area' => 'Zona dimostrativa, indirizzo da confermare']);
     }
 
     private function custom(array $changes = []): array
     {
-        return $this->period(array_replace(['city' => 'Bari', 'request_delivery' => 1, 'delivery_address' => self::ADDRESS], $changes));
+        $address = is_string($changes['delivery_address'] ?? null) ? $changes['delivery_address'] : self::ADDRESS;
+        $this->startSession();
+        $choice = app(PlaceSelection::class)->issue([['label' => $address, 'lat' => 41.12, 'lng' => 16.86]])[0];
+        return $this->period(array_replace(['city' => 'Bari', 'request_delivery' => 1, 'delivery_address' => self::ADDRESS, 'delivery_place' => $choice['token']], $changes));
     }
 
     public function test_city_search_selects_a_capable_location_before_grouping_suppliers(): void
@@ -52,7 +58,9 @@ class PublicCustomPickupSearchTest extends PublicBookingTestCase
         unset($filters['city']);
         $bookingUrl = route('public-cars.booking.create', ['pricelist' => 1] + $filters);
         $this->get(route('public-cars.show', ['pricelist' => 1] + $filters))->assertOk()
-            ->assertSee(self::ADDRESS)->assertSee('Aeroporto dimostrativo')->assertSee($bookingUrl)
+            ->assertSee(self::ADDRESS)->assertSee('Aeroporto dimostrativo')
+            ->assertViewHas('returnPlaces', fn ($places) => $places->pluck('id')->all() === [$delivery->public_pickup_place_id])
+            ->assertSee('value="'.$delivery->public_pickup_place_id.'" selected', false)
             ->assertSee('Richiedi il ritiro a questo indirizzo');
         $page = $this->get($bookingUrl)->assertOk()->assertSee('value="'.self::ADDRESS.'"', false)
             ->assertSee('Ritiro richiesto')->assertSee('Luogo di riconsegna')->assertSee('Invia richiesta di consegna');
@@ -74,7 +82,7 @@ class PublicCustomPickupSearchTest extends PublicBookingTestCase
         $delivery = $this->airport();
         $this->offer(2);
         config(['public_cars.per_page' => 1]);
-        $filters = $this->custom(['place_id' => $delivery->public_pickup_place_id, 'sort' => 'price_desc', 'seats' => 4]);
+        $filters = $this->custom(['place_id' => $delivery->public_pickup_place_id, 'sort' => 'price_desc', 'seats' => 4, 'supplier' => 1]);
         $page = $this->get(route('public-cars.index', $filters))->assertOk();
         $page->assertSee('name="request_delivery" value="1"', false)->assertSee('name="delivery_address" value="'.self::ADDRESS.'"', false);
         $next = $page->viewData('results')->nextPageUrl();
@@ -98,7 +106,7 @@ class PublicCustomPickupSearchTest extends PublicBookingTestCase
     public function test_custom_address_is_validated_and_unused_addresses_are_excluded(): void
     {
         $this->airport();
-        foreach (['', 'breve', str_repeat('a', 501), ['unexpected']] as $address) {
+        foreach (['', 'xy', str_repeat('a', 501), ['unexpected']] as $address) {
             $this->get(route('public-cars.index', $this->custom(['delivery_address' => $address])))
                 ->assertRedirect(route('public-cars.index'))->assertSessionHasErrors('delivery_address');
         }

@@ -6,7 +6,7 @@
     <title>@yield('title', 'Cerca auto') | AMD Rent</title>
     <meta name="description" content="Cerca un’auto a noleggio con AMD Rent. Scegli luogo e date, confronta le auto disponibili e prenota con il 20% online. Scopri anche il noleggio a lungo termine.">
     <meta name="robots" content="noindex, follow">
-    @vite(['resources/css/public-cars.css', 'resources/js/public-cars.js'])
+    @vite(['resources/css/public-cars.css', 'resources/css/public-interface.css', 'resources/js/public-cars.js'])
 </head>
 <body>
     <a class="amd-skip" href="#ricerca-contenuto">Vai al contenuto</a>
@@ -35,6 +35,7 @@
         </div>
         <noscript><nav class="amd-nojs-nav" aria-label="Menu senza JavaScript">@include('public-cars.partials.navigation')</nav></noscript>
     </header>
+    <p class="amd-live-status" data-search-status role="status" aria-live="polite" aria-atomic="true"></p>
     <main id="ricerca-contenuto" class="@yield('main-class', 'amd-main')" tabindex="-1">
         @yield('content')
     </main>

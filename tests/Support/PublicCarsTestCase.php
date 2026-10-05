@@ -38,6 +38,7 @@ abstract class PublicCarsTestCase extends TestCase
         Schema::create('locations', function (Blueprint $t) {
             $t->id(); $t->unsignedBigInteger('organization_id'); $t->string('name');
             $t->string('city'); $t->string('address_line')->nullable(); $t->char('country_code', 2)->nullable(); $t->timestamps();
+            $t->decimal('lat', 10, 7)->nullable(); $t->decimal('lng', 10, 7)->nullable();
         });
         Schema::create('vehicles', function (Blueprint $t) {
             $t->id(); $t->unsignedBigInteger('admin_organization_id');
@@ -107,6 +108,7 @@ abstract class PublicCarsTestCase extends TestCase
         (require database_path('migrations/2026_09_08_120000_create_public_rental_offers_table.php'))->up();
         (require database_path('migrations/2026_09_15_100000_create_public_pickup_places_table.php'))->up();
         (require database_path('migrations/2026_09_15_120000_create_vehicle_products_table.php'))->up();
+        (require database_path('migrations/2026_10_02_120000_add_custom_delivery_coverage.php'))->up();
 
         foreach ([1 => 'Proprietario di prova', 2 => 'Noleggiatore di prova', 3 => 'Altro noleggiatore di prova'] as $id => $name) {
             DB::table('organizations')->insert(['id' => $id, 'name' => $name, 'type' => $id === 1 ? 'admin' : 'renter']);

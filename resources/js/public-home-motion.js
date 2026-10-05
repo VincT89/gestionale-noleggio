@@ -1,123 +1,91 @@
-// The photograph is the motion boundary; search controls never move.
+// One scroll stage keeps the arriving car together with the search form.
 const scene = document.querySelector('[data-home-scene]');
 
 if (scene) {
     const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const car = scene.querySelector('[data-scene-car]');
     const vehicle = scene.querySelector('[data-scene-vehicle]');
-    const glint = scene.querySelector('[data-car-glint]');
+    const car = scene.querySelector('[data-scene-car]');
     const background = scene.querySelector('[data-scene-fallback]');
-    const photos = [...document.querySelectorAll('[data-home-photo]')];
-    const reveals = [...document.querySelectorAll('[data-home-reveal]')];
-    const revealed = new WeakSet();
+    const glint = scene.querySelector('[data-car-glint]');
+    const track = document.querySelector('[data-scene-track]');
+    const stage = track.querySelector('.amd-scene-sticky');
+    const form = track.querySelector('.amd-home-search-panel');
     const home = document.querySelector('.amd-home-sections');
     const route = home?.querySelector('[data-home-route]');
-    const routePaths = route ? [...route.querySelectorAll('[data-route-path]')] : [];
-    let routeStart = 0;
-    let routeEnd = 1;
-    let controller;
-    let observer;
-    let frame = 0;
+    const photos = [...document.querySelectorAll('[data-home-photo]')];
     let fallback = false;
     let glintShown = false;
+    let frame = 0;
+    let arrivalStart = 0;
+    let arrivalEnd = 1;
+    let routeStart = 0;
+    let routeEnd = 1;
+    const clamp = value => Math.min(1, Math.max(0, value));
 
-    function prepareGlint() {
-        if (glint && car.complete && car.naturalWidth) {
-            // Reuse the loaded cutout as the mask; the reflection stays inside the car.
-            glint.style.setProperty('--amd-car-silhouette', `url("${car.currentSrc}")`);
-            schedule();
-        }
-    }
-
-    const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-
-    // Layout coordinates ignore reveal transforms, so the route stays attached to the photos.
     function layoutBox(element) {
-        let x = 0;
-        let y = 0;
+        let x = 0, y = 0;
         for (let node = element; node && node !== home; node = node.offsetParent) {
             x += node.offsetLeft;
             y += node.offsetTop;
         }
-        const { width, height } = element.getBoundingClientRect();
-        return { x, y, width, height, right: x + width, bottom: y + height };
+        return { x, y, width: element.offsetWidth, height: element.offsetHeight };
     }
 
-    function measureRoute() {
-        if (!route) return;
-        const coast = layoutBox(home.querySelector('.amd-places-photo'));
-        const copy = layoutBox(home.querySelector('.amd-places-copy'));
-        const places = layoutBox(home.querySelector('.amd-home-places'));
-        const hotel = layoutBox(home.querySelector('.amd-delivery-photo'));
-        const card = layoutBox(home.querySelector('.amd-delivery-feature'));
-        const width = home.clientWidth;
-        const height = home.offsetHeight;
-        const gutter = width - Math.max(copy.right, card.right);
-        const rail = width - gutter / 2;
-        const startX = coast.right - 20;
-        const startY = coast.y + coast.height * .64;
-        const hotelY = hotel.y + hotel.height * .83;
-        let line = `M ${startX} ${startY}`;
-
-        if (copy.x > coast.right) {
-            const middle = (coast.right + copy.x) / 2;
-            const crossing = places.bottom - (places.bottom - Math.max(coast.bottom, copy.bottom)) / 2;
-            line += ` C ${middle + 10} ${startY + 15}, ${middle - 20} ${crossing - 18}, ${middle + 48} ${crossing}`;
-            line += ` C ${copy.x + copy.width * .45} ${crossing + 12}, ${rail - gutter * .12} ${crossing - 8}, ${rail} ${crossing + 42}`;
-        } else {
-            line += ` C ${rail} ${startY}, ${rail} ${startY + 16}, ${rail} ${startY + 40}`;
+    function measure() {
+        const inset = document.querySelector('.amd-header').offsetHeight + 10;
+        const trackTop = track.getBoundingClientRect().top + window.scrollY;
+        arrivalStart = Math.max(0, trackTop - innerHeight * .55);
+        arrivalEnd = Math.max(arrivalStart + Math.min(340, Math.max(240, innerHeight * .3)), trackTop + form.offsetTop - innerHeight * .55);
+        // Only pin a stage that fits: the search must remain usable on short screens.
+        const pin = !preference.matches && !fallback && stage.offsetHeight <= innerHeight - inset - 16;
+        track.toggleAttribute('data-scene-hold', pin);
+        track.style.setProperty('--amd-stage-top', `${inset}px`);
+        track.style.setProperty('--amd-scene-hold', `${pin ? Math.max(0, arrivalEnd - (trackTop - inset)) : 0}px`);
+        if (route) {
+            const pickup = layoutBox(home.querySelector('.amd-pickup-photos'));
+            const planning = layoutBox(home.querySelector('.amd-long-term-photo'));
+            const width = home.clientWidth;
+            const compact = innerWidth <= 800;
+            const startX = compact ? pickup.x + pickup.width - 6 : pickup.x + pickup.width * .72;
+            const startY = pickup.y + pickup.height - 12;
+            const endX = compact ? planning.x + planning.width - 6 : planning.x + planning.width * .38;
+            const endY = planning.y + 20;
+            const middleY = startY + (endY - startY) * .62;
+            const line = compact
+                ? `M ${startX} ${startY} C ${width - 7} ${startY + 36}, ${width - 7} ${endY - 36}, ${endX} ${endY}`
+                : `M ${startX} ${startY} C ${startX} ${middleY}, ${endX} ${middleY}, ${endX} ${endY}`;
+            route.setAttribute('viewBox', `0 0 ${width} ${home.offsetHeight}`);
+            for (const path of route.querySelectorAll('[data-route-path]')) path.setAttribute('d', line);
+            routeStart = startY;
+            routeEnd = Math.max(startY + 100, endY);
+            route.setAttribute('data-route-ready', '');
         }
-
-        // A single quiet sweep finishes on the ground in the hotel photograph.
-        const shore = `${line} L ${width + 20} ${places.bottom + 80} L ${coast.x + coast.width * .45} ${places.bottom + 80} C ${coast.right - 100} ${places.bottom + 80}, ${coast.right - 36} ${places.bottom - 24}, ${startX} ${startY} Z`;
-        line += ` S ${rail + gutter * .12} ${hotelY - 12}, ${hotel.right - 24} ${hotelY}`;
-
-        route.setAttribute('viewBox', `0 0 ${width} ${height}`);
-        for (const path of routePaths) path.setAttribute('d', line);
-        route.querySelector('[data-route-coast]').setAttribute('d', shore);
-        const clip = route.querySelector('[data-route-coast-clip]');
-        clip.setAttribute('width', width);
-        clip.setAttribute('height', places.bottom);
-        routeStart = startY;
-        routeEnd = hotelY;
-        route.setAttribute('data-route-ready', '');
         schedule();
-    }
-
-    function show(element) {
-        element.removeAttribute('data-reveal-pending');
-        revealed.add(element);
-        observer?.unobserve(element);
     }
 
     function render() {
         frame = 0;
         if (document.hidden || preference.matches) return;
-
-        const viewport = window.innerHeight;
         const bounds = scene.getBoundingClientRect();
         if (!fallback) {
-            // Finish the arrival while the photograph is still visible on small screens.
-            const distance = Math.min(270, bounds.height * .68);
-            const progress = clamp(window.scrollY / distance, 0, 1);
-            const remaining = Math.pow(1 - progress, 2);
-            vehicle.style.transform = `translate3d(${155 * remaining}%, ${-6 * remaining}%, 0) scale(${1 - .025 * remaining})`;
-            if (!glintShown && progress >= .98 && bounds.bottom > 0 && bounds.top < viewport && car.complete && car.naturalWidth) {
+            const progress = clamp((window.scrollY - arrivalStart) / (arrivalEnd - arrivalStart));
+            const remaining = Math.pow(1 - progress, 1.35);
+            vehicle.style.transform = `translate3d(${150 * remaining}%, ${-6 * remaining}%, 0) scale(${1 - .025 * remaining})`;
+            scene.dataset.arrivalProgress = progress.toFixed(3);
+            scene.dataset.arrivalStart = arrivalStart.toFixed(1);
+            scene.dataset.arrivalEnd = arrivalEnd.toFixed(1);
+            if (!glintShown && progress >= .995 && bounds.bottom > 0 && bounds.top < innerHeight && car.complete && car.naturalWidth) {
                 glintShown = true;
                 vehicle.setAttribute('data-arrival-glint', '');
             }
         }
-
         for (const photo of photos) {
             const rect = photo.getBoundingClientRect();
-            if (rect.bottom <= 0 || rect.top >= viewport) continue;
-            const progress = clamp((viewport - rect.top) / (viewport + rect.height), 0, 1);
-            photo.style.setProperty('--amd-photo-shift', `${(progress - .5) * 22}px`);
+            if (rect.bottom <= 0 || rect.top >= innerHeight) continue;
+            photo.style.setProperty('--amd-photo-shift', `${(clamp((innerHeight - rect.top) / (innerHeight + rect.height)) - .5) * 12}px`);
         }
-
         if (route) {
-            const position = viewport * .45 - home.getBoundingClientRect().top;
-            const progress = clamp((position - routeStart) / (routeEnd - routeStart), 0, 1);
+            const progress = clamp((innerHeight * .75 - home.getBoundingClientRect().top - routeStart) / (routeEnd - routeStart));
             route.style.setProperty('--amd-route-offset', String(1 - progress));
         }
     }
@@ -126,89 +94,47 @@ if (scene) {
         if (!frame && !document.hidden) frame = requestAnimationFrame(render);
     }
 
-    function reset() {
-        controller?.abort();
-        observer?.disconnect();
-        if (frame) cancelAnimationFrame(frame);
-        frame = 0;
-        scene.removeAttribute('data-motion-active');
-        route?.removeAttribute('data-route-animated');
-        vehicle.style.removeProperty('transform');
+    function configure() {
+        scene.toggleAttribute('data-motion-active', !preference.matches && !fallback);
         vehicle.removeAttribute('data-arrival-glint');
+        vehicle.style.removeProperty('transform');
+        scene.removeAttribute('data-arrival-progress');
+        route?.toggleAttribute('data-route-animated', !preference.matches);
         for (const photo of photos) {
-            photo.removeAttribute('data-photo-active');
+            photo.toggleAttribute('data-photo-active', !preference.matches);
             photo.style.removeProperty('--amd-photo-shift');
         }
-        for (const element of reveals) element.removeAttribute('data-reveal-pending');
-    }
-
-    function configure() {
-        reset();
-        measureRoute();
-        if (preference.matches) return;
-
-        controller = new AbortController();
-        const { signal } = controller;
-        if (!fallback) scene.setAttribute('data-motion-active', '');
-        route?.setAttribute('data-route-animated', '');
-        for (const photo of photos) photo.setAttribute('data-photo-active', '');
-
-        if ('IntersectionObserver' in window) {
-            observer = new IntersectionObserver(entries => {
-                for (const entry of entries) if (entry.isIntersecting) show(entry.target);
-            }, { threshold: .08, rootMargin: '0px 0px -24px 0px' });
-
-            for (const element of reveals) {
-                const bounds = element.getBoundingClientRect();
-                const inset = element.dataset.homeReveal === 'photo' ? Math.max(24, bounds.height * .12) : 24;
-                // Keep content already on screen (including restored scroll positions) visible.
-                if (revealed.has(element)) continue;
-                if (bounds.top < window.innerHeight - inset) {
-                    revealed.add(element);
-                    continue;
-                }
-                element.setAttribute('data-reveal-pending', '');
-                observer.observe(element);
-            }
-        }
-
-        document.addEventListener('focusin', event => {
-            const element = event.target.closest('[data-home-reveal]');
-            if (element) show(element);
-        }, { signal });
-        window.addEventListener('scroll', schedule, { passive: true, signal });
-        window.addEventListener('resize', schedule, { passive: true, signal });
-        window.addEventListener('pageshow', schedule, { signal });
-        document.addEventListener('visibilitychange', schedule, { signal });
-        render();
+        measure();
     }
 
     function useOriginalPhoto() {
         if (fallback) return;
         fallback = true;
         scene.setAttribute('data-scene-static', '');
-        scene.removeAttribute('data-motion-active');
         background.removeAttribute('srcset');
         background.src = background.dataset.sceneFallback;
+        configure();
     }
 
-    // A failed animation asset must never replace the original scene with a broken image.
     for (const image of [background, car]) {
         image.addEventListener('error', useOriginalPhoto, { once: true });
         if (image.complete && !image.naturalWidth) useOriginalPhoto();
     }
-
+    const loadCar = () => {
+        glint.style.setProperty('--amd-car-silhouette', `url("${car.currentSrc}")`);
+        schedule();
+    };
+    car.addEventListener('load', loadCar);
+    if (car.complete && car.naturalWidth) loadCar();
     preference.addEventListener('change', configure);
-    car.addEventListener('load', prepareGlint);
-    prepareGlint();
-    if (route) {
-        window.addEventListener('resize', measureRoute, { passive: true });
-        home.addEventListener('toggle', measureRoute, true);
-        if ('ResizeObserver' in window) {
-            const layoutObserver = new ResizeObserver(measureRoute);
-            layoutObserver.observe(home);
-            for (const section of home.querySelectorAll(':scope > section')) layoutObserver.observe(section);
-        }
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', measure, { passive: true });
+    window.addEventListener('pageshow', measure);
+    document.addEventListener('visibilitychange', schedule);
+    if ('ResizeObserver' in window) {
+        const observer = new ResizeObserver(measure);
+        observer.observe(stage);
+        if (home) observer.observe(home);
     }
     configure();
 }

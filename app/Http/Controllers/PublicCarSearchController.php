@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use App\Services\Geocoding\{NominatimSearch, PlaceSearchUnavailable, PlaceSelection};
 
 class PublicCarSearchController extends Controller
 {
@@ -94,13 +95,24 @@ class PublicCarSearchController extends Controller
         $scope = $this->scope($request, $preview);
         $filters = \Illuminate\Support\Arr::except($request->validated(), ['destination']);
         $searched = !empty($filters['pickup_at']) && !empty($filters['return_at']);
+        $deliveryPoint = !empty($filters['delivery_place'])
+            ? app(PlaceSelection::class)->resolve($filters['delivery_place'], $filters['delivery_address']) : null;
+        $deliveryLookupNeeded = $searched && !empty($filters['request_delivery']) && !$deliveryPoint;
+        $placeChoices = []; $placeSearchError = null;
+        if ($deliveryLookupNeeded) {
+            try {
+                $placeChoices = app(PlaceSelection::class)->issue(app(NominatimSearch::class)->search($filters['delivery_address']));
+            } catch (PlaceSearchUnavailable $exception) {
+                $placeSearchError = $exception->getMessage();
+            }
+        }
         $facets = (clone $scope)->with(['vehicle', 'renter'])->get();
         $deliveries = PublicDeliveryLocation::available()->when($preview && !$request->user()->hasRole('admin'),
             fn ($q) => $q->where('organization_id', $request->user()->organization_id));
         $places = PublicPickupPlace::whereIn('id', $deliveries->select('public_pickup_place_id'))
             ->orderBy('city')->orderBy('name')->get();
         $destinations = app(PublicPickupDirectory::class)->destinations($places);
-        $matching = $searched ? $search->search($scope, \Illuminate\Support\Arr::except($filters, ['supplier'])) : collect();
+        $matching = $searched && !$deliveryLookupNeeded ? $search->search($scope, \Illuminate\Support\Arr::except($filters, ['supplier'])) : collect();
         $results = empty($filters['supplier']) ? $matching : $matching->where('supplier_id', (int) $filters['supplier'])->values();
         $results = $search->cheapestPerProduct($results, $filters['sort'] ?? 'price_asc');
         $perPage = (int) config('public_cars.per_page');
@@ -108,10 +120,24 @@ class PublicCarSearchController extends Controller
         $paginator = new LengthAwarePaginator($results->forPage($page, $perPage)->values(), $results->count(), $perPage, $page, [
             'path' => $request->url(), 'query' => array_filter($filters, fn ($value) => $value !== null && $value !== ''),
         ]);
+        $showDeliverySuppliers = $deliveryPoint && empty($filters['supplier']);
+        $supplierRows = ($deliveryPoint ? $matching : collect())->groupBy('supplier_id')->map(function ($cars) use ($search) {
+            $first = $cars->first();
+            $products = $search->cheapestPerProduct($cars);
+            return ['id' => $first['supplier_id'], 'name' => $first['organization'],
+                'distance_km' => $first['delivery_distance_km'], 'origin' => $first['delivery_origin_name'],
+                'count' => $products->count(), 'from_cents' => $products->min('total_cents'), 'area' => $first['delivery_area']];
+        })->sort(fn ($a, $b) => ($a['distance_km'] <=> $b['distance_km']) ?: strcmp($a['name'], $b['name']))->values();
+        $supplierResults = new LengthAwarePaginator($supplierRows->forPage($page, $perPage)->values(), $supplierRows->count(), $perPage, $page, [
+            'path' => $request->url(), 'query' => array_filter($filters, fn ($value) => $value !== null && $value !== ''),
+        ]);
 
         return response()->view('public-cars.index', [
             'preview' => $preview, 'routePrefix' => $preview ? 'public-cars.preview' : 'public-cars',
             'filters' => $filters, 'searched' => $searched, 'results' => $paginator,
+            'deliveryPoint' => $deliveryPoint, 'deliveryLookupNeeded' => $deliveryLookupNeeded,
+            'placeChoices' => $placeChoices, 'placeSearchError' => $placeSearchError,
+            'showDeliverySuppliers' => $showDeliverySuppliers, 'supplierResults' => $supplierResults,
             'places' => $places,
             'destinations' => $destinations,
             'selectedPlace' => $places->firstWhere('id', $filters['place_id'] ?? null),
@@ -128,10 +154,14 @@ class PublicCarSearchController extends Controller
         $filters = $request->validated();
         unset($filters['budget'], $filters['page'], $filters['q'], $filters['segment'], $filters['seats'], $filters['fuel_type'], $filters['transmission'], $filters['supplier']);
         $result = $search->search($scope, $filters)->first();
+        $returnPlaces = $result && !empty($filters['request_delivery'])
+            ? $search->deliveryOptions($filters, $result['delivery_destination'] ?? null)
+                ->where('organization_id', $result['supplier_id'])->pluck('place')->unique('id')->values()
+            : collect();
 
         return response()->view('public-cars.show', [
             'car' => $result, 'filters' => $request->validated(), 'preview' => $preview,
-            'routePrefix' => $preview ? 'public-cars.preview' : 'public-cars',
+            'routePrefix' => $preview ? 'public-cars.preview' : 'public-cars', 'returnPlaces' => $returnPlaces,
         ])->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer')->header('X-Robots-Tag', 'noindex, follow');
     }
 

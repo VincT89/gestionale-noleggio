@@ -38,14 +38,17 @@ class PublicEnquiryController extends Controller
         $data = $request->validate(['delivery_address' => ['required', 'string', 'min:8', 'max:500'], 'delivery_notes' => ['nullable', 'string', 'max:2000']]);
         $hash = hash('sha256', 'delivery:'.$intent['nonce']);
         if ($known = AmdRentEnquiry::where('request_hash', $hash)->first()) return redirect()->to($known->publicUrl(), 303);
-        $car = $search->search(VehiclePricelist::forPublicRental()->whereKey($intent['pricelist']), $intent['period'])->first();
+        $searchPeriod = $intent['period'];
+        if (!empty($intent['delivery_destination'])) $searchPeriod += ['request_delivery' => 1, 'delivery_point' => $intent['delivery_destination']];
+        $car = $search->search(VehiclePricelist::forPublicRental()->whereKey($intent['pricelist']), $searchPeriod)->first();
         app(PublicBookingService::class)->assertQuote($intent, $car);
         abort_unless($car['custom_delivery_enabled'], 422, 'Il noleggiatore non accetta richieste di consegna personalizzata per questo luogo.');
         $case = AmdRentEnquiry::firstOrCreate(['request_hash' => $hash], [
             'type' => 'delivery', 'reference' => 'CON-'.Str::upper(Str::random(12)), 'organization_id' => $car['supplier_id'],
             'customer_name' => trim($contact['first_name'].' '.$contact['last_name']), 'email' => $contact['email'], 'phone' => $contact['phone'],
             'delivery_address' => $data['delivery_address'], 'notes' => $data['delivery_notes'] ?? null,
-            'vehicle_request' => $car['title'], 'booking_context' => ['pricelist' => $intent['pricelist'], 'period' => array_replace($intent['period'], ['place_id' => $car['place_id']]), 'contact' => $contact, 'car' => $car],
+            'vehicle_request' => $car['title'], 'booking_context' => ['pricelist' => $intent['pricelist'], 'period' => array_replace($intent['period'], ['place_id' => $car['place_id']]), 'contact' => $contact, 'car' => $car,
+                'delivery_destination' => $intent['delivery_destination'] ?? null],
         ]);
         return redirect()->to($case->publicUrl(), 303);
     }
@@ -73,11 +76,14 @@ class PublicEnquiryController extends Controller
         $case = AmdRentEnquiry::where('reference', $reference)->where('type', 'delivery')->firstOrFail();
         if ($case->public_booking_id) return redirect()->to($case->booking->confirmationUrl(), 303);
         $context = $case->booking_context;
-        $car = $search->search(VehiclePricelist::forPublicRental()->whereKey($context['pricelist']), $context['period'])->first();
+        $searchPeriod = $context['period'];
+        if (!empty($context['delivery_destination'])) $searchPeriod += ['request_delivery' => 1, 'delivery_point' => $context['delivery_destination']];
+        $car = $search->search(VehiclePricelist::forPublicRental()->whereKey($context['pricelist']), $searchPeriod)->first();
         if (!$car) throw ValidationException::withMessages(['booking' => 'L’auto non è più disponibile. Contatta il noleggiatore per una nuova proposta.']);
         $car = app(DeliveryQuotes::class)->apply($car, $case);
         $intent = ['nonce' => (string) Str::uuid(), 'source' => 'pricelist', 'pricelist' => $context['pricelist'], 'period' => $context['period'],
             'preview' => false, 'delivery_request_id' => $case->id, 'fingerprint' => PublicBookingService::fingerprint($car), 'expires_at' => now()->addMinutes(30)->timestamp];
+        if (!empty($context['delivery_destination'])) $intent['delivery_destination'] = $context['delivery_destination'];
         $known = $request->session()->get('public_booking_checkouts', []);
         $known[$intent['nonce']] = true;
         $request->session()->put('public_booking_checkouts', array_slice($known, -20, null, true));

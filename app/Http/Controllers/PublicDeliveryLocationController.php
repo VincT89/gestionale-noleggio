@@ -6,6 +6,8 @@ use App\Models\{Location, Organization, PublicDeliveryLocation, PublicPickupPlac
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{DB, Gate};
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use App\Services\Geocoding\{NominatimSearch, PlaceSearchUnavailable, PlaceSelection};
 
 class PublicDeliveryLocationController extends Controller
 {
@@ -23,8 +25,9 @@ class PublicDeliveryLocationController extends Controller
         return view('public-cars.delivery-locations', [
             'organizations' => $organizations,
             'places' => PublicPickupPlace::orderBy('city')->orderBy('name')->get(),
+            'origins' => Location::whereIn('organization_id', $organizations->modelKeys())->orderBy('name')->get(),
             'deliveries' => PublicDeliveryLocation::whereIn('organization_id', $organizations->modelKeys())
-                ->with(['place', 'organization'])->orderBy('organization_id')->orderBy('id')->get(),
+                ->with(['place', 'organization', 'origin'])->orderBy('organization_id')->orderBy('id')->get(),
         ]);
     }
 
@@ -70,12 +73,54 @@ class PublicDeliveryLocationController extends Controller
     {
         $organizations = $this->organizations($request);
         $model = PublicDeliveryLocation::whereIn('organization_id', $organizations->select('id'))->findOrFail($delivery);
-        $data = $request->validate(['is_active' => ['required', 'boolean'], 'custom_delivery_enabled' => ['sometimes', 'boolean'], 'delivery_area' => ['nullable', 'required_if:custom_delivery_enabled,1', 'string', 'max:500']]);
-        DB::transaction(function () use ($model, $data) {
+        $data = $request->validate([
+            'is_active' => ['required', 'boolean'], 'custom_delivery_enabled' => ['sometimes', 'boolean'],
+            'delivery_area' => ['nullable', 'required_if:custom_delivery_enabled,1', 'string', 'max:500'],
+            'delivery_origin_location_id' => ['nullable', 'required_with:delivery_radius_km', 'integer', 'min:1'],
+            'delivery_radius_km' => ['nullable', 'required_with:delivery_origin_location_id', 'numeric', 'min:0.01', 'max:999999.99', 'decimal:0,2'],
+            'origin_choice' => ['nullable', 'uuid'], 'origin_query' => ['nullable', 'string', 'min:3', 'max:500'],
+            'locate_origin' => ['nullable', 'boolean'],
+        ], ['delivery_origin_location_id.*' => 'Scegli la sede da cui parti per la consegna.',
+            'delivery_radius_km.*' => 'Indica il raggio di consegna in chilometri, maggiore di zero e con al massimo due decimali.']);
+        $origin = empty($data['delivery_origin_location_id']) ? null
+            : Location::where('organization_id', $model->organization_id)->findOrFail($data['delivery_origin_location_id']);
+        $context = 'origin:'.$model->id.':'.$origin?->id;
+        if ($request->boolean('locate_origin')) {
+            if (!$origin) throw ValidationException::withMessages(['delivery_origin_location_id' => 'Scegli prima la sede di partenza.']);
+            $query = $data['origin_query'] ?? implode(', ', array_filter([$origin->address_line, $origin->city, $origin->country_code]));
+            $choices = []; $lookupError = null;
+            try {
+                $choices = app(PlaceSelection::class)->issue(app(NominatimSearch::class)->search($query), $context);
+            } catch (PlaceSearchUnavailable $exception) {
+                $lookupError = $exception->getMessage();
+            }
+            return response()->view('public-cars.delivery-origin', [
+                'delivery' => $model->load(['place', 'organization']), 'origin' => $origin, 'query' => $query,
+                'choices' => $choices, 'lookupError' => $lookupError,
+                'fields' => array_intersect_key($data, array_flip(['is_active', 'custom_delivery_enabled', 'delivery_area', 'delivery_origin_location_id', 'delivery_radius_km'])),
+            ])->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer');
+        }
+        $point = empty($data['origin_choice']) ? null : app(PlaceSelection::class)->resolve($data['origin_choice'], context: $context);
+        if (!empty($data['origin_choice']) && !$point) {
+            throw ValidationException::withMessages(['origin_choice' => 'La posizione selezionata è scaduta o appartiene a un’altra sede. Cercala nuovamente.']);
+        }
+        if ($origin && !$point && (!is_numeric($origin->lat) || !is_numeric($origin->lng)
+            || abs((float) $origin->lat) > 90 || abs((float) $origin->lng) > 180)) {
+            throw ValidationException::withMessages(['origin_choice' => 'Cerca e conferma la posizione della sede con OpenStreetMap prima di salvare il raggio.']);
+        }
+        DB::transaction(function () use ($model, $data, $origin, $point) {
             Organization::whereKey($model->organization_id)->lockForUpdate()->firstOrFail();
+            if ($point && $origin) {
+                Location::where('organization_id', $model->organization_id)->whereKey($origin->id)->lockForUpdate()->firstOrFail()
+                    ->update(['lat' => $point['lat'], 'lng' => $point['lng']]);
+            }
             $model->update(['is_active' => (bool) $data['is_active']]);
             if (array_key_exists('custom_delivery_enabled', $data)) $model->update(['custom_delivery_enabled' => (bool) $data['custom_delivery_enabled'], 'delivery_area' => $data['delivery_area'] ?? null]);
+            $coverage = array_intersect_key($data, array_flip(['delivery_origin_location_id', 'delivery_radius_km']));
+            if ($coverage) $model->update($coverage);
         });
-        return redirect()->route('public-deliveries.index')->with('status', $model->is_active ? 'Luogo riattivato.' : 'Luogo disattivato per le nuove prenotazioni. Le prenotazioni già confermate restano valide.');
+        return redirect()->route('public-deliveries.index')->with('status', array_key_exists('custom_delivery_enabled', $data)
+            ? 'Servizio di consegna aggiornato.'
+            : ($model->is_active ? 'Luogo riattivato.' : 'Luogo disattivato per le nuove prenotazioni. Le prenotazioni già confermate restano valide.'));
     }
 }

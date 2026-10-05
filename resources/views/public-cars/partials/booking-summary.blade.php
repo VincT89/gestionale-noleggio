@@ -18,7 +18,7 @@
     <div><dt>Riconsegna</dt><dd>{{ \Carbon\CarbonImmutable::parse($filters['return_at'])->format('d/m/Y H:i') }}</dd></div>
     <div><dt>Durata tariffata</dt><dd>{{ $car['days'] }} {{ $car['days'] === 1 ? 'giorno' : 'giorni' }}</dd></div>
 </dl>
-<p class="amd-total-label">Totale concordato, IVA inclusa</p>
+<p class="amd-total-label">{{ ($requestDelivery ?? false) && empty($car['delivery_request_id']) ? 'Totale noleggio, IVA inclusa' : 'Totale concordato, IVA inclusa' }}</p>
 <strong class="amd-total">{{ $money($car['total_cents']) }}</strong>
 <p>{{ $car['prices_include_vat'] ? 'IVA inclusa' : 'Importo di listino, IVA da verificare' }}</p>
 <dl class="amd-quote-lines">

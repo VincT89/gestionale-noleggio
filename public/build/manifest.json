@@ -4,13 +4,18 @@
     "name": "password-visibility"
   },
   "resources/css/app.css": {
-    "file": "assets/app-DXKE90Mh.css",
+    "file": "assets/app-orxvI0OY.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
   "resources/css/public-cars.css": {
-    "file": "assets/public-cars-Dm1R0I36.css",
+    "file": "assets/public-cars-62VuYFbf.css",
     "src": "resources/css/public-cars.css",
+    "isEntry": true
+  },
+  "resources/css/public-interface.css": {
+    "file": "assets/public-interface-CdAjbA4c.css",
+    "src": "resources/css/public-interface.css",
     "isEntry": true
   },
   "resources/js/app.js": {
@@ -23,7 +28,7 @@
     ]
   },
   "resources/js/public-cars.js": {
-    "file": "assets/public-cars-C_yU-XyJ.js",
+    "file": "assets/public-cars-D_LBX1AR.js",
     "name": "public-cars",
     "src": "resources/js/public-cars.js",
     "isEntry": true,
