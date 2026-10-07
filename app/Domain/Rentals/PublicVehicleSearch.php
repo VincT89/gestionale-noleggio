@@ -84,6 +84,9 @@ class PublicVehicleSearch
     /** Return choices use the same active services and geographic coverage as the search. */
     public function deliveryOptions(array $filters, ?array $point = null): Collection
     {
+        if (!empty($filters['request_delivery']) && !empty($filters['request_custom_return'])) {
+            unset($filters['place_id'], $filters['city']);
+        }
         $deliveries = PublicDeliveryLocation::available()->with(['place', 'location', 'origin'])
             ->when(!empty($filters['request_delivery']), fn ($q) => $q->where('custom_delivery_enabled', true))
             ->when(!empty($filters['place_id']), fn ($q) => $q->where('public_pickup_place_id', $filters['place_id']))

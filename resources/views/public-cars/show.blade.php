@@ -4,6 +4,7 @@
 @php
     $money = fn($cents) => number_format($cents / 100, 2, ',', '.').' €';
     $customPickup = !empty($filters['request_delivery']);
+    $customReturn = $customPickup && !empty($filters['request_custom_return']);
 @endphp
 <a class="amd-back" href="{{ route($routePrefix.'.index', $filters) }}">Torna ai risultati</a>
 @if(!$car)
@@ -32,8 +33,11 @@
                 @if($car['year'])<div><dt>Anno</dt><dd>{{ $car['year'] }}</dd></div>@endif
             </dl>
             @if($customPickup)<h2>Ritiro richiesto</h2><p>{{ $filters['delivery_address'] }}</p><p>Indirizzo ed eventuale supplemento devono essere confermati dal noleggiatore. Zona del servizio: {{ $car['delivery_area'] }}</p>@endif
+            @include('public-cars.partials.selected-map-point', ['point' => $car['delivery_destination'] ?? null])
             <h2>{{ $customPickup ? 'Luogo di riconsegna' : 'Luoghi del noleggio' }}</h2>
-            @if($customPickup && empty($filters['place_id']))<p>Scegli il punto di riconsegna nel riepilogo del noleggio prima di inviare la richiesta.</p>
+            @if($customReturn)<p><strong>{{ $filters['return_address'] }}</strong><br>Da confermare dal noleggiatore.</p>
+                @include('public-cars.partials.selected-map-point', ['point' => $returnPoint ?? null, 'pointType' => 'return'])
+            @elseif($customPickup && empty($filters['place_id']))<p>Scegli un punto servito oppure indica un altro luogo nel riepilogo del noleggio.</p>
             @else<p>@unless($customPickup)Ritiro: @endunless<strong>{{ $car['location'] }}</strong><br>{{ $car['address'] }}<br>{{ $car['city'] }}</p>@endif
             @unless($customPickup)<p>Riconsegna: {{ $car['location'] }}.</p>@endunless<p>Offerta da {{ $car['organization'] }}.</p>
             @if($car['description'])<h2>Informazioni sull’offerta</h2><p class="amd-description">{{ $car['description'] }}</p>@endif
@@ -45,10 +49,20 @@
             @if(isset($filters['budget']) && $car['total_cents'] > round((float)$filters['budget'] * 100))<p class="amd-errors" role="status">Il prezzo aggiornato supera il budget indicato. Puoi modificare la ricerca.</p>@endif
             <p class="amd-availability">Disponibile per il periodo selezionato.</p>
             @if($customPickup)
-                <form class="amd-return-choice" method="get" action="{{ route($routePrefix.'.booking.create', ['pricelist' => $car['id']]) }}">
+                <form class="amd-return-choice" method="get" action="{{ route($routePrefix.'.booking.create', ['pricelist' => $car['id']]) }}" data-return-choice>
                     @foreach(\Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at', 'request_delivery', 'delivery_address', 'delivery_place']) as $key => $fieldValue)<input type="hidden" name="{{ $key }}" value="{{ $fieldValue }}">@endforeach
-                    <div class="amd-field"><label for="return-place">Dove riconsegni l’auto?</label><select id="return-place" name="place_id" required aria-describedby="return-place-help"><option value="">Scegli un punto di riconsegna</option>@foreach($returnPlaces as $place)<option value="{{ $place->id }}" @selected((string) ($filters['place_id'] ?? '') === (string) $place->id)>{{ $place->label }}</option>@endforeach</select><small id="return-place-help">I punti serviti da {{ $car['organization'] }} per questa consegna.</small></div>
-                    <button class="amd-button" type="submit">Richiedi il ritiro a questo indirizzo</button>
+                    <div class="amd-field" data-return-standard><label for="return-place">Dove riconsegni l’auto?</label><select id="return-place" name="place_id" aria-describedby="return-place-help"><option value="">Scegli un punto di riconsegna</option>@foreach($returnPlaces as $place)<option value="{{ $place->id }}" @selected((string) ($filters['place_id'] ?? '') === (string) $place->id)>{{ $place->label }}</option>@endforeach</select><small id="return-place-help">I punti serviti da {{ $car['organization'] }} per questa consegna.</small></div>
+                    <label class="amd-booking-accept amd-return-toggle" for="request-custom-return"><input id="request-custom-return" name="request_custom_return" type="checkbox" value="1" data-custom-return-toggle aria-controls="custom-return-field" @checked($customReturn)><span>Voglio riconsegnare l’auto in un altro luogo</span></label>
+                    <div class="amd-field amd-custom-return-field" id="custom-return-field" data-custom-return-field>
+                        <label for="return-address">Luogo di riconsegna personalizzato</label>
+                        <input id="return-address" name="return_address" type="text" value="{{ $customReturn ? $filters['return_address'] : '' }}" placeholder="Scegli un punto sulla mappa" readonly aria-describedby="return-address-help" data-custom-return-address>
+                        <input name="return_place" type="hidden" value="{{ $customReturn ? ($filters['return_place'] ?? '') : '' }}" data-custom-return-place>
+                        <button class="amd-button amd-button-secondary" type="button" data-return-map-open aria-haspopup="dialog" aria-controls="return-map-dialog" hidden>{{ $customReturn ? 'Modifica il punto sulla mappa' : 'Scegli il punto sulla mappa' }}</button>
+                        <small id="return-address-help">Cerca un aeroporto, un hotel o un indirizzo e segna il punto esatto. Il noleggiatore confermerà la riconsegna e l’eventuale supplemento.</small>
+                        <small data-return-choice-status role="status" aria-live="polite"></small>
+                        <noscript><p>Attiva JavaScript per scegliere sulla mappa, oppure usa un punto di riconsegna dall’elenco.</p></noscript>
+                    </div>
+                    <button class="amd-button" type="submit" data-return-submit>{{ $customReturn ? 'Richiedi ritiro e riconsegna' : 'Richiedi il ritiro a questo indirizzo' }}</button>
                 </form>
             @else
                 <a class="amd-button" href="{{ route($routePrefix.'.booking.create', ['pricelist' => $car['id']] + \Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at']) + ['place_id' => $car['place_id']]) }}">Prenota con il 20% online</a>
@@ -60,5 +74,12 @@
             @endif
         </aside>
     </div>
+    @if($customPickup)
+        <dialog id="return-map-dialog" class="amd-return-map-dialog" data-return-map-dialog data-confirmed-point="{{ json_encode($returnPoint ?? null) }}" aria-labelledby="return-map-title">
+            <div class="amd-return-map-heading"><div><h2 id="return-map-title">Dove riconsegni l’auto?</h2><p>Un aeroporto, il tuo hotel, un altro indirizzo. Scegli il punto in cui incontrare il noleggiatore.</p></div><button type="button" class="amd-button amd-button-secondary" data-return-map-close autofocus>Chiudi</button></div>
+            <p class="amd-return-map-feedback" data-return-map-feedback role="status" aria-live="polite"></p>
+            @include('public-cars.partials.pickup-map', ['mapPurpose' => 'return', 'mapCenter' => $car['delivery_destination'] ?? null])
+        </dialog>
+    @endif
 @endif
 @endsection

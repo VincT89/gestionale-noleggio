@@ -1,0 +1,36 @@
+.amd-pickup-map { margin: 24px 0; border: 1px solid var(--amd-border); border-radius: 8px; background: #fff; }
+.amd-pickup-map > summary { padding: 20px 24px; cursor: pointer; font-size: 19px; font-weight: 700; color: var(--amd-navy, #193e66); }
+.amd-pickup-map-content { padding: 0 24px 24px; }
+.amd-map-area-search { display: flex; gap: 12px; align-items: end; }
+.amd-map-area-search .amd-field { flex: 1; }
+.amd-map-area-search .amd-button { flex-shrink: 0; }
+.amd-map-area-results { list-style: none; padding: 0; margin: 0 0 16px; }
+.amd-map-area-results:empty, [data-map-search-status]:empty { display: none; }
+.amd-map-area-results li + li { margin-top: 8px; }
+.amd-map-area-results button { width: 100%; text-align: left; padding: 12px 16px; background: #fff; color: #193e66; border: 1px solid var(--amd-border); border-radius: 4px; cursor: pointer; }
+.amd-map-area-results button:hover { background: #f3f5f7; }
+.amd-map-toolbar { position: absolute; z-index: 2; top: 12px; left: 12px; display: flex; flex-direction: column; border: 1px solid #8499ad; border-radius: 6px; box-shadow: 0 2px 8px #18324e26; overflow: hidden; }
+.amd-map-toolbar button { width: 46px; height: 46px; padding: 0; background: #fff; color: #193e66; border: 0; font-size: 28px; line-height: 1; cursor: pointer; }
+.amd-map-toolbar button + button { border-top: 1px solid #c7d1db; }
+.amd-map-toolbar button:hover { background: #f3f5f7; }
+.amd-map-toolbar button:disabled, [data-map-confirm] .amd-button:disabled { opacity: .55; cursor: not-allowed; }
+.amd-map-help { font-size: 14px; color: #52667d; line-height: 1.6; }
+small.amd-map-attribution { display: inline-block; margin-left: 8px; font-size: 12px; font-weight: 400; }
+.amd-map-frame { position: relative; border: 1px solid #8499ad; border-radius: 4px; overflow: hidden; isolation: isolate; }
+.amd-map-viewport { position: relative; height: 390px; overflow: hidden; background: #e8e9e5; touch-action: none; cursor: grab; user-select: none; }
+.amd-map-viewport:active { cursor: grabbing; }
+.amd-map-viewport:focus-visible { outline: 3px solid #195b96; outline-offset: -4px; }
+.amd-map-tiles { position: absolute; inset: 0; transform-origin: center; pointer-events: none; }
+.amd-map-tiles img { position: absolute; width: 256px; height: 256px; max-width: none; }
+.amd-map-pin { position: absolute; left: 50%; top: 50%; width: 26px; height: 26px; margin: -30px 0 0 -13px; background: #b42732; border: 3px solid #fff; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); box-shadow: -1px 1px 4px #0006; pointer-events: none; }
+.amd-map-pin::after { content: ''; position: absolute; width: 6px; height: 6px; border-radius: 50%; background: #fff; top: 7px; left: 7px; }
+.amd-map-credit { position: absolute; bottom: 0; right: 0; background: #fff; padding: 3px 7px; color: #193e66; font-size: 12px; z-index: 1; }
+.amd-map-status { min-height: 1.5em; font-weight: 600; }
+[data-map-confirm] .amd-button { margin-top: 16px; }
+@media (max-width: 600px) {
+    .amd-pickup-map > summary { padding: 16px; font-size: 18px; }
+    .amd-pickup-map-content { padding: 0 16px 16px; }
+    .amd-map-area-search { flex-direction: column; align-items: stretch; }
+    .amd-map-viewport { height: 320px; }
+    [data-map-confirm] .amd-button { width: 100%; white-space: normal; }
+}

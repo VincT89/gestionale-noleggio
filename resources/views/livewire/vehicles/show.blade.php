@@ -54,12 +54,21 @@
                 {{-- Azioni header --}}
                 <div class="flex flex-wrap items-center gap-2">
                     @can('updateMileage', $v)
-                        <button type="button" class="rounded bg-slate-100 px-3 py-1 text-slate-800"
-                                x-data
-                                x-on:click="$dispatch('open-mileage-modal', { current: {{ (int)$v->mileage_current }} })"
-                                @disabled($isArchived)>
-                            Aggiorna km
-                        </button>
+                        @role('admin')
+                            <button type="button" class="rounded bg-slate-100 px-3 py-1 text-slate-800"
+                                    x-data
+                                    x-on:click="$dispatch('open-mileage-correction', { vehicleId: {{ $v->id }} })"
+                                    @disabled($isArchived)>
+                                Correggi km
+                            </button>
+                        @else
+                            <button type="button" class="rounded bg-slate-100 px-3 py-1 text-slate-800"
+                                    x-data
+                                    x-on:click="$dispatch('open-mileage-modal', { current: {{ (int)$v->mileage_current }} })"
+                                    @disabled($isArchived)>
+                                Aggiorna km
+                            </button>
+                        @endrole
                     @endcan
 
                     @can('manageMaintenance', $v)
@@ -752,6 +761,10 @@
             </div>
         @endif
     </div>
+
+    @role('admin')
+        <livewire:vehicles.correct-mileage />
+    @endrole
 
     {{-- Modal: Aggiorna km --}}
     <div x-data="{ open:false, current:0, value:'' }"

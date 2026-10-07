@@ -119,6 +119,8 @@
             </div>
         </div>
 
+        <livewire:rentals.mileage-correction :rental-id="$rental->id" :key="'rental-mileage-'.$rental->id" />
+
         @include('pages.rentals.partials.extensions')
 
         {{-- Tab panels (MVP placeholders da completare) --}}

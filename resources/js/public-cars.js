@@ -1,6 +1,7 @@
 import './password-visibility';
 import './public-home-motion';
 import './public-interface';
+import './public-cookie-notice';
 
 const desktop = window.matchMedia('(min-width: 901px)');
 const mobileNav = document.querySelector('.amd-mobile-nav');
@@ -185,7 +186,7 @@ if (deliveryChoice) {
     const originalLabel = submit?.dataset.standardCheckoutLabel || submit?.textContent;
     const address = document.querySelector('[data-delivery-address]');
     const updateDeliveryChoice = () => {
-        if (submit) submit.textContent = deliveryChoice.checked ? 'Invia richiesta di consegna' : originalLabel;
+        if (submit) submit.textContent = deliveryChoice.checked ? (submit.dataset.deliveryCheckoutLabel || 'Invia richiesta di consegna') : originalLabel;
         if (address) address.required = deliveryChoice.checked;
         const standardPickup = document.querySelector('[data-summary-standard-pickup]');
         const customPickup = document.querySelector('[data-summary-custom-pickup]');
@@ -199,3 +200,5 @@ if (deliveryChoice) {
     window.addEventListener('pageshow', updateDeliveryChoice);
     updateDeliveryChoice();
 }
+
+import './public-return-map';

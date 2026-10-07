@@ -1,5 +1,6 @@
 @import './public-home-layout.css';
-/* Shared public interactions; home geometry is scoped in public-home-layout.css. */
+@import './public-search-layout.css';
+/* Page layouts are scoped in the imports; interactions remain shared below. */
 [hidden] { display: none !important; }
 html { scroll-padding-top: 84px; }
 html:has(.amd-home-hero) { scrollbar-width: none; }
@@ -16,6 +17,23 @@ html:has(.amd-home-hero)::-webkit-scrollbar { display: none; }
 }
 .amd-header { position: sticky; top: 0; background: #fff; transition: box-shadow .2s ease; }
 .amd-header--scrolled { box-shadow: 0 5px 20px #18324e15; }
+.amd-back-to-top { position: fixed; z-index: 25; right: max(16px, env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom) + var(--amd-cookie-notice-height, 0px)); display: flex; align-items: center; justify-content: center; width: 56px; height: 104px; padding: 4px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; }
+.amd-back-to-top img { display: block; width: auto; height: 100%; pointer-events: none; filter: drop-shadow(0 3px 3px #102e4d4d); }
+.amd-back-to-top:hover img { filter: drop-shadow(0 4px 5px #102e4d70); }
+.amd-back-to-top:focus-visible { outline: 3px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 6px var(--amd-action); }
+.amd-back-to-top--departing { pointer-events: none; }
+.amd-footer-bottom { padding-inline-end: 76px; }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .amd-back-to-top img { transition: transform .2s ease; }
+    .amd-back-to-top:hover img { transform: translateY(-4px); }
+}
+body:has(dialog[open], input:focus, textarea:focus, select:focus) .amd-back-to-top { visibility: hidden; }
+@media (max-height: 440px) {
+    html.amd-cookie-notice-open .amd-back-to-top { display: none; }
+}
+@media print {
+    .amd-back-to-top { display: none !important; }
+}
 .amd-button { transition: background-color .18s, border-color .18s, box-shadow .18s, transform .18s; }
 .amd-button:active { transform: translateY(1px); }
 .amd-field input, .amd-field select { transition: border-color .18s, box-shadow .18s; }
@@ -92,6 +110,8 @@ body:has(.amd-photo-dialog[open]) { overflow: hidden; }
     .amd-car-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 600px) {
+    .amd-back-to-top { width: 50px; height: 90px; }
+    .amd-footer-bottom { padding-inline-end: 70px; }
     html { scroll-padding-top: 76px; }
     #car-search, #public-search-results { scroll-margin-top: 12px; }
     .amd-car-grid { grid-template-columns: 1fr; gap: 20px; }
@@ -116,3 +136,11 @@ body:has(.amd-photo-dialog[open]) { overflow: hidden; }
 .amd-search .amd-search-submit:hover { color: #fff; background: var(--amd-primary-hover); border-color: var(--amd-primary-hover); }
 .amd-footer .amd-footer-brand { color: #fff; }
 .amd-footer a:hover { color: #fff; }
+
+.amd-return-choice { padding-top: 20px; border-top: 1px solid var(--amd-border, #cbd4df); }
+.amd-return-toggle { margin: 18px 0; align-items: flex-start; line-height: 1.5; }
+.amd-return-toggle input { flex: 0 0 auto; margin-top: 3px; }
+.amd-custom-return-field { margin-bottom: 20px; }
+.amd-custom-return-field input { font-size: 16px; }
+.amd-return-choice small { display: block; line-height: 1.55; }
+.amd-return-choice [hidden] { display: none; }

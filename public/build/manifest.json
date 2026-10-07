@@ -4,17 +4,17 @@
     "name": "password-visibility"
   },
   "resources/css/app.css": {
-    "file": "assets/app-orxvI0OY.css",
+    "file": "assets/app-COuLhEQ6.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
   "resources/css/public-cars.css": {
-    "file": "assets/public-cars-62VuYFbf.css",
+    "file": "assets/public-cars-BWdq_ys_.css",
     "src": "resources/css/public-cars.css",
     "isEntry": true
   },
   "resources/css/public-interface.css": {
-    "file": "assets/public-interface-CdAjbA4c.css",
+    "file": "assets/public-interface-CSfAjBZ3.css",
     "src": "resources/css/public-interface.css",
     "isEntry": true
   },
@@ -28,12 +28,15 @@
     ]
   },
   "resources/js/public-cars.js": {
-    "file": "assets/public-cars-D_LBX1AR.js",
+    "file": "assets/public-cars-CjHqVS63.js",
     "name": "public-cars",
     "src": "resources/js/public-cars.js",
     "isEntry": true,
     "imports": [
       "_password-visibility-BqocV2xB.js"
+    ],
+    "css": [
+      "assets/public-cars-CaJclhuh.css"
     ]
   }
 }

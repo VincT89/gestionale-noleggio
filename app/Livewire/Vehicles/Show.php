@@ -25,6 +25,8 @@ class Show extends Component
 {
     use AuthorizesRequests;
 
+    protected $listeners = ['vehicle-mileage-corrected' => '$refresh'];
+
     /** ID veicolo passato dalla Blade di pagina */
     public int $vehicleId;
 

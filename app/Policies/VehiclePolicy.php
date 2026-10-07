@@ -70,6 +70,12 @@ class VehiclePolicy
         return $user->can('vehicles.delete');
     }
 
+    /** Correzione di un chilometraggio errato, riservata all'amministratore. */
+    public function correctMileage(User $user, Vehicle $vehicle): bool
+    {
+        return $user->hasRole('admin');
+    }
+
     /**
      * Permesso GRANULARE: aggiornare i KM.
      * - Admin: basta il permesso.

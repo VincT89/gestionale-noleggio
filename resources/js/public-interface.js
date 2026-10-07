@@ -1,3 +1,5 @@
+import { setupPickupMaps } from './public-pickup-map';
+
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const compact = window.matchMedia('(max-width: 900px)');
 
@@ -12,6 +14,45 @@ const header = document.querySelector('.amd-header');
 const updateHeader = () => header?.classList.toggle('amd-header--scrolled', window.scrollY > 12);
 window.addEventListener('scroll', updateHeader, { passive: true });
 updateHeader();
+
+const backToTop = document.querySelector('[data-back-to-top]');
+if (backToTop) {
+    let departure = null;
+    const updateBackToTop = () => {
+        if (!departure) backToTop.hidden = window.scrollY < Math.max(400, window.innerHeight * .75);
+    };
+    const finishDeparture = () => {
+        const animation = departure;
+        departure = null;
+        backToTop.classList.remove('amd-back-to-top--departing');
+        backToTop.removeAttribute('aria-disabled');
+        updateBackToTop();
+        animation?.cancel();
+    };
+    window.addEventListener('scroll', updateBackToTop, { passive: true });
+    window.addEventListener('resize', finishDeparture);
+    window.addEventListener('pageshow', finishDeparture);
+    reducedMotion.addEventListener('change', () => {
+        if (reducedMotion.matches) finishDeparture();
+    });
+    backToTop.addEventListener('click', () => {
+        if (departure) return;
+        document.getElementById('ricerca-contenuto')?.focus({ preventScroll: true });
+        if (!reducedMotion.matches && backToTop.animate) {
+            const distance = backToTop.getBoundingClientRect().bottom + 24;
+            backToTop.classList.add('amd-back-to-top--departing');
+            backToTop.setAttribute('aria-disabled', 'true');
+            departure = backToTop.animate([
+                { transform: 'translateY(0)', opacity: 1 },
+                { opacity: 1, offset: .8 },
+                { transform: `translateY(-${distance}px)`, opacity: 0 },
+            ], { duration: 850, easing: 'cubic-bezier(.45, 0, .35, 1)', fill: 'forwards' });
+            departure.finished.then(finishDeparture, finishDeparture);
+        }
+        window.scrollTo({ top: 0, behavior: reducedMotion.matches ? 'instant' : 'smooth' });
+    });
+    updateBackToTop();
+}
 
 const search = document.getElementById('car-search');
 const searchToggle = document.querySelector('[data-search-toggle]');
@@ -106,6 +147,7 @@ document.querySelectorAll('.amd-home-faq details').forEach(details => {
 const resultRegion = document.getElementById('public-search-results');
 const status = document.querySelector('[data-search-status]');
 function setupResults(open = !compact.matches) {
+    setupPickupMaps();
     const disclosure = resultRegion?.querySelector('[data-filter-disclosure]');
     if (disclosure) disclosure.open = open;
 }

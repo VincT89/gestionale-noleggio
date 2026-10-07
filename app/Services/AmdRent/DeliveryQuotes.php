@@ -20,7 +20,9 @@ class DeliveryQuotes
         $bps = DB::table('amd_rent_settings')->where('id', 1)->value('delivery_commission_bps');
         if ($bps === null) throw ValidationException::withMessages(['booking' => 'La proposta è disponibile, ma AMD Rent deve ancora abilitare il pagamento per le consegne personalizzate.']);
         $fee = (int) $case->delivery_fee_cents;
-        return array_replace($car, ['rental_total_cents' => $car['total_cents'], 'total_cents' => $car['total_cents'] + $fee,
+        $return = !empty($context['return_address']) ? ['return_address' => $context['return_address']] : [];
+        if ($return && !empty($context['return_destination'])) $return['return_destination'] = $context['return_destination'];
+        return array_replace($car, $return, ['rental_total_cents' => $car['total_cents'], 'total_cents' => $car['total_cents'] + $fee,
             'delivery_fee_cents' => $fee, 'delivery_commission_bps' => (int) $bps, 'delivery_address' => $case->delivery_address,
             'delivery_request_id' => $case->id, 'delivery_revision' => $case->revision]);
     }

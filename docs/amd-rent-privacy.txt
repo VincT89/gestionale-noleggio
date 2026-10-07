@@ -1,0 +1,91 @@
+AMD Rent — privacy e cookie
+Implementazione del 6 ottobre 2026, solo portale pubblico.
+
+Pagine
+/privacy e /cookie sul dominio pubblico configurato; /cerca-auto/privacy e
+/cerca-auto/cookie senza dominio dedicato. Le pagine sono accessibili anche dopo
+l'esaurimento del limite delle ricerche. Il gestionale mantiene le sue restrizioni.
+
+Avviso
+Il codice del portale pubblico usa cookie tecnici di sessione e CSRF. Non integra
+analytics, pixel, pubblicità o newsletter. Il banner è informativo, non una CMP
+né una raccolta di consenso. "Ho capito" salva versione e data in localStorage
+per 180 giorni, senza identificativi personali o richieste al server. La memoria
+non viene rinnovata a ogni visita. Dopo la scadenza il valore è rimosso alla visita
+successiva. Se il browser ne impedisce l'uso, il sito resta utilizzabile.
+L'avviso compare automaticamente; non sono presenti pulsanti di riapertura.
+Le informative restano accessibili dai collegamenti Privacy e Cookie del footer,
+anche senza JavaScript.
+
+Le mappe restano parte della funzione di scelta del luogo: Nominatim riceve dal
+server testo del luogo o coordinate; le immagini OSM sono richieste dal browser.
+Il provider delle mappe può ricevere IP e informazioni tecniche. Non si deve
+confondere l'assenza di cookie pubblicitari con l'assenza di trattamenti di dati.
+Stripe si apre solo quando viene avviato il pagamento; il portale non carica
+Stripe.js nelle proprie pagine. Verificare nuovamente sul dominio finale anche
+eventuali cookie aggiunti da hosting, CDN, proxy o servizi attivati al deploy.
+
+Da completare con il titolare/tutor
+Sono precompilati AMD MOBILITY SRLS, Via Orfeo Mazzitelli 140, 70124 Bari,
+P.IVA 08952480724, email del titolare amdmobility1@gmail.com.
+Ragione sociale, sede ed email provengono dall'informativa Iubenda collegata
+dal sito AMD Mobility: https://www.iubenda.com/privacy-policy/91088250
+La P.IVA e l'indirizzo esteso sono pubblicati in https://amdmobility.it/contact-us/
+Controllo effettuato il 6 ottobre 2026. L'informativa esistente dichiara un
+aggiornamento al 23 gennaio 2025. Confermare applicabilità e attualità per AMD Rent.
+Non sono stati importati i servizi WordPress, Google Maps o Bunny CDN presenti
+nell'informativa del vecchio sito, perché non dimostrano l'uso nel nuovo portale.
+
+I valori pubblici si configurano in config/public_privacy.php tramite queste
+variabili. Nessun valore operativo o segreto è stato letto o modificato.
+
+AMD_RENT_PRIVACY_CONTROLLER: ragione sociale del titolare, non solo marchio.
+AMD_RENT_PRIVACY_ADDRESS: sede legale.
+AMD_RENT_PRIVACY_VAT: partita IVA.
+AMD_RENT_PRIVACY_EMAIL: recapito reale per l'esercizio dei diritti.
+AMD_RENT_PRIVACY_DPO_CONTACT: recapito del DPO solo se designato.
+AMD_RENT_PRIVACY_HOSTING: fornitore, localizzazione e ruolo.
+AMD_RENT_PRIVACY_EMAIL_PROVIDER: servizio email e localizzazione.
+AMD_RENT_PRIVACY_SUPPLIER_ROLES: ruoli e responsabilità AMD/noleggiatori.
+AMD_RENT_PRIVACY_TRANSFERS: Paesi, trasferimenti extra SEE, garanzie applicabili
+e come ottenerne copia, dopo verifica dei fornitori e degli accordi effettivi.
+AMD_RENT_PRIVACY_RETENTION_ENQUIRIES: tempi/criteri per richieste e preventivi.
+AMD_RENT_PRIVACY_RETENTION_ACCOUNTS: account attivi, inattivi e cancellati.
+AMD_RENT_PRIVACY_RETENTION_BOOKINGS: prenotazioni, contratti e pagamenti.
+AMD_RENT_PRIVACY_RETENTION_DOCUMENTS: documenti e relative copie.
+AMD_RENT_PRIVACY_RETENTION_LOGS: log tecnici e backup.
+AMD_RENT_PRIVACY_REVIEWED: true solo dopo completamento e verifica dei testi.
+
+Le durate devono corrispondere a procedure effettive. Questi campi descrittivi
+non eseguono cancellazioni, non creano processi di conservazione e non sostituiscono
+gli accordi con i responsabili del trattamento. Il flag reviewed da solo non
+nasconde l'avviso di bozza se mancano dati richiesti o l'email non è valida.
+Aggiornare updated_at e notice_version quando cambia l'informativa.
+
+AMD_RENT_PRIVACY_URL, se già configurata, conserva la precedenza nei link privacy
+del footer e dei moduli. Verificare che l'eventuale informativa esterna sia coerente.
+
+Prima di aggiungere strumenti non necessari
+Rivalutare basi giuridiche e fornitori; introdurre il blocco preventivo degli
+strumenti, scelte granulari, rifiuto semplice, prova del consenso e revoca. Non
+aggiungere semplicemente pulsanti "accetta/rifiuta" a questo avviso informativo.
+
+Fonti ufficiali consultate
+https://www.garanteprivacy.it/home/docweb/-/docweb-display/docweb/9677876
+https://www.garanteprivacy.it/faq/cookie
+https://www.garanteprivacy.it/home/diritti/come-agire-per-tutelare-i-tuoi-dati-personali
+https://eur-lex.europa.eu/eli/reg/2016/679/oj?locale=it
+https://osmfoundation.org/wiki/Privacy_Policy
+https://stripe.com/it/privacy
+https://stripe.com/it/legal/cookies-policy
+
+Verifiche automatiche
+tests/Feature/PublicPrivacyTest.php: bozze, configurazione, escaping, durata,
+link dai moduli, informative disponibili anche oltre il limite di ricerca.
+tests/Feature/PublicPortalDomainTest.php: dominio pubblico e isolamento gestionale.
+tests/Unit/public-cookie-notice.test.mjs: scadenza/versione, memoria danneggiata
+o bloccata, nessun rinnovo implicito. Si esegue con node --test sul singolo file.
+I test PHP richiedono database e servizi isolati come gli altri test del portale.
+
+La parte tecnica e le bozze non costituiscono una certificazione GDPR. La
+pubblicazione definitiva richiede dati veri e verifica da parte del titolare.

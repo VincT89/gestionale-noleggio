@@ -52,7 +52,7 @@
         <div class="amd-home-faq">
             <details><summary>Quanto pago per prenotare?</summary><div><p>Per il noleggio breve versi il 20% online con Stripe. Il saldo si paga al ritiro. La prenotazione viene confermata dopo la verifica del pagamento; la cauzione è separata.</p></div></details>
             <details><summary>Posso ricevere l’auto in hotel?</summary><div><p>Sì, dove il servizio è offerto. Cerca l’hotel o un indirizzo, scegli tra i noleggiatori disponibili e invia la richiesta per l’auto che preferisci. Aspetta la conferma della consegna e dell’eventuale supplemento prima di pagare.</p></div></details>
-            <details><summary>Posso riconsegnarla in un altro luogo?</summary><div><p>Con il ritiro personalizzato puoi scegliere un punto di riconsegna tra quelli serviti dal noleggiatore. Il luogo scelto sarà nel riepilogo della tua richiesta.</p></div></details>
+            <details><summary>Posso riconsegnarla in un altro luogo?</summary><div><p>Con il ritiro personalizzato puoi scegliere un punto servito oppure richiedere un altro luogo, come un aeroporto o un hotel. Il noleggiatore confermerà gli appuntamenti e l’eventuale supplemento prima del pagamento.</p></div></details>
             <details><summary>Il prezzo comprende tutto?</summary><div><p>Il totale del noleggio è per l’intero periodo e include l’IVA. Cauzione, chilometri inclusi ed eventuali costi per chilometri extra sono indicati nella proposta. Per il ritiro personalizzato, l’eventuale supplemento arriva con la conferma del noleggiatore.</p></div></details>
             <details><summary>Devo creare un account?</summary><div><p>No. Puoi cercare, inviare la richiesta di consegna o prenotare dal sito pubblico senza registrarti.</p></div></details>
         </div>

@@ -7,7 +7,7 @@
         @include('public-account.contact-fields', ['customer' => null])
         <div class="amd-field"><label for="password">Password</label><x-password-input id="password" name="password" autocomplete="new-password" minlength="12" maxlength="128" aria-describedby="password-help" required /><small id="password-help">Almeno 12 caratteri, con lettere e numeri.</small></div>
         <div class="amd-field"><label for="password_confirmation">Conferma password</label><x-password-input id="password_confirmation" name="password_confirmation" autocomplete="new-password" minlength="12" maxlength="128" required /></div>
-        <p><small>I dati servono a gestire il tuo account e le tue richieste.@if(config('public_cars.privacy_url')) <a href="{{ config('public_cars.privacy_url') }}">Leggi l’informativa privacy</a>.@endif</small></p>
+        <p><small>I dati servono a gestire il tuo account e le tue richieste. <a href="{{ config('public_cars.privacy_url') ?: route('public-site.privacy') }}" target="_blank" rel="noopener noreferrer">Leggi l’informativa privacy (nuova scheda)</a>.</small></p>
         <button class="amd-button">Crea account e verifica email</button>
     </form>
 </div>

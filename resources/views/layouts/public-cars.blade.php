@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Cerca auto') | AMD Rent</title>
-    <meta name="description" content="Cerca un’auto a noleggio con AMD Rent. Scegli luogo e date, confronta le auto disponibili e prenota con il 20% online. Scopri anche il noleggio a lungo termine.">
+    <meta name="description" content="@yield('description', 'Cerca un’auto a noleggio con AMD Rent. Scegli luogo e date, confronta le auto disponibili e prenota con il 20% online. Scopri anche il noleggio a lungo termine.')">
     <meta name="robots" content="noindex, follow">
     @vite(['resources/css/public-cars.css', 'resources/css/public-interface.css', 'resources/js/public-cars.js'])
 </head>
@@ -78,9 +78,14 @@
         </div>
         <div class="amd-footer-bottom">
             <p>{{ config('public_cars.legal_notice') ?: '© '.now()->year.' AMD Rent' }}</p>
-            @if(config('public_cars.privacy_url'))<a href="{{ config('public_cars.privacy_url') }}">Informativa privacy</a>@endif
+            <a href="{{ config('public_cars.privacy_url') ?: route('public-site.privacy') }}">Privacy</a>
+            <a href="{{ route('public-site.cookies') }}">Cookie</a>
             <a href="{{ route($routePrefix.'.index') }}#car-search">Torna alla ricerca</a>
         </div>
     </footer>
+    <button type="button" class="amd-back-to-top" data-back-to-top aria-label="Torna su, all’inizio della pagina" hidden>
+        <img src="{{ asset('images/amd-rent-car-top-v1.png') }}" width="160" height="320" alt="" aria-hidden="true" loading="lazy" decoding="async">
+    </button>
+    @include('public-legal.partials.cookie-notice')
 </body>
 </html>

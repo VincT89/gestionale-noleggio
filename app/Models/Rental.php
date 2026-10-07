@@ -58,6 +58,13 @@ class Rental extends Model implements SpatieHasMedia
     public function customer()         { return $this->belongsTo(Customer::class); }
     public function pickupLocation()   { return $this->belongsTo(Location::class, 'pickup_location_id'); }
     public function returnLocation()   { return $this->belongsTo(Location::class, 'return_location_id'); }
+
+    public function returnLocationLabel(): ?string
+    {
+        // An agreed public return address is kept until an operator associates
+        // a verified location. Never substitute the supplier's pickup base.
+        return $this->returnLocation?->name ?? ($this->contractSnapshot?->pricing_snapshot['return_address'] ?? null);
+    }
     public function creator()          { return $this->belongsTo(User::class, 'created_by'); }
 
     public function checklists(): HasMany

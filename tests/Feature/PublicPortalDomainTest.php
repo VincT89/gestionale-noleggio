@@ -61,6 +61,28 @@ class PublicPortalDomainTest extends PublicBookingTestCase
         $this->getJson(self::PUBLIC_URL.'/api/user')->assertNotFound();
     }
 
+    public function test_map_search_and_selection_are_allowed_on_public_domain_only(): void
+    {
+        \Illuminate\Support\Facades\Http::fake(fn ($request) => \Illuminate\Support\Facades\Http::response(
+            str_contains($request->url(), '/reverse?')
+                ? ['display_name' => 'Via dimostrativa 14, Comune di prova', 'lat' => '41.12', 'lon' => '16.86', 'place_rank' => 30]
+                : [['display_name' => 'Comune di prova, Italia', 'lat' => '41.12', 'lon' => '16.86', 'place_rank' => 16]]
+        ));
+        $this->postJson(self::PUBLIC_URL.'/ritiro-mappa/cerca', ['query' => 'Comune di prova'])
+            ->assertOk()->assertJsonPath('places.0.zoom', 13);
+        $this->postJson(self::PUBLIC_URL.'/ritiro-mappa/indirizzo', ['lat' => 41.12, 'lng' => 16.86])
+            ->assertOk()->assertJsonPath('label', 'Via dimostrativa 14, Comune di prova');
+        $response = $this->post(self::PUBLIC_URL.'/ritiro-mappa/conferma', $this->period() + [
+            'request_delivery' => 1, 'delivery_address' => 'Indirizzo dimostrativo 14, Comune di prova',
+            'map_lat' => 41.12, 'map_lng' => 16.86, 'map_zoom' => 17, 'map_confirmed' => 1,
+        ])->assertStatus(303)->assertSessionHasNoErrors();
+        $this->assertStringStartsWith(self::PUBLIC_URL, $response->headers->get('Location'));
+        $this->get($response->headers->get('Location'))->assertOk()->assertViewHas('showDeliverySuppliers', true);
+        $this->postJson(self::MANAGEMENT_URL.'/ritiro-mappa/cerca', ['query' => 'Comune di prova'])->assertNotFound();
+        $this->postJson(self::PUBLIC_URL.'/catalogo-pubblico/anteprima/ritiro-mappa/cerca', ['query' => 'Comune di prova'])->assertNotFound();
+        \Illuminate\Support\Facades\Http::assertSentCount(2);
+    }
+
     public function test_customer_account_is_available_only_on_public_host_without_unlocking_management(): void
     {
         $this->assertSame(self::PUBLIC_URL.'/area-cliente/accedi', route('public-account.login'));
@@ -154,5 +176,14 @@ class PublicPortalDomainTest extends PublicBookingTestCase
             ->assertSee('tel:+390000000000', false)
             ->assertSee('informativa-di-prova')->assertSee('Operatore dimostrativo')
             ->assertDontSee('recapiti dell’assistenza AMD Rent non sono ancora disponibili');
+    }
+
+    public function test_legal_routes_work_on_the_public_host_without_opening_management_routes(): void
+    {
+        foreach (['privacy' => '/privacy', 'cookies' => '/cookie'] as $name => $path) {
+            $this->assertSame(self::PUBLIC_URL.$path, route('public-site.'.$name));
+            $this->get(self::PUBLIC_URL.$path)->assertOk()->assertSee('La tua privacy, con chiarezza.');
+        }
+        $this->get(self::PUBLIC_URL.'/amd-rent/impostazioni')->assertNotFound();
     }
 }

@@ -16,8 +16,14 @@ class PublicBookingService
     {
         $fields = ['id', 'vehicle_id', 'supplier_id', 'title', 'organization', 'location', 'city', 'address', 'description', 'total_cents',
             'days', 'deposit_cents', 'km_per_day', 'extra_km_cents', 'prices_include_vat', 'place_id', 'pickup_location_id',
-            'custom_delivery_enabled', 'delivery_request_id', 'delivery_fee_cents', 'delivery_commission_bps', 'delivery_address', 'delivery_revision'];
-        return hash('sha256', json_encode(array_intersect_key($car, array_flip($fields)), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+            'custom_delivery_enabled', 'delivery_request_id', 'delivery_fee_cents', 'delivery_commission_bps', 'delivery_address', 'delivery_revision', 'return_address'];
+        $values = array_intersect_key($car, array_flip($fields));
+        // Coordinates stay bound to the accepted quote, independent of JSON key
+        // order or numeric types used by the database. Keep legacy quotes valid.
+        if (!empty($car['return_destination'])) {
+            $values['return_destination'] = array_map(fn ($key) => number_format((float) $car['return_destination'][$key], 7, '.', ''), ['lat', 'lng']);
+        }
+        return hash('sha256', json_encode($values, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
     }
 
     public function reserve(array $intent, array $contact): PublicBooking
@@ -59,13 +65,15 @@ class PublicBookingService
             $rental = $this->numbers->allocateAndCreate($pricelist->renter_org_id, null, fn (int $number) => Rental::create([
                 'number_id' => $number, 'organization_id' => $pricelist->renter_org_id, 'vehicle_id' => $pricelist->vehicle_id,
                 'assignment_id' => $assignment?->id, 'customer_id' => $customer->id,
-                'pickup_location_id' => $car['pickup_location_id'], 'return_location_id' => $car['pickup_location_id'],
+                'pickup_location_id' => $car['pickup_location_id'],
+                'return_location_id' => empty($car['return_address']) ? $car['pickup_location_id'] : null,
                 'planned_pickup_at' => $start, 'planned_return_at' => $end, 'status' => 'reserved',
                 'amount' => number_format($car['total_cents'] / 100, 2, '.', ''),
                 'final_amount_override' => number_format($car['total_cents'] / 100, 2, '.', ''),
                 'booking_channel' => $stripe ? 'amd_rent' : null,
                 'notes' => ($stripe ? 'Prenotazione AMD Rent: quota online a AMD Rent, saldo al ritiro. ' : 'Prenotazione dal sito. Pagamento al ritiro. ')
                     .(!empty($car['delivery_address']) ? 'Consegna concordata: '.$car['delivery_address'].'. ' : '')
+                    .(!empty($car['return_address']) ? 'Riconsegna concordata: '.$car['return_address'].'. Associare il luogo gestionale verificato prima della comunicazione CARGOS. ' : '')
                     .'Completare i dati del conducente e il contratto prima della consegna.',
             ]));
             // Reuse ERA's existing freeze-once pricing snapshot for the future contract too.
@@ -77,7 +85,8 @@ class PublicBookingService
                     'km_daily_limit' => $car['km_per_day'], 'extra_km_cents' => $car['extra_km_cents'],
                     'deposit_cents' => $car['deposit_cents'],
                     'second_driver_daily_cents' => (int) ($pricelist->second_driver_daily_cents ?? 0),
-                ],
+                ] + (!empty($car['return_address']) ? ['return_address' => $car['return_address']] : [])
+                  + (!empty($car['return_destination']) ? ['return_destination' => $car['return_destination']] : []),
             ]);
             // Compatibility with existing booking foreign keys. Search never reads or creates offers;
             // historical records stay untouched and the accepted pricelist lives in the snapshots.

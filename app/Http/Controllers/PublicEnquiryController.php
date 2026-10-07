@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Rentals\{PublicBookingService, PublicVehicleSearch};
 use App\Models\{AmdRentEnquiry, VehiclePricelist};
+use App\Http\Requests\PublicLongTermRequest;
 use App\Services\AmdRent\DeliveryQuotes;
 use App\Services\AmdRent\DeliveryBookingRecovery;
 use Illuminate\Http\Request;
@@ -21,11 +22,9 @@ class PublicEnquiryController extends Controller
         $request->session()->put('amd_enquiry_tokens', array_slice($tokens, -20, null, true));
         return $this->page('public-cars.long-term', compact('token'));
     }
-    public function store(Request $request)
+    public function store(PublicLongTermRequest $request)
     {
-        $data = $request->validate(AmdRentEnquiryController::contactRules() + AmdRentEnquiryController::longTermRules() + [
-            'request_token' => ['required', 'uuid'], 'accept_contact' => ['accepted'], 'website' => ['nullable', 'string', 'max:0'],
-        ]);
+        $data = $request->validated();
         $issued = $request->session()->get('amd_enquiry_tokens.'.$data['request_token']);
         abort_unless($issued && $issued > now()->subHours(2)->timestamp, 419, 'Il modulo è scaduto. Riapri la pagina.');
         $hash = hash('sha256', 'long_term:'.$data['request_token']);
@@ -41,6 +40,8 @@ class PublicEnquiryController extends Controller
         $searchPeriod = $intent['period'];
         if (!empty($intent['delivery_destination'])) $searchPeriod += ['request_delivery' => 1, 'delivery_point' => $intent['delivery_destination']];
         $car = $search->search(VehiclePricelist::forPublicRental()->whereKey($intent['pricelist']), $searchPeriod)->first();
+        if ($car && !empty($intent['return_address'])) $car['return_address'] = $intent['return_address'];
+        if ($car && !empty($intent['return_destination'])) $car['return_destination'] = $intent['return_destination'];
         app(PublicBookingService::class)->assertQuote($intent, $car);
         abort_unless($car['custom_delivery_enabled'], 422, 'Il noleggiatore non accetta richieste di consegna personalizzata per questo luogo.');
         $case = AmdRentEnquiry::firstOrCreate(['request_hash' => $hash], [
@@ -48,7 +49,9 @@ class PublicEnquiryController extends Controller
             'customer_name' => trim($contact['first_name'].' '.$contact['last_name']), 'email' => $contact['email'], 'phone' => $contact['phone'],
             'delivery_address' => $data['delivery_address'], 'notes' => $data['delivery_notes'] ?? null,
             'vehicle_request' => $car['title'], 'booking_context' => ['pricelist' => $intent['pricelist'], 'period' => array_replace($intent['period'], ['place_id' => $car['place_id']]), 'contact' => $contact, 'car' => $car,
-                'delivery_destination' => $intent['delivery_destination'] ?? null],
+                'delivery_destination' => $intent['delivery_destination'] ?? null,
+                'return_address' => $intent['return_address'] ?? null,
+                'return_destination' => $intent['return_destination'] ?? null],
         ]);
         return redirect()->to($case->publicUrl(), 303);
     }

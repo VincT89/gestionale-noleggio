@@ -28,6 +28,8 @@ class Table extends Component
     use WithPagination;
     use AuthorizesRequests;
 
+    protected $listeners = ['vehicle-mileage-corrected' => '$refresh'];
+
     /** Stato UI sincronizzato su query string (deep-link) */
     #[Url(as: 'q',        except: '')]
     public string $search = '';

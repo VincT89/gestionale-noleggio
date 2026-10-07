@@ -84,6 +84,10 @@ Route::middleware([
         Route::post('/catalogo-pubblico/luoghi', [PublicDeliveryLocationController::class, 'store'])->name('public-deliveries.store');
         Route::put('/catalogo-pubblico/luoghi/{delivery}', [PublicDeliveryLocationController::class, 'update'])->whereNumber('delivery')->name('public-deliveries.update');
         Route::get('/catalogo-pubblico/anteprima', [PublicCarSearchController::class, 'preview'])->name('public-cars.preview.index');
+        Route::post('/catalogo-pubblico/anteprima/ritiro-mappa/cerca', [\App\Http\Controllers\PublicPickupMapController::class, 'search'])->middleware('throttle:20,1')->name('public-cars.preview.map.search');
+        Route::post('/catalogo-pubblico/anteprima/ritiro-mappa/indirizzo', [\App\Http\Controllers\PublicPickupMapController::class, 'address'])->middleware('throttle:20,1')->name('public-cars.preview.map.address');
+        Route::post('/catalogo-pubblico/anteprima/ritiro-mappa/conferma', [\App\Http\Controllers\PublicPickupMapController::class, 'store'])->middleware('throttle:20,1')->name('public-cars.preview.map.store');
+        Route::post('/catalogo-pubblico/anteprima/riconsegna-mappa/conferma', [\App\Http\Controllers\PublicPickupMapController::class, 'storeReturn'])->middleware('throttle:20,1')->name('public-cars.preview.return-map.store');
         Route::get('/catalogo-pubblico/anteprima/{offer}', [PublicCarSearchController::class, 'legacy'])->whereNumber('offer')->name('public-cars.preview.legacy.show');
         Route::get('/catalogo-pubblico/anteprima/{offer}/foto', [PublicCarSearchController::class, 'legacy'])->whereNumber('offer')->name('public-cars.preview.legacy.photo');
         Route::get('/catalogo-pubblico/anteprima/{offer}/prenota', [PublicCarSearchController::class, 'legacy'])->whereNumber('offer')->name('public-cars.preview.legacy.booking');

@@ -29,18 +29,34 @@ class PublicBookingController extends Controller
         $scope = $this->scope($request, $preview)->whereKey($pricelist);
         abort_unless((clone $scope)->exists(), 404);
         $period = array_filter($request->safe()->only(['pickup_at', 'return_at', 'place_id']), fn ($value) => $value !== null);
-        $filters = $period + $request->safe()->only(['request_delivery', 'delivery_address', 'delivery_place']);
-        $car = $search->search($scope, $filters)->first();
+        $filters = $period + $request->safe()->only(['request_delivery', 'delivery_address', 'delivery_place', 'request_custom_return', 'return_address', 'return_place']);
+        $customReturn = !empty($filters['request_custom_return']);
+        // A requested return address is confirmed by the supplier. It is not an
+        // existing public return point, nor a reason to change pickup coverage.
+        $car = $search->search($scope, $customReturn ? \Illuminate\Support\Arr::except($filters, ['place_id']) : $filters)->first();
         $prefix = $preview ? 'public-cars.preview' : 'public-cars';
-        if (!empty($filters['request_delivery']) && empty($period['place_id'])) {
+        if (!empty($filters['request_delivery']) && !$customReturn && empty($period['place_id'])) {
             return redirect()->route($prefix.'.show', ['pricelist' => $pricelist] + $filters)
                 ->withErrors(['place_id' => 'Scegli dove riconsegnare l’auto prima di continuare.']);
         }
         if (!$car) return $this->page('public-cars.show', ['car' => null, 'filters' => $filters, 'preview' => $preview, 'routePrefix' => $prefix]);
 
+        if ($customReturn) {
+            // This id identifies the serving business internally; the customer's
+            // actual return appointment is stored independently below.
+            $filters['place_id'] = $period['place_id'] = $car['place_id'];
+            $car['return_address'] = $filters['return_address'];
+            $car['return_destination'] = app(\App\Services\Geocoding\PlaceSelection::class)
+                ->resolve($filters['return_place'], $filters['return_address'], 'public-return');
+        }
+
         $intent = ['nonce' => (string) Str::uuid(), 'source' => 'pricelist', 'pricelist' => $pricelist, 'period' => $period, 'preview' => $preview,
             'fingerprint' => PublicBookingService::fingerprint($car), 'expires_at' => now()->addMinutes(30)->timestamp];
         if (!empty($car['delivery_destination'])) $intent['delivery_destination'] = $car['delivery_destination'];
+        if ($customReturn) {
+            $intent['return_address'] = $car['return_address'];
+            $intent['return_destination'] = $car['return_destination'];
+        }
         $known = $request->session()->get('public_booking_checkouts', []);
         $known[$intent['nonce']] = true;
         $request->session()->put('public_booking_checkouts', array_slice($known, -20, null, true));
@@ -83,6 +99,17 @@ class PublicBookingController extends Controller
             throw ValidationException::withMessages(['checkout_token' => 'La sessione, il luogo o le date sono cambiati. Riapri il riepilogo e riprova.']);
         }
         $contact = $request->safe()->only(['first_name', 'last_name', 'email', 'phone']);
+        if (empty($intent['delivery_request_id'])) {
+            $submittedReturn = $request->boolean('request_custom_return') ? $request->validated('return_address') : null;
+            if (($intent['return_address'] ?? null) !== $submittedReturn) {
+                throw ValidationException::withMessages(['return_address' => 'Il luogo di riconsegna è cambiato. Torna all’auto e riapri il riepilogo.']);
+            }
+            $submittedPoint = $submittedReturn ? app(\App\Services\Geocoding\PlaceSelection::class)
+                ->resolve($request->validated('return_place'), $submittedReturn, 'public-return') : null;
+            if (($intent['return_destination'] ?? null) != $submittedPoint) {
+                throw ValidationException::withMessages(['return_place' => 'Il punto di riconsegna è cambiato. Torna all’auto e riapri il riepilogo.']);
+            }
+        }
         if (!empty($intent['delivery_destination']) && empty($intent['delivery_request_id'])
             && (!$request->boolean('request_delivery') || $request->input('delivery_address') !== $intent['delivery_destination']['label'])) {
             throw ValidationException::withMessages(['delivery_address' => 'Il luogo di ritiro è cambiato. Torna alla ricerca e conferma la nuova posizione.']);

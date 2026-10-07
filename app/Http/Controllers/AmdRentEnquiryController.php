@@ -74,6 +74,11 @@ class AmdRentEnquiryController extends Controller
             if ($case->type === 'delivery') {
                 if (!in_array($data['status'], ['new', 'working', 'quoted', 'lost'])) throw ValidationException::withMessages(['status' => 'La consegna viene accettata dal cliente durante la prenotazione.']);
                 if ($data['status'] === 'quoted') {
+                    if (!empty($case->booking_context['return_address'])) {
+                        $request->validate(['confirm_custom_return' => ['accepted']], [
+                            'confirm_custom_return.accepted' => 'Conferma anche il luogo di riconsegna richiesto e includilo nel supplemento complessivo.',
+                        ]);
+                    }
                     if (!isset($data['delivery_fee'], $data['quote_valid_until'])) throw ValidationException::withMessages(['delivery_fee' => 'Indica il supplemento e la validità dopo aver verificato l’indirizzo e la possibilità di consegna.']);
                     $changes += ['delivery_fee_cents' => (int) round($data['delivery_fee'] * 100), 'quote_expires_at' => \Carbon\Carbon::parse($data['quote_valid_until'])->endOfDay()];
                 }

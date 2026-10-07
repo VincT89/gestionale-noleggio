@@ -27,6 +27,9 @@ class PublicCarSearchRequest extends FormRequest
             if (is_string($destination)) {
                 $destination = trim($destination);
                 $this->merge(['destination' => $destination]);
+                // Selecting an existing return point replaces the earlier free
+                // address carried back from the car detail page.
+                if ($destination !== '') $this->merge(['request_custom_return' => 0]);
                 if (str_starts_with($destination, 'city:')) {
                     $this->merge(['city' => trim(substr($destination, 5))]);
                 } elseif (ctype_digit($destination)) {
@@ -53,6 +56,9 @@ class PublicCarSearchRequest extends FormRequest
             'place_id' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
             'supplier' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
             'request_delivery' => ['nullable', 'boolean'],
+            'request_custom_return' => ['exclude_unless:request_delivery,1', 'nullable', 'boolean'],
+            'return_address' => ['exclude_unless:request_delivery,1', 'exclude_unless:request_custom_return,1', 'required', 'string', 'min:8', 'max:500'],
+            'return_place' => ['exclude_unless:request_delivery,1', 'exclude_unless:request_custom_return,1', 'required', 'uuid'],
             'delivery_address' => ['exclude_unless:request_delivery,1', 'required', 'string', 'min:3', 'max:500'],
             'delivery_place' => ['exclude_unless:request_delivery,1', 'nullable', 'uuid',
                 Rule::requiredIf($this->boolean('request_delivery') && $this->isMethod('GET')
@@ -77,6 +83,11 @@ class PublicCarSearchRequest extends FormRequest
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
+            if ($this->boolean('request_delivery') && $this->boolean('request_custom_return')
+                && !$validator->errors()->hasAny(['return_place', 'return_address'])
+                && !app(PlaceSelection::class)->resolve($this->input('return_place'), $this->input('return_address'), 'public-return')) {
+                $validator->errors()->add('return_place', 'Il punto di riconsegna è scaduto o è cambiato. Sceglilo e confermalo nuovamente sulla mappa.');
+            }
             if ($this->boolean('request_delivery') && $this->filled('delivery_place')
                 && !$validator->errors()->hasAny(['delivery_place', 'delivery_address'])
                 && !app(PlaceSelection::class)->resolve($this->input('delivery_place'), $this->input('delivery_address'))) {
@@ -113,6 +124,9 @@ class PublicCarSearchRequest extends FormRequest
             'destination.*' => 'Scegli una città, un aeroporto, una stazione o una zona dall’elenco.',
             'supplier.*' => 'Controlla il noleggiatore selezionato.',
             'request_delivery.*' => 'Controlla la scelta del ritiro personalizzato.',
+            'request_custom_return.*' => 'Controlla la scelta della riconsegna personalizzata.',
+            'return_address.*' => 'Indica il luogo di riconsegna con il comune, da 8 a 500 caratteri: aeroporto, hotel o indirizzo completo.',
+            'return_place.*' => 'Scegli e conferma il punto preciso di riconsegna sulla mappa.',
             'delivery_address.*' => 'Indica un indirizzo, hotel o B&B, possibilmente con il comune, da 3 a 500 caratteri.',
             'delivery_place.*' => 'Cerca e conferma il luogo di ritiro prima di scegliere l’auto.',
         ];

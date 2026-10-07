@@ -3,6 +3,10 @@
     x-init="bootstrapFromServer({ hasId: @js((bool) $checklistId), locked: @js((bool) $isLocked) })" 
     x-cloak class="w-full">
 
+    <div class="mb-4">
+        <livewire:rentals.mileage-correction :rental-id="$rental->id" :key="'checklist-mileage-'.$rental->id" />
+    </div>
+
     {{-- ========== Barra Tab ==========
          4 tab: Base, Checklist, Danni, Media/Documenti
          Al momento abilitiamo solo "Base" (step 4A).

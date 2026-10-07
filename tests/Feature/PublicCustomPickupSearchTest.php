@@ -92,6 +92,20 @@ class PublicCustomPickupSearchTest extends PublicBookingTestCase
         $this->get($next)->assertOk()->assertViewHas('results', fn ($rows) => $rows->currentPage() === 2 && $rows->total() === 2);
     }
 
+    public function test_custom_pickup_keeps_supplier_and_return_copy_when_budget_has_no_results(): void
+    {
+        $this->airport();
+        $filters = $this->custom(['supplier' => 1]);
+        unset($filters['city']);
+        $this->get(route('public-cars.index', $filters))->assertOk()
+            ->assertSee('Da scegliere tra i punti serviti')->assertDontSee('@else');
+        $this->get(route('public-cars.index', $filters + ['budget' => 1]))->assertOk()
+            ->assertViewHas('results', fn ($rows) => $rows->isEmpty())
+            ->assertViewHas('suppliers', fn ($rows) => $rows->pluck('id')->all() === [1])
+            ->assertViewHas('showDeliverySuppliers', false)
+            ->assertSee('value="1" selected', false);
+    }
+
     public function test_custom_pickup_cannot_open_an_offer_whose_service_was_disabled(): void
     {
         $delivery = $this->airport();

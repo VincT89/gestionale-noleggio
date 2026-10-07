@@ -94,14 +94,20 @@ class PublicCarSearchController extends Controller
     {
         $scope = $this->scope($request, $preview);
         $filters = \Illuminate\Support\Arr::except($request->validated(), ['destination']);
+        if (!empty($filters['request_custom_return'])) unset($filters['place_id'], $filters['city']);
         $searched = !empty($filters['pickup_at']) && !empty($filters['return_at']);
         $deliveryPoint = !empty($filters['delivery_place'])
             ? app(PlaceSelection::class)->resolve($filters['delivery_place'], $filters['delivery_address']) : null;
         $deliveryLookupNeeded = $searched && !empty($filters['request_delivery']) && !$deliveryPoint;
-        $placeChoices = []; $placeSearchError = null;
+        $placeChoices = []; $placeSearchError = null; $mapCenter = null;
         if ($deliveryLookupNeeded) {
             try {
-                $placeChoices = app(PlaceSelection::class)->issue(app(NominatimSearch::class)->search($filters['delivery_address']));
+                $mapPlaces = app(NominatimSearch::class)->searchArea($filters['delivery_address']);
+                // Areas position the map; only street-level results receive selection tokens.
+                $precisePlaces = collect($mapPlaces)->where('zoom', '>=', 17)
+                    ->map(fn ($place) => \Illuminate\Support\Arr::except($place, ['zoom']))->values()->all();
+                $placeChoices = app(PlaceSelection::class)->issue($precisePlaces);
+                if (count($mapPlaces) === 1) $mapCenter = $mapPlaces[0];
             } catch (PlaceSearchUnavailable $exception) {
                 $placeSearchError = $exception->getMessage();
             }
@@ -113,6 +119,13 @@ class PublicCarSearchController extends Controller
             ->orderBy('city')->orderBy('name')->get();
         $destinations = app(PublicPickupDirectory::class)->destinations($places);
         $matching = $searched && !$deliveryLookupNeeded ? $search->search($scope, \Illuminate\Support\Arr::except($filters, ['supplier'])) : collect();
+        $supplierMatches = $matching;
+        $vehicleFilters = ['budget', 'q', 'segment', 'transmission', 'fuel_type', 'seats'];
+        if ($searched && !$deliveryLookupNeeded && collect(\Illuminate\Support\Arr::only($filters, $vehicleFilters))
+            ->contains(fn ($value) => $value !== null && $value !== '')) {
+            // Keep supplier choices tied to the location and dates even when a vehicle filter returns no cars.
+            $supplierMatches = $search->search($scope, \Illuminate\Support\Arr::except($filters, [...$vehicleFilters, 'supplier']));
+        }
         $results = empty($filters['supplier']) ? $matching : $matching->where('supplier_id', (int) $filters['supplier'])->values();
         $results = $search->cheapestPerProduct($results, $filters['sort'] ?? 'price_asc');
         $perPage = (int) config('public_cars.per_page');
@@ -136,12 +149,12 @@ class PublicCarSearchController extends Controller
             'preview' => $preview, 'routePrefix' => $preview ? 'public-cars.preview' : 'public-cars',
             'filters' => $filters, 'searched' => $searched, 'results' => $paginator,
             'deliveryPoint' => $deliveryPoint, 'deliveryLookupNeeded' => $deliveryLookupNeeded,
-            'placeChoices' => $placeChoices, 'placeSearchError' => $placeSearchError,
+            'placeChoices' => $placeChoices, 'placeSearchError' => $placeSearchError, 'mapCenter' => $mapCenter,
             'showDeliverySuppliers' => $showDeliverySuppliers, 'supplierResults' => $supplierResults,
             'places' => $places,
             'destinations' => $destinations,
             'selectedPlace' => $places->firstWhere('id', $filters['place_id'] ?? null),
-            'suppliers' => $facets->pluck('renter')->whereIn('id', $matching->pluck('supplier_id'))->unique('id')->sortBy('name')->values(),
+            'suppliers' => $facets->pluck('renter')->whereIn('id', $supplierMatches->pluck('supplier_id'))->unique('id')->sortBy('name')->values(),
             'cities' => $places->pluck('city')->filter()->unique(fn ($city) => mb_strtolower($city))->sort()->values(),
             'segments' => $facets->pluck('vehicle.segment')->filter()->unique(fn ($segment) => mb_strtolower($segment))->sort()->values(),
         ])->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer')->header('X-Robots-Tag', 'noindex, follow');
@@ -161,6 +174,8 @@ class PublicCarSearchController extends Controller
 
         return response()->view('public-cars.show', [
             'car' => $result, 'filters' => $request->validated(), 'preview' => $preview,
+            'returnPoint' => !empty($filters['request_custom_return'])
+                ? app(\App\Services\Geocoding\PlaceSelection::class)->resolve($filters['return_place'], $filters['return_address'], 'public-return') : null,
             'routePrefix' => $preview ? 'public-cars.preview' : 'public-cars', 'returnPlaces' => $returnPlaces,
         ])->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer')->header('X-Robots-Tag', 'noindex, follow');
     }

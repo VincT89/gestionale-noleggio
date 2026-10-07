@@ -1,4 +1,9 @@
 <form id="car-search" class="amd-search" method="get" action="{{ route($routePrefix.'.index') }}" aria-label="Ricerca auto disponibili">
+    @if(!empty($filters['request_custom_return']))
+        <input type="hidden" name="request_custom_return" value="1">
+        <input type="hidden" name="return_address" value="{{ $filters['return_address'] }}">
+        <input type="hidden" name="return_place" value="{{ $filters['return_place'] ?? '' }}">
+    @endif
     @if($errors->any())<div class="amd-errors" role="alert"><strong>Controlla i dati della ricerca.</strong><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
     @unless($searched)<div class="amd-search-intro"><h2>La tua prossima partenza</h2></div>@endunless
     <div class="amd-search-primary">
@@ -14,6 +19,7 @@
                 <label for="search-delivery-address">Indirizzo, hotel o B&B</label>
                 <input id="search-delivery-address" name="delivery_address" type="text" minlength="3" maxlength="500" value="{{ $value('delivery_address') }}" aria-describedby="search-delivery-help" data-search-delivery-address @if($customPickup) required @endif>
                 <small id="search-delivery-help">Il nome dell’hotel o del B&B e la città, oppure l’indirizzo completo.</small>
+                <small>Per trovare il luogo usiamo OpenStreetMap. <a href="{{ route('public-site.privacy') }}#servizi-esterni" target="_blank" rel="noopener noreferrer">Come usiamo l’indirizzo (nuova scheda)</a>.</small>
             </div>
         </div>
         <div class="amd-field"><label for="pickup-at">Ritiro</label><input id="pickup-at" name="pickup_at" type="datetime-local" required value="{{ $value('pickup_at', now()->addDay()->setTime(10, 0)->format('Y-m-d\TH:i')) }}" min="{{ now()->format('Y-m-d\TH:i') }}" @if($errors->has('pickup_at')) aria-invalid="true" @endif></div>

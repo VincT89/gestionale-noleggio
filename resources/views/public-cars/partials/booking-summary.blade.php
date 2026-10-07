@@ -2,6 +2,7 @@
 <h2 id="booking-summary-title">Il tuo noleggio</h2>
 @if(!isset($booking) && $car['has_photo'])<img class="amd-booking-car-photo" src="{{ route($routePrefix.'.photo', $car['id']) }}" alt="{{ $car['photo_is_reference'] ? 'Immagine indicativa: '.$car['title'] : $car['title'] }}" width="360" height="200">@if($car['photo_is_reference'])<small>Immagine indicativa del modello</small>@endif @endif
 <h3>{{ $car['title'] }}</h3>
+@include('public-cars.partials.selected-map-point', ['point' => $car['delivery_destination'] ?? null])
 @if(!empty($car['delivery_address']))
 <p class="amd-summary-label">Ritiro concordato</p><p><strong>{{ $car['delivery_address'] }}</strong></p>
 @else
@@ -11,7 +12,11 @@
 @endif
 @endif
 <p class="amd-summary-label">Luogo di riconsegna</p>
-<p>{{ $car['location'] }} — {{ $car['city'] }}<br>{{ $car['address'] }}</p>
+@if(!empty($car['return_address']))
+<p><strong>{{ $car['return_address'] }}</strong></p>
+@include('public-cars.partials.selected-map-point', ['point' => $car['return_destination'] ?? null, 'pointType' => 'return'])
+@if(empty($car['delivery_request_id']))<p>Luogo e supplemento da confermare dal noleggiatore.</p>@endif
+@else<p>{{ $car['location'] }} — {{ $car['city'] }}<br>{{ $car['address'] }}</p>@endif
 <p>Servizio erogato da <strong>{{ $car['organization'] }}</strong>.</p>
 <dl class="amd-quote-lines">
     <div><dt>Ritiro</dt><dd>{{ \Carbon\CarbonImmutable::parse($filters['pickup_at'])->format('d/m/Y H:i') }}</dd></div>
@@ -28,6 +33,6 @@
 </dl>
 @if((isset($booking) && $booking->payment_method === 'stripe') || (!isset($booking) && config('amd_rent.payment_mode') === 'stripe'))
 @php $online = isset($booking) ? $booking->online_due_cents : \App\Services\AmdRent\DeliveryQuotes::onlineDue($car); @endphp
-<dl class="amd-quote-lines">@if(!empty($car['delivery_fee_cents']))<div><dt>Noleggio</dt><dd>{{ $money($car['rental_total_cents']) }}</dd></div><div><dt>Supplemento consegna</dt><dd>{{ $money($car['delivery_fee_cents']) }}</dd></div>@endif<div><dt>Quota online</dt><dd>{{ $money($online) }}</dd></div><div><dt>Saldo previsto al ritiro</dt><dd>{{ $money(isset($booking) ? $booking->pickup_due_cents : $car['total_cents'] - $online) }}</dd></div>@if(isset($booking))<div><dt>Versato online, al netto dei rimborsi</dt><dd>{{ $money($booking->online_paid_cents - $booking->refunded_cents) }}</dd></div>@endif</dl><p class="amd-booking-payment">La quota online sul noleggio è il 20%. Cauzione separata, da gestire con il noleggiatore.</p>
+<dl class="amd-quote-lines">@if(!empty($car['delivery_fee_cents']))<div><dt>Noleggio</dt><dd>{{ $money($car['rental_total_cents']) }}</dd></div><div><dt>{{ !empty($car['return_address']) ? 'Supplemento ritiro e riconsegna' : 'Supplemento consegna' }}</dt><dd>{{ $money($car['delivery_fee_cents']) }}</dd></div>@endif<div><dt>Quota online</dt><dd>{{ $money($online) }}</dd></div><div><dt>Saldo previsto al ritiro</dt><dd>{{ $money(isset($booking) ? $booking->pickup_due_cents : $car['total_cents'] - $online) }}</dd></div>@if(isset($booking))<div><dt>Versato online, al netto dei rimborsi</dt><dd>{{ $money($booking->online_paid_cents - $booking->refunded_cents) }}</dd></div>@endif</dl><p class="amd-booking-payment">La quota online sul noleggio è il 20%. Cauzione separata, da gestire con il noleggiatore.</p>
 @else<p class="amd-booking-payment">Pagamento al ritiro. Nessun addebito online.</p>@endif
 @if($car['description'])<h3>Condizioni dell’offerta</h3><p class="amd-description">{{ $car['description'] }}</p>@endif

@@ -8,7 +8,7 @@
         return is_scalar($input) ? (string) $input : '';
     };
     $money = fn ($cents) => number_format($cents / 100, 2, ',', '.').' €';
-    $baseFilters = array_filter(\Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at', 'place_id', 'city', 'request_delivery', 'delivery_address', 'delivery_place']), fn ($v) => $v !== null && $v !== '');
+    $baseFilters = array_filter(\Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at', 'place_id', 'city', 'request_delivery', 'delivery_address', 'delivery_place', 'request_custom_return', 'return_address', 'return_place']), fn ($v) => $v !== null && $v !== '');
     $customPickup = $value('request_delivery') === '1';
     $destinationValue = $value('destination', $value('place_id') ?: ($value('city') ? 'city:'.$value('city') : ''));
     $knownDestination = $destinations->contains(fn ($destination) => mb_strtolower($destination['value']) === mb_strtolower($destinationValue));
@@ -16,12 +16,17 @@
 @if($searched)
 <section class="amd-search-band amd-search-band--results" aria-labelledby="search-title">
     <div class="amd-search-band-inner">
-        <div class="amd-page-heading"><h1 id="search-title">La tua ricerca</h1><p>Il tuo viaggio prende forma. Confronta le proposte e scegli come partire.</p></div>
+        <div class="amd-page-heading"><h1 id="search-title">La tua ricerca</h1></div>
             <div class="amd-search-recap" data-search-recap hidden>
                 <div id="public-search-recap">
-                    <strong>{{ $customPickup ? $value('delivery_address') : ($selectedPlace?->label ?? $value('city')) }}</strong>
-                    <span>{{ \Carbon\CarbonImmutable::parse($filters['pickup_at'])->format('d/m/Y H:i') }} – {{ \Carbon\CarbonImmutable::parse($filters['return_at'])->format('d/m/Y H:i') }}</span>
-                    @if($customPickup)<span>Riconsegna: {{ $selectedPlace?->label ?? ($value('city') ?: 'da scegliere') }}</span>@endif
+                    <div class="amd-trip-place">
+                        <span>{{ $customPickup ? 'Ritiro al tuo indirizzo' : 'Luogo di ritiro' }}</span>
+                        <strong>{{ $customPickup ? $value('delivery_address') : ($selectedPlace?->label ?? $value('city')) }}</strong>
+                        @if($customPickup && $deliveryPoint)<small class="amd-trip-credit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a></small>@endif
+                        @if($customPickup)<small>Riconsegna: {{ !empty($filters['request_custom_return']) ? $filters['return_address'].' (da confermare)' : ($selectedPlace?->label ?? ($value('city') ?: 'da scegliere dopo l’auto')) }}</small>@endif
+                    </div>
+                    <div class="amd-trip-date"><span>Ritiro</span><strong><time datetime="{{ $filters['pickup_at'] }}">{{ \Carbon\CarbonImmutable::parse($filters['pickup_at'])->format('d/m/Y') }}</time></strong><small>Ore {{ \Carbon\CarbonImmutable::parse($filters['pickup_at'])->format('H:i') }}</small></div>
+                    <div class="amd-trip-date"><span>Riconsegna</span><strong><time datetime="{{ $filters['return_at'] }}">{{ \Carbon\CarbonImmutable::parse($filters['return_at'])->format('d/m/Y') }}</time></strong><small>Ore {{ \Carbon\CarbonImmutable::parse($filters['return_at'])->format('H:i') }}</small></div>
                 </div>
                 <button class="amd-button amd-button-secondary" type="button" data-search-toggle aria-controls="car-search" aria-expanded="true">Modifica ricerca</button>
             </div>
@@ -88,7 +93,18 @@
                         @if($car['product_name'] !== null && $car['product_name'] !== $car['title'])<p>{{ $car['title'] }}</p>@endif
                         <p class="amd-car-provider">Noleggiatore: <strong>{{ $car['organization'] }}</strong></p>
                         <dl class="amd-specs">@if($car['seats'])<div><dt>Posti</dt><dd>{{ $car['seats'] }}</dd></div>@endif @if($car['transmission'])<div><dt>Cambio</dt><dd>{{ $car['transmission'] }}</dd></div>@endif @if($car['fuel'])<div><dt>Alimentazione</dt><dd>{{ $car['fuel'] }}</dd></div>@endif</dl>
-                        <div class="amd-car-pickup"><span>{{ $customPickup ? 'Riconsegna' : 'Punto di ritiro' }}</span><p>@if($customPickup && empty($filters['place_id']))Da scegliere tra i punti serviti@else{{ $car['location'] }}@if($car['city']), {{ $car['city'] }}@endif @endif</p></div>
+                        <div class="amd-car-pickup">
+                            <span>{{ $customPickup ? 'Riconsegna' : 'Punto di ritiro' }}</span>
+                            <p>
+                                @if($customPickup && !empty($filters['request_custom_return']))
+                                    {{ $filters['return_address'] }} (da confermare)
+                                @elseif($customPickup && empty($filters['place_id']))
+                                    Da scegliere tra i punti serviti
+                                @else
+                                    {{ $car['location'] }}@if($car['city']), {{ $car['city'] }}@endif
+                                @endif
+                            </p>
+                        </div>
                         <p class="amd-car-mileage">{{ $car['km_per_day'] === null ? 'Chilometraggio illimitato' : $car['km_per_day'].' km inclusi al giorno' }}</p>
                     </div>
                     <div class="amd-car-price"><span>Totale per {{ $car['days'] }} {{ $car['days'] === 1 ? 'giorno' : 'giorni' }}</span><strong>{{ $money($car['total_cents']) }}</strong><small>{{ $car['prices_include_vat'] ? 'IVA inclusa' : 'Importo di listino, IVA da verificare' }}</small><small>Cauzione separata: {{ $money($car['deposit_cents']) }}</small><small>20% online con Stripe, saldo al ritiro</small><a class="amd-button" href="{{ route($routePrefix.'.show', ['pricelist' => $car['id']] + ($customPickup ? $filters : array_replace($filters, ['place_id' => $car['place_id']]))) }}">Vedi auto e condizioni</a></div>

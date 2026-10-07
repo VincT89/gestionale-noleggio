@@ -54,6 +54,37 @@ class PublicDeliveryMatchingTest extends PublicBookingTestCase
         $this->search($place->id, ['supplier' => 3])->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [2]);
     }
 
+    public function test_an_empty_budget_does_not_remove_the_selected_or_other_eligible_suppliers(): void
+    {
+        $this->assignedOffer(1, 2);
+        $this->assignedOffer(2, 3);
+        $this->offer(3);
+        $place = $this->place();
+        $this->cover(2, $place); $this->cover(3, $place);
+
+        $this->search($place->id, ['supplier' => 3, 'budget' => 1])
+            ->assertViewHas('results', fn ($rows) => $rows->isEmpty())
+            ->assertViewHas('suppliers', fn ($rows) => $rows->pluck('id')->sort()->values()->all() === [2, 3])
+            ->assertSee('value="3" selected', false);
+        $this->search($place->id, ['supplier' => 3, 'budget' => 1000])
+            ->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [2]);
+        $this->search($place->id, ['supplier' => 3, 'q' => 'Nessun modello corrispondente'])
+            ->assertViewHas('results', fn ($rows) => $rows->isEmpty())
+            ->assertViewHas('suppliers', fn ($rows) => $rows->pluck('id')->sort()->values()->all() === [2, 3]);
+    }
+
+    public function test_pickup_cards_render_the_actual_place_without_template_directives(): void
+    {
+        $this->assignedOffer(1, 2);
+        $place = $this->place();
+        $this->cover(2, $place);
+        $page = $this->search($place->id)->assertDontSee('@else')->assertDontSee('@endif');
+        $document = new \DOMDocument();
+        @$document->loadHTML('<?xml encoding="UTF-8">'.$page->getContent());
+        $pickup = (new \DOMXPath($document))->query('//div[@class="amd-car-pickup"]/p')->item(0);
+        $this->assertStringContainsString($place->name, $pickup->textContent);
+    }
+
     public function test_same_city_is_not_sufficient_and_unserved_places_never_fall_back_to_the_office(): void
     {
         $this->offer();
