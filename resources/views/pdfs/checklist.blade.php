@@ -91,6 +91,7 @@
         table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid #ddd; padding: 6px 8px; }
         th { background: #f5f5f5; text-align: left; }
+        thead { display: table-header-group; }
         .right { text-align: right; } .center { text-align: center; }
         .strip { padding: 8px 10px; background: #eef; border: 1px solid #cdd; border-radius: 4px; }
 
@@ -98,6 +99,9 @@
         .sign-block { border: 1px solid #ddd; border-radius: 4px; padding: 10px; }
         .sign-area { border: 2px dashed #bbb; height: 90px; margin-top: 8px; }
         .sign-label { margin-top: 4px; font-size: 11px; color: #444; }
+        .sign-block, .damage-map { page-break-inside: avoid; }
+        .damage-map-image { display: block; width: 100%; height: auto; margin: 10px 0; }
+        .damage-detail-line { height: 24px; border-bottom: 1px solid #888; }
     </style>
 </head>
 <body>
@@ -238,7 +242,7 @@
     <br><br>
 
     {{-- DANNI (vehicle aperti + rental) --}}
-    <h2 class="mb-2">Danni</h2>
+    <h2 class="mb-2" @if($titleType === 'RETURN' && !empty($damages)) style="page-break-before: always;" @endif>Danni</h2>
     @if(empty($damages))
         <div class="box mb-6 muted">Nessun danno registrato.</div>
     @else
@@ -269,6 +273,10 @@
 
     <br>
 
+    @if($titleType === 'RETURN' || $titleType === '')
+        @include('pdfs.partials.vehicle-damage-map')
+    @endif
+
     {{-- NOTE (mostra SOLO se presenti) --}}
     @if($notes !== '')
         <h2 class="mb-2">Note</h2>
@@ -281,7 +289,7 @@
     <div class="mt-6">
         <div class="sign-block mb-6">
             <h3>Firma cliente</h3>
-            <div class="muted">Verrà acquisita digitalmente o manualmente in fase di ritiro.</div>
+            <div class="muted">Verrà acquisita digitalmente o manualmente in fase di {{ $titleType === 'RETURN' ? 'riconsegna' : 'ritiro' }}.</div>
             <div class="sign-area" style="position:relative;">
                 @if(!empty($signatures['customer']))
                     <img src="{{ $signatures['customer'] }}" style="height:80px; margin-top:4px;" alt="Firma cliente">
@@ -294,7 +302,7 @@
 
         <div class="sign-block">
             <h3>Firma noleggiante</h3>
-            <div class="muted">Verrà acquisita digitalmente o manualmente in fase di ritiro.</div>
+            <div class="muted">Verrà acquisita digitalmente o manualmente in fase di {{ $titleType === 'RETURN' ? 'riconsegna' : 'ritiro' }}.</div>
             <div class="sign-area" style="position:relative;">
                 @if(!empty($signatures['lessor']))
                     <img src="{{ $signatures['lessor'] }}" style="height:80px; margin-top:4px;" alt="Firma noleggiante">
