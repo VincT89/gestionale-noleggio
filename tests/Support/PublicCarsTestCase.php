@@ -109,6 +109,7 @@ abstract class PublicCarsTestCase extends TestCase
         (require database_path('migrations/2026_09_15_100000_create_public_pickup_places_table.php'))->up();
         (require database_path('migrations/2026_09_15_120000_create_vehicle_products_table.php'))->up();
         (require database_path('migrations/2026_10_02_120000_add_custom_delivery_coverage.php'))->up();
+        (require database_path('migrations/2026_10_07_120000_add_custom_delivery_package_fee.php'))->up();
 
         foreach ([1 => 'Proprietario di prova', 2 => 'Noleggiatore di prova', 3 => 'Altro noleggiatore di prova'] as $id => $name) {
             DB::table('organizations')->insert(['id' => $id, 'name' => $name, 'type' => $id === 1 ? 'admin' : 'renter']);

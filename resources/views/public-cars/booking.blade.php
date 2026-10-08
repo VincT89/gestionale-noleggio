@@ -9,9 +9,10 @@
     $fixedDelivery = !empty($car['delivery_destination']) && empty($car['delivery_request_id']);
     if ($fixedDelivery) $requestDelivery = true;
     $customReturn = !empty($car['return_address']);
+    $needsOnlinePayment = config('amd_rent.payment_mode') === 'stripe' && \App\Services\AmdRent\DeliveryQuotes::onlineDue($car) > 0;
 @endphp
 <a class="amd-back" href="{{ route($routePrefix.'.show', ['pricelist' => $car['id']] + $filters) }}">Torna all’auto</a>
-<div class="amd-page-heading"><h1>{{ $fixedDelivery ? ($customReturn ? 'Richiedi ritiro e riconsegna' : 'Richiedi la consegna') : 'Prenota la tua auto' }}</h1><p>{{ $fixedDelivery ? 'Controlla auto, luoghi e date e inserisci i tuoi recapiti. Il noleggiatore confermerà gli appuntamenti e l’eventuale supplemento prima del pagamento.' : 'Controlla il riepilogo e inserisci i tuoi recapiti. Versi il 20% del noleggio online, il resto al ritiro. Gli eventuali servizi concordati sono indicati separatamente.' }}</p></div>
+<div class="amd-page-heading"><h1>{{ $fixedDelivery ? 'Richiedi disponibilità' : 'Prenota la tua auto' }}</h1><p>{{ $fixedDelivery ? 'Controlla auto, luoghi e date e inserisci i tuoi recapiti. Il noleggiatore confermerà auto e appuntamenti prima del pagamento.' : 'Controlla il riepilogo e inserisci i tuoi recapiti. La quota online e il saldo al ritiro sono indicati nel riepilogo.' }}</p></div>
 <div class="amd-detail amd-booking-layout">
     <aside class="amd-quote" aria-labelledby="booking-summary-title">@include('public-cars.partials.booking-summary')</aside>
     <form method="post" action="{{ route($routePrefix.'.booking.store', $car['id']) }}" class="amd-detail-info amd-booking-form" data-booking-form aria-label="Dati per la prenotazione">
@@ -40,13 +41,13 @@
                 <p>Per cambiare il luogo di riconsegna, <a href="{{ route($routePrefix.'.show', ['pricelist' => $car['id']] + $filters) }}">torna all’auto</a>.</p>
             @endif
             <div class="amd-field"><label for="delivery-notes">Indicazioni per la consegna (facoltative)</label><textarea id="delivery-notes" name="delivery_notes" rows="3" maxlength="2000">{{ $inputValue('delivery_notes') }}</textarea></div>
-            <p>{{ $customReturn ? 'Il noleggiatore confermerà il ritiro e la riconsegna nei luoghi indicati, con un unico supplemento complessivo.' : 'Il noleggiatore confermerà indirizzo e supplemento. Riconsegna presso '.$car['location'].'.' }} Pagherai dopo aver visto la proposta e il totale aggiornato.</p>
+            <p>{{ $customReturn ? 'Il noleggiatore confermerà auto, ritiro e riconsegna nei luoghi indicati. Il prezzo comprende entrambi gli appuntamenti.' : 'Il noleggiatore confermerà auto e appuntamenti. Riconsegna presso '.$car['location'].'.' }} Pagherai dopo aver visto la proposta e il totale aggiornato.</p>
         </fieldset>
         @endif
         <div class="amd-booking-trap" aria-hidden="true"><label for="booking-website">Sito web</label><input id="booking-website" name="website" tabindex="-1" autocomplete="off"></div>
         <p class="amd-booking-help">I dati completi del conducente e i documenti saranno verificati dal noleggiatore prima della consegna. <a href="{{ config('public_cars.privacy_url') ?: route('public-site.privacy') }}" target="_blank" rel="noopener noreferrer">Informativa privacy (nuova scheda)</a>.</p>
         <label class="amd-booking-accept" for="accept-summary"><input id="accept-summary" name="accept_summary" type="checkbox" value="1" required><span>Ho controllato date, sede, importi e condizioni dell’offerta. Accetto la quota online indicata nel riepilogo e il saldo al ritiro. Se richiedo una consegna personalizzata, attendo prima la proposta del noleggiatore.</span></label>
-        <button class="amd-button" type="submit" data-checkout-submit data-delivery-checkout-label="{{ $customReturn ? 'Invia richiesta di ritiro e riconsegna' : 'Invia richiesta di consegna' }}" data-standard-checkout-label="{{ config('amd_rent.payment_mode') === 'stripe' ? 'Prosegui al pagamento' : 'Conferma prenotazione' }}">{{ $requestDelivery ? ($customReturn ? 'Invia richiesta di ritiro e riconsegna' : 'Invia richiesta di consegna') : (config('amd_rent.payment_mode') === 'stripe' ? 'Prosegui al pagamento' : 'Conferma prenotazione') }}</button>
+        <button class="amd-button" type="submit" data-checkout-submit data-delivery-checkout-label="Richiedi disponibilità" data-standard-checkout-label="{{ $needsOnlinePayment ? 'Prosegui al pagamento' : 'Conferma prenotazione' }}">{{ $requestDelivery ? 'Richiedi disponibilità' : ($needsOnlinePayment ? 'Prosegui al pagamento' : 'Conferma prenotazione') }}</button>
         <p class="amd-booking-help">Disponibilità e prezzo vengono ricontrollati alla conferma.</p>
     </form>
 </div>

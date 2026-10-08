@@ -31,15 +31,18 @@ class PublicBookingController extends Controller
         $period = array_filter($request->safe()->only(['pickup_at', 'return_at', 'place_id']), fn ($value) => $value !== null);
         $filters = $period + $request->safe()->only(['request_delivery', 'delivery_address', 'delivery_place', 'request_custom_return', 'return_address', 'return_place']);
         $customReturn = !empty($filters['request_custom_return']);
-        // A requested return address is confirmed by the supplier. It is not an
-        // existing public return point, nor a reason to change pickup coverage.
+        // Both requested points must belong to the same configured service area.
         $car = $search->search($scope, $customReturn ? \Illuminate\Support\Arr::except($filters, ['place_id']) : $filters)->first();
         $prefix = $preview ? 'public-cars.preview' : 'public-cars';
         if (!empty($filters['request_delivery']) && !$customReturn && empty($period['place_id'])) {
             return redirect()->route($prefix.'.show', ['pricelist' => $pricelist] + $filters)
                 ->withErrors(['place_id' => 'Scegli dove riconsegnare l’auto prima di continuare.']);
         }
-        if (!$car) return $this->page('public-cars.show', ['car' => null, 'filters' => $filters, 'preview' => $preview, 'routePrefix' => $prefix]);
+        if (!$car) {
+            $segment = (clone $scope)->with('vehicle.product')->first()?->vehicle?->product?->name;
+            if ($segment) $filters['segment'] = $segment;
+            return $this->page('public-cars.show', ['car' => null, 'filters' => $filters, 'preview' => $preview, 'routePrefix' => $prefix]);
+        }
 
         if ($customReturn) {
             // This id identifies the serving business internally; the customer's
@@ -53,6 +56,7 @@ class PublicBookingController extends Controller
         $intent = ['nonce' => (string) Str::uuid(), 'source' => 'pricelist', 'pricelist' => $pricelist, 'period' => $period, 'preview' => $preview,
             'fingerprint' => PublicBookingService::fingerprint($car), 'expires_at' => now()->addMinutes(30)->timestamp];
         if (!empty($car['delivery_destination'])) $intent['delivery_destination'] = $car['delivery_destination'];
+        $intent['excluded_offers'] = $request->validated('exclude', '');
         if ($customReturn) {
             $intent['return_address'] = $car['return_address'];
             $intent['return_destination'] = $car['return_destination'];

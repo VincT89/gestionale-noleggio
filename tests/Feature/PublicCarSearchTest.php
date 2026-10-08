@@ -85,7 +85,8 @@ class PublicCarSearchTest extends PublicCarsTestCase
     public function test_locality_and_car_filters_use_actual_vehicle_attributes(): void
     {
         $this->offer();
-        $matching = $this->offer(2, vehicle: ['make' => 'Opel', 'model' => 'Vivaro', 'seats' => 9, 'fuel_type' => 'diesel', 'transmission' => 'automatic', 'segment' => 'Van']);
+        $segment = \App\Models\VehicleProduct::create(['name' => 'Van']);
+        $matching = $this->offer(2, vehicle: ['make' => 'Opel', 'model' => 'Vivaro', 'seats' => 9, 'fuel_type' => 'diesel', 'transmission' => 'automatic', 'segment' => 'Legacy value', 'vehicle_product_id' => $segment->id]);
         $this->get($this->url(['city' => 'Bari', 'q' => '  Opel Vivaro ', 'seats' => 7, 'fuel_type' => 'diesel', 'transmission' => 'automatic', 'segment' => 'Van']))
             ->assertOk()->assertViewHas('results', fn ($r) => $r->pluck('id')->all() === [$matching->id]);
         $this->get($this->url(['city' => 'Roma']))->assertOk()->assertViewHas('results', fn ($r) => $r->total() === 0);
@@ -103,10 +104,11 @@ class PublicCarSearchTest extends PublicCarsTestCase
 
     public function test_case_variants_share_a_filter_without_modifying_the_source_data(): void
     {
-        $a = $this->offer(vehicle: ['segment' => 'SUV']);
-        $b = $this->offer(2, vehicle: ['segment' => 'Suv']);
+        $segment = \App\Models\VehicleProduct::create(['name' => 'SUV']);
+        $a = $this->offer(vehicle: ['segment' => 'SUV', 'vehicle_product_id' => $segment->id]);
+        $b = $this->offer(2, vehicle: ['segment' => 'Suv', 'vehicle_product_id' => $segment->id]);
         $this->get($this->url(['city' => 'BARI', 'segment' => 'suv']))->assertOk()
-            ->assertViewHas('results', fn ($r) => $r->pluck('id')->all() === [$a->id, $b->id])
+            ->assertViewHas('results', fn ($r) => $r->pluck('id')->all() === [$a->id])
             ->assertViewHas('segments', fn ($segments) => $segments->count() === 1);
         $this->assertSame('Suv', DB::table('vehicles')->where('id', 2)->value('segment'));
     }
@@ -125,11 +127,11 @@ class PublicCarSearchTest extends PublicCarsTestCase
     {
         $offer = $this->offer();
         $url = route('public-cars.show', ['pricelist' => $offer->id] + $this->period(['budget' => '300']));
-        $this->get($url)->assertOk()->assertSee('300,00 €')->assertSee('Prenota con il 20% online');
+        $this->get($url)->assertOk()->assertSee('300,00 €')->assertSee('Prenota questa auto');
         DB::table('vehicle_pricelists')->where('id', 1)->update(['base_daily_cents' => 11000]);
         $this->get($url)->assertOk()->assertSee('330,00 €')->assertSee('Il prezzo aggiornato supera il budget indicato.');
         DB::table('rentals')->insert(['vehicle_id' => 1, 'status' => 'reserved', 'planned_pickup_at' => '2026-09-11', 'planned_return_at' => '2026-09-12']);
-        $this->get($url)->assertOk()->assertSee('La disponibilità è cambiata')->assertDontSee('330,00 €')->assertDontSee('Prenota con il 20% online');
+        $this->get($url)->assertOk()->assertSee('La disponibilità è cambiata')->assertDontSee('330,00 €')->assertDontSee('Prenota questa auto');
     }
 
     public function test_invalid_periods_and_filters_return_useful_errors(): void
@@ -157,7 +159,7 @@ class PublicCarSearchTest extends PublicCarsTestCase
         $this->assertSame([
             'id','vehicle_id','title','year','segment','seats','transmission','fuel','organization','location','city','address',
             'description','has_photo','photo_is_reference','total_cents','days','deposit_cents','km_per_day','extra_km_cents','prices_include_vat',
-            'place_id','pickup_location_id','supplier_id','custom_delivery_enabled','delivery_area','product_id','product_name',
+            'place_id','pickup_location_id','supplier_id','custom_delivery_enabled','delivery_area','product_id','product_name','commission_bps',
         ], array_keys($result));
     }
 
@@ -204,7 +206,7 @@ class PublicCarSearchTest extends PublicCarsTestCase
         $this->get($this->url(['organization_id' => 1], 'public-cars.preview.index'))->assertOk()
             ->assertViewHas('results', fn ($r) => $r->pluck('id')->all() === [2]);
         $this->get($this->url(['supplier' => 1], 'public-cars.preview.index'))->assertOk()
-            ->assertViewHas('results', fn ($r) => $r->isEmpty());
+            ->assertViewHas('results', fn ($r) => $r->pluck('id')->all() === [2]);
     }
 
     public function test_permission_and_active_user_are_required_for_management_preview(): void

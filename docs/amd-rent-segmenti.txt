@@ -1,0 +1,72 @@
+AMD Rent: segmenti, consegna e commissione
+Branch di sviluppo: dev_modifiche, partenza da dev_vincenzo (3087c8b).
+
+Configurazione in ERA
+
+- Segmenti della flotta riutilizza i prodotti esistenti e le loro associazioni.
+  Solo l'admin crea/rinomina i segmenti e associa le auto. La scheda veicolo
+  usa lo stesso segmento; il vecchio campo testuale non classifica la ricerca.
+  Non vengono inventati o convertiti automaticamente i nomi dei gruppi.
+  Le auto non assegnate restano offerte singole finche' l'admin le raggruppa.
+- Per ogni servizio di consegna il noleggiatore indica sede di partenza,
+  raggio e un costo unico per consegna e ritiro. L'admin puo' gestire tutto.
+  Il costo non configurato non equivale a zero: il servizio non partecipa
+  alla ricerca geografica finche' non viene impostato. Zero significa gratuito.
+- AMD Rent > Impostazioni: commissione iniziale 20% sul totale noleggio,
+  consegna e ritiro, con cauzione esclusa. Solo l'admin puo' modificarla.
+  La quota online corrisponde alla commissione; con 0% si paga al ritiro.
+  La percentuale viene salvata nella richiesta e poi nella prenotazione.
+  Cambiarla non modifica richieste gia' inviate o prenotazioni precedenti.
+  Le richieste anteriori a questa modifica mantengono la precedente formula
+  separata, senza riscrivere lo storico. I vecchi checkout devono essere riaperti.
+
+Percorso cliente
+
+Il cliente indica luogo e date. La ricerca mostra direttamente le auto,
+senza elenco o filtro noleggiatori. Per ogni segmento compare l'offerta
+disponibile con il totale piu' basso; il costo del servizio entra nel confronto.
+Gli ordinamenti e il budget si riferiscono al totale, cauzione esclusa.
+
+Dopo la scelta dell'auto, il cliente sceglie la riconsegna: punto servito
+oppure punto preciso sulla mappa. Per due indirizzi personalizzati entrambi
+devono rientrare nello stesso servizio del noleggiatore. Se la riconsegna
+non e' coperta, puo' cercare un'alternativa nello stesso segmento conservando
+date e luoghi. La disponibilita' dell'auto viene sempre ricontrollata.
+
+La richiesta completa arriva al noleggiatore prima di riservare l'auto
+o avviare un pagamento. Il noleggiatore verifica gli appuntamenti e conferma
+la proposta. Il cliente rivede e accetta il totale prima della prenotazione.
+In caso di rifiuto o scadenza puo' scegliere un'altra auto: la precedente
+offerta viene esclusa dalla ricerca e nessuna nuova richiesta parte da sola.
+
+Il prezzo pubblico presenta un totale inclusivo e la media giornaliera:
+(noleggio + costo unico consegna/ritiro) / giorni tariffati.
+Un giorno e' un periodo di 24 ore; la frazione aggiuntiva conta un giorno.
+La cauzione e le condizioni chilometriche rimangono separate e visibili.
+I componenti del prezzo restano disponibili internamente per la gestione.
+
+Database e attivazione
+
+Sono necessarie queste due nuove migrazioni additive, dopo le migrazioni
+gia' previste da dev_vincenzo:
+- 2026_10_07_120000_add_custom_delivery_package_fee.php
+- 2026_10_07_120100_add_total_commission_to_amd_rent_settings.php
+
+Le migrazioni non sono state applicate al database operativo. Prima
+dell'attivazione verificare backup, ambiente e connessione corretti,
+quindi applicarle con la procedura di rilascio del progetto. Configurare
+i segmenti reali e i costi dei servizi da ERA prima della demo.
+Tornare al codice di dev_vincenzo non richiede eliminare le nuove colonne.
+Un rollback delle migrazioni elimina le rispettive nuove impostazioni:
+non eseguirlo solo per cambiare branch.
+
+Collaudo
+
+Test automatici con database SQLite isolato, senza pagamenti o email reali:
+matching per segmento e prezzo completo, calendario, copertura dei due punti,
+ritorno ad alternative, dati manomessi, permessi, commissione modificabile,
+importi storici, pagamento con commissione zero e regressioni prenotazione.
+Build frontend verificata senza installare dipendenze.
+Il collaudo visivo desktop/mobile resta da completare: il browser di questa
+sessione non raggiunge il server isolato e l'ambiente nega l'accesso al socket
+locale. Nessuna modifica alle protezioni di rete e nessun server utente fermato.

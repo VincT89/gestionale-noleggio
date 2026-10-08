@@ -18,7 +18,7 @@ class PublicCustomReturnTest extends PublicBookingTestCase
         Http::fake();
         $this->offer();
         Location::findOrFail(1)->update(['lat' => 41.12, 'lng' => 16.86]);
-        PublicDeliveryLocation::firstOrFail()->update(['custom_delivery_enabled' => true,
+        PublicDeliveryLocation::firstOrFail()->update(['custom_delivery_enabled' => true, 'custom_delivery_fee_cents' => 0,
             'delivery_origin_location_id' => 1, 'delivery_radius_km' => 10]);
         $this->startSession();
         $token = app(PlaceSelection::class)->issue([['label' => self::PICKUP, 'lat' => 41.12, 'lng' => 16.86]])[0]['token'];
@@ -54,7 +54,7 @@ class PublicCustomReturnTest extends PublicBookingTestCase
             ->assertSee('Voglio riconsegnare l’auto in un altro luogo')->assertSee(self::RETURN);
         $form = $this->form($filters);
         $page = $this->get(route('public-cars.booking.create', ['pricelist' => 1] + $filters))->assertOk();
-        $page->assertSee(self::PICKUP)->assertSee(self::RETURN)->assertSee('Richiedi ritiro e riconsegna');
+        $page->assertSee(self::PICKUP)->assertSee(self::RETURN)->assertSee('Richiedi disponibilità');
         $this->assertSame(self::RETURN, $page->viewData('car')['return_address']);
         $this->assertNotSame(self::RETURN, $page->viewData('car')['location']);
         $response = $this->post(route('public-cars.booking.store', 1), $form)->assertStatus(303)->assertSessionHasNoErrors();

@@ -163,7 +163,7 @@ if (searchDelivery) {
         const placeInput = document.getElementById('pickup-place-search');
         if (placeInput) placeInput.required = !searchDelivery.checked;
         const searchSubmit = document.querySelector('[data-search-submit]');
-        if (searchSubmit) searchSubmit.textContent = searchDelivery.checked ? 'Cerca noleggiatori' : 'Cerca auto';
+        if (searchSubmit) searchSubmit.textContent = 'Cerca auto';
         placeLabel.textContent = searchDelivery.checked ? 'Luogo di riconsegna (facoltativo)' : 'Luogo di ritiro';
         placeHelp.textContent = searchDelivery.checked
             ? 'Puoi scegliere ora oppure dopo aver trovato l’auto.'

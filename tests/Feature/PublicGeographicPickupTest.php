@@ -26,7 +26,7 @@ class PublicGeographicPickupTest extends PublicBookingTestCase
         $returnLocation = Location::create(['organization_id' => $organization] + $place->only(['name', 'city', 'address_line', 'country_code']));
         Location::findOrFail($organization)->update(['lat' => $lat, 'lng' => 16.86]);
         return PublicDeliveryLocation::create(['organization_id' => $organization, 'public_pickup_place_id' => $place->id,
-            'location_id' => $returnLocation->id, 'is_active' => true, 'custom_delivery_enabled' => true,
+            'location_id' => $returnLocation->id, 'is_active' => true, 'custom_delivery_enabled' => true, 'custom_delivery_fee_cents' => 0,
             'delivery_area' => 'Zona dimostrativa, soggetta a conferma', 'delivery_origin_location_id' => $organization, 'delivery_radius_km' => $radius]);
     }
 
@@ -54,7 +54,7 @@ class PublicGeographicPickupTest extends PublicBookingTestCase
         Http::assertSent(fn ($request) => $request['q'] === self::LABEL && $request['limit'] === 5
             && $request->hasHeader('User-Agent', config('geocoding.user_agent')) && !isset($request['email']));
         $this->get(route('public-cars.index', $filters + ['delivery_place' => $choices[0]['token']]))
-            ->assertOk()->assertViewHas('showDeliverySuppliers', true)->assertSee('Vedi auto e prezzi');
+            ->assertOk()->assertViewHas('deliveryLookupNeeded', false)->assertSee('Scegli questa auto');
         Http::assertSentCount(1);
     }
 
@@ -70,10 +70,10 @@ class PublicGeographicPickupTest extends PublicBookingTestCase
         $choice = $page->viewData('placeChoices')[0];
         $filters['delivery_place'] = $choice['token'];
         $this->get(route('public-cars.index', $filters))->assertOk()
-            ->assertViewHas('supplierResults', fn ($rows) => $rows->pluck('id')->all() === [1])
+            ->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [1])
             ->assertSee('da scegliere dopo l’auto');
         $this->get(route('public-cars.index', $filters + ['supplier' => 1]))->assertOk()
-            ->assertSee('Da scegliere tra i punti serviti');
+            ->assertSee('La scegli dopo l’auto');
         unset($filters['destination']);
         $detail = $this->get(route('public-cars.show', ['pricelist' => 1] + $filters))->assertOk()
             ->assertSee('Dove riconsegni l’auto?');
@@ -106,7 +106,7 @@ class PublicGeographicPickupTest extends PublicBookingTestCase
         $place = PublicPickupPlace::create($data + ['identity_key' => PublicPickupPlace::identity($data)]);
         $location = Location::create(['organization_id' => 1] + $place->only(['name', 'city', 'address_line', 'country_code']));
         $second = PublicDeliveryLocation::create(['organization_id' => 1, 'public_pickup_place_id' => $place->id,
-            'location_id' => $location->id, 'is_active' => true, 'custom_delivery_enabled' => true,
+            'location_id' => $location->id, 'is_active' => true, 'custom_delivery_enabled' => true, 'custom_delivery_fee_cents' => 0,
             'delivery_origin_location_id' => 1, 'delivery_radius_km' => 10]);
         $filters = $this->filters($service);
         unset($filters['place_id']);
@@ -122,21 +122,21 @@ class PublicGeographicPickupTest extends PublicBookingTestCase
         Http::assertNothingSent();
     }
 
-    public function test_suppliers_are_ranked_by_origin_distance_and_require_real_coverage_and_cars(): void
+    public function test_cars_require_geographic_coverage_and_require_real_coverage_and_cars(): void
     {
         $farther = $this->service(1, 41.14);
         $nearer = $this->service(2, 41.125);
         $outside = $this->service(3, 41.6, 1);
         $filters = $this->filters($farther);
         $this->get(route('public-cars.index', $filters))->assertOk()
-            ->assertViewHas('supplierResults', fn ($rows) => $rows->pluck('id')->all() === [2, 1])
-            ->assertSee('km in linea d’aria');
+            ->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [1, 2])
+            ->assertDontSee('name="supplier"', false);
         $nearer->update(['delivery_radius_km' => null]);
-        $this->get(route('public-cars.index', $filters))->assertViewHas('supplierResults', fn ($rows) => $rows->pluck('id')->all() === [1]);
+        $this->get(route('public-cars.index', $filters))->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [1]);
         $nearer->update(['delivery_radius_km' => 10, 'delivery_origin_location_id' => 1]);
-        $this->get(route('public-cars.index', $filters))->assertViewHas('supplierResults', fn ($rows) => $rows->pluck('id')->all() === [1]);
+        $this->get(route('public-cars.index', $filters))->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [1]);
         DB::table('vehicle_blocks')->insert(['vehicle_id' => 1, 'status' => 'active', 'start_at' => '2026-09-09', 'end_at' => '2026-09-15']);
-        $this->get(route('public-cars.index', $filters))->assertViewHas('supplierResults', fn ($rows) => $rows->isEmpty());
+        $this->get(route('public-cars.index', $filters))->assertViewHas('results', fn ($rows) => $rows->isEmpty());
         Http::assertNothingSent();
     }
 
@@ -147,11 +147,11 @@ class PublicGeographicPickupTest extends PublicBookingTestCase
         $product = DB::table('vehicle_products')->insertGetId(['name' => 'Prodotto dimostrativo', 'name_key' => 'prodotto dimostrativo']);
         DB::table('vehicles')->whereIn('id', [1, 2])->update(['vehicle_product_id' => $product]);
         $filters = $this->filters($first);
-        $this->get(route('public-cars.index', $filters))->assertViewHas('supplierResults', fn ($rows) => $rows->count() === 2);
+        $this->get(route('public-cars.index', $filters))->assertViewHas('results', fn ($rows) => $rows->count() === 1);
         $this->get(route('public-cars.index', $filters + ['supplier' => 1]))->assertOk()
             ->assertViewHas('results', fn ($rows) => $rows->pluck('supplier_id')->all() === [1]);
         $second->update(['is_active' => false]);
-        $this->get(route('public-cars.index', $filters))->assertViewHas('supplierResults', fn ($rows) => $rows->pluck('id')->all() === [1]);
+        $this->get(route('public-cars.index', $filters))->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [1]);
     }
 
     public function test_coordinates_and_selection_cannot_be_forged_or_reused_in_another_session(): void
@@ -177,7 +177,7 @@ class PublicGeographicPickupTest extends PublicBookingTestCase
         Cache::flush();
         $this->get(route('public-cars.index', $this->filters($service, false)))->assertOk()
             ->assertViewHas('placeChoices', [])->assertSee('La ricerca dei luoghi non è disponibile')
-            ->assertViewHas('supplierResults', fn ($rows) => $rows->isEmpty());
+            ->assertViewHas('results', fn ($rows) => $rows->isEmpty());
     }
 
     public function test_global_limit_applies_to_different_searches_and_origins(): void
@@ -237,7 +237,7 @@ class PublicGeographicPickupTest extends PublicBookingTestCase
     {
         $service = $this->service(2, 41.13, null);
         $this->actingAs($this->publisher(2, 'renter'));
-        $form = ['is_active' => 1, 'custom_delivery_enabled' => 1, 'delivery_area' => 'Zona dimostrativa',
+        $form = ['is_active' => 1, 'custom_delivery_enabled' => 1, 'custom_delivery_fee' => 0, 'delivery_area' => 'Zona dimostrativa',
             'delivery_origin_location_id' => 2, 'delivery_radius_km' => 12.5];
         $this->put(route('public-deliveries.update', $service), array_replace($form, ['delivery_origin_location_id' => 1]))->assertNotFound();
         $this->put(route('public-deliveries.update', $service), array_replace($form, ['delivery_radius_km' => null]))
@@ -297,7 +297,7 @@ class PublicGeographicPickupTest extends PublicBookingTestCase
         Location::findOrFail(2)->update(['lat' => null, 'lng' => null]);
         $this->actingAs($this->publisher(2, 'renter'));
         Http::fake(['*' => Http::response([$this->responsePlace('Sede dimostrativa, Bari, Italia', 41.125)])]);
-        $form = ['is_active' => 1, 'custom_delivery_enabled' => 1, 'delivery_area' => 'Zona dimostrativa',
+        $form = ['is_active' => 1, 'custom_delivery_enabled' => 1, 'custom_delivery_fee' => 0, 'delivery_area' => 'Zona dimostrativa',
             'delivery_origin_location_id' => 2, 'delivery_radius_km' => 12.5];
         $page = $this->put(route('public-deliveries.update', $service), $form + ['locate_origin' => 1])->assertOk();
         $this->assertNull(Location::findOrFail(2)->lat);

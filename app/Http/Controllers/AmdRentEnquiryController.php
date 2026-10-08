@@ -80,6 +80,14 @@ class AmdRentEnquiryController extends Controller
                         ]);
                     }
                     if (!isset($data['delivery_fee'], $data['quote_valid_until'])) throw ValidationException::withMessages(['delivery_fee' => 'Indica il supplemento e la validità dopo aver verificato l’indirizzo e la possibilità di consegna.']);
+                    $context = $case->booking_context;
+                    $filters = $context['period'];
+                    if (!empty($context['delivery_destination'])) $filters += ['request_delivery' => 1, 'delivery_point' => $context['delivery_destination']];
+                    if (!empty($context['return_destination'])) $filters += ['request_custom_return' => 1, 'return_point' => $context['return_destination']];
+                    $filters['approved_delivery_fee_cents'] = (int) round($data['delivery_fee'] * 100);
+                    $car = app(\App\Domain\Rentals\PublicVehicleSearch::class)->search(
+                        \App\Models\VehiclePricelist::forPublicRental()->whereKey($context['pricelist']), $filters)->first();
+                    if (!$car) throw ValidationException::withMessages(['status' => 'L’auto non è disponibile per le date o non copre entrambi i luoghi. Controlla listino, calendario e zona del servizio prima di confermare.']);
                     $changes += ['delivery_fee_cents' => (int) round($data['delivery_fee'] * 100), 'quote_expires_at' => \Carbon\Carbon::parse($data['quote_valid_until'])->endOfDay()];
                 }
             } else {

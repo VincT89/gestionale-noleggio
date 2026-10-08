@@ -19,6 +19,7 @@ Route::group(['domain' => $publicDomain, 'middleware' => 'public.customer:option
     Route::get('/richiesta/{reference}', [\App\Http\Controllers\PublicEnquiryController::class, 'show'])->middleware(['signed', 'throttle:60,1,public-summary-'])->name('public-enquiries.show');
     Route::post('/richiesta/{reference}/accetta', [\App\Http\Controllers\PublicEnquiryController::class, 'acceptDelivery'])->middleware(['signed', 'throttle:10,1,public-enquiry-actions-'])->name('public-enquiries.accept');
     Route::post('/richiesta/{reference}/riapri', [\App\Http\Controllers\PublicEnquiryController::class, 'reopenDelivery'])->middleware(['signed', 'throttle:10,1,public-enquiry-actions-'])->name('public-enquiries.reopen');
+    Route::get('/richiesta/{reference}/alternative', [\App\Http\Controllers\PublicEnquiryController::class, 'alternatives'])->middleware(['signed', 'throttle:10,1,public-enquiry-actions-'])->name('public-enquiries.alternatives');
     Route::get('/prenotazione/{reference}', [PublicBookingController::class, 'confirmation'])
         ->middleware(['signed', 'throttle:60,1,public-summary-'])->name('public-bookings.confirmation');
     Route::get('/prenotazione/{reference}/pdf', [PublicBookingController::class, 'pdf'])

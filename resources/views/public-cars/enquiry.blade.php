@@ -25,10 +25,24 @@
     <button type="submit" class="amd-button amd-button-secondary">Riapri richiesta</button>
 </form>
 @endif
-@elseif($case->status === 'quoted' && $case->quote_expires_at?->isFuture())<h3>{{ $customReturn ? 'Supplemento per ritiro e riconsegna' : 'Supplemento di consegna' }}: {{ $money($case->delivery_fee_cents) }}</h3><p>IVA inclusa. Proposta valida fino al {{ $case->quote_expires_at->format('d/m/Y H:i') }}. Il prezzo del noleggio e la disponibilità saranno ricontrollati nel riepilogo, prima del pagamento.</p><form method="post" action="{{ \Illuminate\Support\Facades\URL::signedRoute('public-enquiries.accept', ['reference' => $case->reference]) }}">@csrf<label class="amd-booking-accept"><input type="checkbox" name="accept_quote" value="1" required><span>{{ $customReturn ? 'Ho verificato i luoghi di ritiro e riconsegna e il supplemento complessivo.' : 'Ho verificato indirizzo e supplemento di consegna.' }}</span></label><button class="amd-button">Controlla il totale e prosegui</button></form>
-@elseif($case->status === 'quoted')<p>La proposta è scaduta. Contatta il noleggiatore per aggiornarla.</p>
-@elseif($case->status === 'lost')<p>La richiesta è stata archiviata. Non è stata creata una prenotazione.</p>
-@else<p>{{ $customReturn ? 'Il noleggiatore deve confermare ritiro e riconsegna nei luoghi richiesti e il supplemento complessivo.' : 'Il noleggiatore deve confermare la possibilità di consegna e il supplemento.' }} Non è ancora stata riservata un’auto e non è stato richiesto alcun pagamento.</p>@endif
+@elseif($case->status === 'quoted' && $case->quote_expires_at?->isFuture())
+@php $proposedTotal = ($case->booking_context['car']['rental_total_cents'] ?? $case->booking_context['car']['total_cents']) + $case->delivery_fee_cents; @endphp
+<h3>La tua proposta: {{ $money($proposedTotal) }}</h3>
+<p>{{ $money($proposedTotal / max(1, $case->booking_context['car']['days'])) }} al giorno in media. Consegna, ritiro e IVA inclusi. Cauzione separata.</p>
+<p>Proposta valida fino al {{ $case->quote_expires_at->format('d/m/Y H:i') }}. Prezzo e disponibilità saranno ricontrollati nel riepilogo prima del pagamento.</p>
+<form method="post" action="{{ \Illuminate\Support\Facades\URL::signedRoute('public-enquiries.accept', ['reference' => $case->reference]) }}">@csrf
+<label class="amd-booking-accept"><input type="checkbox" name="accept_quote" value="1" required><span>Ho verificato auto, luoghi, date e importo della proposta.</span></label>
+<button class="amd-button">Controlla il totale e prosegui</button></form>
+<p><a href="{{ \Illuminate\Support\Facades\URL::signedRoute('public-enquiries.alternatives', ['reference' => $case->reference]) }}">Cerca un’altra auto dello stesso segmento</a></p>
+@elseif($case->status === 'quoted' || $case->status === 'lost')
+<h3>{{ $case->status === 'lost' ? 'Questa proposta non è disponibile' : 'La proposta è scaduta' }}</h3>
+<p>Puoi scegliere un’altra auto mantenendo date e luoghi. Nessuna nuova richiesta sarà inviata senza la tua conferma.</p>
+<a class="amd-button" href="{{ \Illuminate\Support\Facades\URL::signedRoute('public-enquiries.alternatives', ['reference' => $case->reference]) }}">Trova un’altra auto</a>
+@else
+<h3>In attesa di conferma</h3>
+<p>Il noleggiatore sta verificando l’auto e gli appuntamenti richiesti. Non è ancora stata riservata un’auto e non è stato richiesto alcun pagamento.</p>
+<p>Totale richiesto: <strong>{{ $money($case->booking_context['car']['total_cents']) }}</strong>, consegna e ritiro inclusi. Cauzione separata.</p>
+@endif
 @else<p>{{ $case->duration_months }} mesi · {{ number_format($case->annual_km, 0, ',', '.') }} km/anno.</p><p>La pratica sarà seguita da AMD Rent o dal noleggiatore assegnato. Il contratto si conclude di persona, dopo la verifica della proposta e dei documenti.</p>
 @if(in_array($case->status, ['quoted', 'accepted', 'signed']))@foreach($case->quotes as $quote)<article class="amd-long-term-quote"><h3>{{ $quote->supplier }} · {{ $quote->vehicle }}</h3><p><strong>{{ $money($quote->monthly_cents) }}/mese</strong> · Anticipo {{ $money($quote->upfront_cents) }} · {{ $quote->vat === 'included' ? 'IVA inclusa' : 'IVA esclusa' }}</p><p>{{ $quote->months }} mesi · {{ number_format($quote->annual_km, 0, ',', '.') }} km/anno · Valido fino al {{ $quote->valid_until->format('d/m/Y') }}</p><p class="amd-description">{{ $quote->conditions }}</p></article>@endforeach @endif
 @endif<p><a href="{{ route('public-site.support') }}">Informazioni e assistenza</a></p></section>

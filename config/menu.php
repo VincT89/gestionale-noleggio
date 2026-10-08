@@ -28,7 +28,7 @@ return [
             'section' => 'Flotta',
             'items'   => [
                 ['label' => 'Veicoli', 'route' => 'vehicles.index', 'active' => 'vehicles.*', 'permission' => 'vehicles.viewAny'],
-                ['label' => 'Prodotti della flotta', 'route' => 'fleet-products.index', 'active' => 'fleet-products.*', 'permission' => 'manage.renters'],
+                ['label' => 'Segmenti della flotta', 'route' => 'fleet-products.index', 'active' => 'fleet-products.*', 'permission' => 'manage.renters'],
                 ['label' => 'Assegna veicoli', 'route' => 'admin.assignments', 'permission' => 'manage.renters'],
                 ['label' => 'Documenti veicolo', 'route' => 'vehicle-documents.index', 'active' => 'vehicle-documents.*', 'permission' => 'vehicle_documents.viewAny'],
             ],

@@ -310,7 +310,7 @@ class AmdRentOperationsTest extends PublicBookingTestCase
         $this->get(route('public-enquiries.show', $case->reference))->assertForbidden();
         $this->actingAs($this->publisher(2, 'renter'))->get(route('amd-rent.enquiries.show', $case))->assertNotFound();
     }
-    public function test_delivery_is_quoted_before_payment_and_undefined_commission_blocks_checkout(): void
+    public function test_delivery_is_quoted_before_payment_and_commission_applies_to_complete_total(): void
     {
         $this->offer(); PublicDeliveryLocation::first()->update(['custom_delivery_enabled' => true, 'delivery_area' => 'Zona di collaudo']);
         $form = $this->form() + ['request_delivery' => 1, 'delivery_address' => 'Hotel dimostrativo, via di prova 10, Bari'];
@@ -318,16 +318,41 @@ class AmdRentOperationsTest extends PublicBookingTestCase
         $this->assertDatabaseCount('rentals', 0); $this->assertDatabaseCount('public_bookings', 0);
         $case = AmdRentEnquiry::firstOrFail();
         $this->actingAs($this->publisher())->put(route('amd-rent.enquiries.update', $case), ['revision' => 1, 'status' => 'quoted', 'delivery_fee' => 30, 'quote_valid_until' => '2026-09-09'])->assertRedirect()->assertSessionHasNoErrors();
-        $this->post(URL::signedRoute('public-enquiries.accept', ['reference' => $case->reference]), ['accept_quote' => 1])->assertSessionHasErrors('booking');
+        $this->post(URL::signedRoute('public-enquiries.accept', ['reference' => $case->reference]), ['accept_quote' => 1])->assertOk();
         $this->assertDatabaseCount('rentals', 0);
-        $this->put(route('amd-rent.settings.save'), ['delivery_percent' => 0])->assertRedirect();
+        $this->put(route('amd-rent.settings.save'), ['commission_percent' => 30])->assertRedirect()->assertSessionHasNoErrors();
         $page = $this->post(URL::signedRoute('public-enquiries.accept', ['reference' => $case->reference]), ['accept_quote' => 1])->assertOk();
         $this->assertSame(33000, $page->viewData('car')['total_cents']);
-        $this->assertSame(6000, DeliveryQuotes::onlineDue($page->viewData('car')));
+        $this->assertSame(6600, DeliveryQuotes::onlineDue($page->viewData('car')));
         $this->post(route('public-cars.booking.store', 1), array_replace($form, $page->viewData('filters'), ['request_delivery' => 0, 'checkout_token' => $page->viewData('checkoutToken')]))->assertStatus(303);
         $booking = PublicBooking::firstOrFail();
-        $this->assertSame(33000, $booking->total_cents); $this->assertSame(6000, $booking->online_due_cents);
+        $this->assertSame(33000, $booking->total_cents); $this->assertSame(6600, $booking->online_due_cents);
         $this->assertSame($booking->id, (int) $case->fresh()->public_booking_id);
+        $this->webhook('checkout.session.completed', $this->stripeSession($booking, ['payment_status' => 'paid', 'status' => 'complete']))->assertOk();
+        $fee = app(\App\Domain\Fees\AdminFeeResolver::class)->calculateForRental($booking->fresh()->rental);
+        $this->assertEquals(20, $fee['percent']);
+        $this->assertEquals(330, $fee['commissionable_total']);
+        $this->assertEquals(66, $fee['amount']);
+    }
+    public function test_zero_commission_uses_pickup_payment_without_stripe_or_legacy_base_fee(): void
+    {
+        DB::table('amd_rent_settings')->insert(['id' => 1, 'commission_bps' => 0]);
+        config(['amd_rent.stripe_secret' => null, 'amd_rent.stripe_webhook_secret' => null]);
+        $this->offer();
+        $this->get(route('public-cars.index'))->assertOk()->assertSee('Prenoti e paghi al ritiro.')->assertDontSee('0% online');
+        $this->get(route('public-site.how-it-works'))->assertOk()->assertSee('Non sono previsti addebiti online.')->assertDontSee('0% online');
+        $this->get(route('public-cars.index', $this->period()))->assertOk()->assertSee('Pagamento al ritiro')->assertDontSee('0% online');
+        $this->get(route('public-cars.show', ['pricelist' => 1] + $this->period()))->assertOk()->assertSee('Nessun addebito online.');
+        $this->post(route('public-cars.booking.store', 1), $this->form())->assertStatus(303);
+        $booking = PublicBooking::sole();
+        $this->assertSame('pay_at_pickup', $booking->payment_method);
+        $this->assertSame('pickup', $booking->payment_status);
+        $this->assertSame(0, $booking->online_due_cents);
+        $this->assertSame('amd_rent', $booking->rental->booking_channel);
+        $fee = app(\App\Domain\Fees\AdminFeeResolver::class)->calculateForRental($booking->rental);
+        $this->assertEquals(0, $fee['percent']);
+        $this->assertEquals(0, $fee['amount']);
+        Http::assertNothingSent();
     }
     public function test_commissions_remain_editable_by_admin_after_signed_case_and_stale_updates_fail(): void
     {
@@ -342,6 +367,6 @@ class AmdRentOperationsTest extends PublicBookingTestCase
         $this->flushSession();
         $this->actingAs($this->publisher(3, 'viewer'))->get(route('amd-rent.index'))->assertForbidden();
         $this->flushSession();
-        $this->actingAs($this->publisher())->get(route('amd-rent.settings'))->assertOk()->assertSee('Lascia vuoto');
+        $this->actingAs($this->publisher())->get(route('amd-rent.settings'))->assertOk()->assertSee('Commissione sul totale');
     }
 }

@@ -105,6 +105,11 @@ class DeliveryBookingRecovery
         $this->assertNoBlockingPayments($case, $booking->id);
     }
 
+    public function previousDeliveryCommissionBps(AmdRentEnquiry $case): ?int
+    {
+        return $this->attempts($case)->latest('id')->value('delivery_commission_bps');
+    }
+
     private function attempts(AmdRentEnquiry $case): Builder
     {
         // The immutable booking snapshot preserves the link after the request is reopened.

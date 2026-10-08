@@ -60,7 +60,7 @@ function mount(root) {
             : reversePending ? 'Punto scelto. Cerchiamo l’indirizzo da inserire qui sotto…'
             : suggestedAddress ? 'Indirizzo aggiornato qui sotto. Controlla il civico e conferma il punto.'
             : isReturn ? 'Punto scelto. Controlla l’indirizzo e conferma la riconsegna.'
-            : 'Punto scelto. Controlla l’indirizzo e conferma per vedere i noleggiatori.';
+            : 'Punto scelto. Controlla l’indirizzo e conferma per vedere le auto.';
         if (message.textContent !== status) message.textContent = status;
         root.querySelector('[data-map-zoom-in]').disabled = zoom === 19;
         root.querySelector('[data-map-zoom-out]').disabled = zoom === 3;

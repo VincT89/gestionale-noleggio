@@ -93,7 +93,7 @@ class PublicCarSearchController extends Controller
     private function results(PublicCarSearchRequest $request, PublicVehicleSearch $search, bool $preview)
     {
         $scope = $this->scope($request, $preview);
-        $filters = \Illuminate\Support\Arr::except($request->validated(), ['destination']);
+        $filters = \Illuminate\Support\Arr::except($request->validated(), ['destination', 'supplier']);
         if (!empty($filters['request_custom_return'])) unset($filters['place_id'], $filters['city']);
         $searched = !empty($filters['pickup_at']) && !empty($filters['return_at']);
         $deliveryPoint = !empty($filters['delivery_place'])
@@ -112,36 +112,17 @@ class PublicCarSearchController extends Controller
                 $placeSearchError = $exception->getMessage();
             }
         }
-        $facets = (clone $scope)->with(['vehicle', 'renter'])->get();
+        $facets = (clone $scope)->with('vehicle.product')->get();
         $deliveries = PublicDeliveryLocation::available()->when($preview && !$request->user()->hasRole('admin'),
             fn ($q) => $q->where('organization_id', $request->user()->organization_id));
         $places = PublicPickupPlace::whereIn('id', $deliveries->select('public_pickup_place_id'))
             ->orderBy('city')->orderBy('name')->get();
         $destinations = app(PublicPickupDirectory::class)->destinations($places);
         $matching = $searched && !$deliveryLookupNeeded ? $search->search($scope, \Illuminate\Support\Arr::except($filters, ['supplier'])) : collect();
-        $supplierMatches = $matching;
-        $vehicleFilters = ['budget', 'q', 'segment', 'transmission', 'fuel_type', 'seats'];
-        if ($searched && !$deliveryLookupNeeded && collect(\Illuminate\Support\Arr::only($filters, $vehicleFilters))
-            ->contains(fn ($value) => $value !== null && $value !== '')) {
-            // Keep supplier choices tied to the location and dates even when a vehicle filter returns no cars.
-            $supplierMatches = $search->search($scope, \Illuminate\Support\Arr::except($filters, [...$vehicleFilters, 'supplier']));
-        }
-        $results = empty($filters['supplier']) ? $matching : $matching->where('supplier_id', (int) $filters['supplier'])->values();
-        $results = $search->cheapestPerProduct($results, $filters['sort'] ?? 'price_asc');
+        $results = $search->cheapestPerProduct($matching, $filters['sort'] ?? 'price_asc');
         $perPage = (int) config('public_cars.per_page');
         $page = (int) ($filters['page'] ?? 1);
         $paginator = new LengthAwarePaginator($results->forPage($page, $perPage)->values(), $results->count(), $perPage, $page, [
-            'path' => $request->url(), 'query' => array_filter($filters, fn ($value) => $value !== null && $value !== ''),
-        ]);
-        $showDeliverySuppliers = $deliveryPoint && empty($filters['supplier']);
-        $supplierRows = ($deliveryPoint ? $matching : collect())->groupBy('supplier_id')->map(function ($cars) use ($search) {
-            $first = $cars->first();
-            $products = $search->cheapestPerProduct($cars);
-            return ['id' => $first['supplier_id'], 'name' => $first['organization'],
-                'distance_km' => $first['delivery_distance_km'], 'origin' => $first['delivery_origin_name'],
-                'count' => $products->count(), 'from_cents' => $products->min('total_cents'), 'area' => $first['delivery_area']];
-        })->sort(fn ($a, $b) => ($a['distance_km'] <=> $b['distance_km']) ?: strcmp($a['name'], $b['name']))->values();
-        $supplierResults = new LengthAwarePaginator($supplierRows->forPage($page, $perPage)->values(), $supplierRows->count(), $perPage, $page, [
             'path' => $request->url(), 'query' => array_filter($filters, fn ($value) => $value !== null && $value !== ''),
         ]);
 
@@ -150,13 +131,11 @@ class PublicCarSearchController extends Controller
             'filters' => $filters, 'searched' => $searched, 'results' => $paginator,
             'deliveryPoint' => $deliveryPoint, 'deliveryLookupNeeded' => $deliveryLookupNeeded,
             'placeChoices' => $placeChoices, 'placeSearchError' => $placeSearchError, 'mapCenter' => $mapCenter,
-            'showDeliverySuppliers' => $showDeliverySuppliers, 'supplierResults' => $supplierResults,
             'places' => $places,
             'destinations' => $destinations,
             'selectedPlace' => $places->firstWhere('id', $filters['place_id'] ?? null),
-            'suppliers' => $facets->pluck('renter')->whereIn('id', $supplierMatches->pluck('supplier_id'))->unique('id')->sortBy('name')->values(),
             'cities' => $places->pluck('city')->filter()->unique(fn ($city) => mb_strtolower($city))->sort()->values(),
-            'segments' => $facets->pluck('vehicle.segment')->filter()->unique(fn ($segment) => mb_strtolower($segment))->sort()->values(),
+            'segments' => $facets->pluck('vehicle.product.name')->filter()->unique(fn ($segment) => mb_strtolower($segment))->sort()->values(),
         ])->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer')->header('X-Robots-Tag', 'noindex, follow');
     }
 

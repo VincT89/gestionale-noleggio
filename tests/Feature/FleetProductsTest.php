@@ -3,7 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\{Vehicle, VehicleProduct};
+use App\Livewire\Vehicles\Form;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Livewire\Livewire;
 use Tests\Support\PublicCarsTestCase;
 
 class FleetProductsTest extends PublicCarsTestCase
@@ -19,7 +23,7 @@ class FleetProductsTest extends PublicCarsTestCase
         $this->assertNotSame(99999, $id);
         $this->assertSame($admin->id, (int) $product->created_by);
         $this->assertSame('Fiat Panda', $product->name);
-        $this->get(route('fleet-products.edit', $product))->assertOk()->assertSee('ID prodotto:')->assertSee('Fiat Panda');
+        $this->get(route('fleet-products.edit', $product))->assertOk()->assertSee('ID segmento:')->assertSee('Fiat Panda');
         $this->put(route('fleet-products.update', $product), ['id' => 99999, 'name' => 'Panda', 'description' => null])
             ->assertRedirect(route('fleet-products.edit', $product));
         $this->assertSame($id, $product->fresh()->id);
@@ -53,7 +57,7 @@ class FleetProductsTest extends PublicCarsTestCase
         $this->put(route('fleet-products.update', $product), ['name' => 'Iniettato'])->assertForbidden();
         $this->post(route('fleet-products.attach', $product), ['vehicle_ids' => [1]])->assertForbidden();
         $this->delete(route('fleet-products.detach', [$product, 1]))->assertForbidden();
-        $this->get(route('public-deliveries.index'))->assertOk()->assertDontSee('Prodotti della flotta');
+        $this->get(route('public-deliveries.index'))->assertOk()->assertDontSee('Segmenti della flotta');
         $this->assertDatabaseCount('vehicle_products', 1);
         $this->assertNull(Vehicle::findOrFail(1)->vehicle_product_id);
     }
@@ -142,6 +146,54 @@ class FleetProductsTest extends PublicCarsTestCase
         $this->assertSame(0, $product->vehicles()->count());
         $vehicle = Vehicle::findOrFail(1);
         $this->assertFalse($vehicle->isFillable('vehicle_product_id'));
+    }
+
+    public function test_admin_selects_the_segment_when_creating_and_editing_a_vehicle(): void
+    {
+        $this->prepareVehicleForm();
+        $this->actingAs($this->publisher());
+        $citycar = VehicleProduct::create(['name' => 'Citycar']);
+        $suv = VehicleProduct::create(['name' => 'SUV']);
+        Livewire::test(Form::class)->set('form.plate', 'QA100AA')->set('form.make', 'Marca demo')
+            ->set('form.model', 'Modello demo')->set('form.cargos_vehicle_type_code', 'DEMO')
+            ->set('form.vehicle_product_id', $citycar->id)->set('form.lt_rental_monthly_eur', 400)
+            ->call('save')->assertHasNoErrors();
+        $vehicle = Vehicle::sole();
+        $this->assertSame($citycar->id, (int) $vehicle->vehicle_product_id);
+        Livewire::test(Form::class, ['vehicle' => $vehicle])->set('form.vehicle_product_id', $suv->id)
+            ->call('save')->assertHasNoErrors();
+        $this->assertSame($suv->id, (int) $vehicle->fresh()->vehicle_product_id);
+        Livewire::test(Form::class, ['vehicle' => $vehicle->fresh()])->set('form.vehicle_product_id', 999999)
+            ->call('save')->assertHasErrors('form.vehicle_product_id');
+        $this->assertSame($suv->id, (int) $vehicle->fresh()->vehicle_product_id);
+    }
+
+    public function test_non_admin_cannot_inject_a_segment_even_with_vehicle_edit_permission(): void
+    {
+        $this->prepareVehicleForm();
+        $segment = VehicleProduct::create(['name' => 'Citycar']);
+        $other = VehicleProduct::create(['name' => 'SUV']);
+        $this->offer(vehicle: ['vehicle_product_id' => $segment->id, 'cargos_vehicle_type_code' => 'DEMO']);
+        $operator = $this->publisher(1, 'viewer');
+        $operator->givePermissionTo(\Spatie\Permission\Models\Permission::findOrCreate('vehicles.update', 'web'));
+        $this->actingAs($operator);
+        Livewire::test(Form::class, ['vehicle' => Vehicle::findOrFail(1)])
+            ->assertDontSee('Gestisci i segmenti')->set('form.vehicle_product_id', $other->id)
+            ->set('form.color', 'Blu')->call('save')->assertHasNoErrors();
+        $this->assertSame($segment->id, (int) Vehicle::findOrFail(1)->vehicle_product_id);
+        $this->assertSame('Blu', Vehicle::findOrFail(1)->color);
+    }
+
+    private function prepareVehicleForm(): void
+    {
+        Schema::table('vehicles', function (Blueprint $table) {
+            $table->string('color')->nullable(); $table->string('notes')->nullable();
+            $table->unsignedInteger('mileage_current')->default(0);
+            $table->string('cargos_vehicle_type_code')->nullable();
+            foreach (['kasko', 'rca', 'cristalli', 'furto'] as $insurance) $table->integer('insurance_'.$insurance.'_cents')->nullable();
+        });
+        (require database_path('migrations/2026_01_18_174004_create_cargos_vehicle_types_table.php'))->up();
+        DB::table('cargos_vehicle_types')->insert(['code' => 'DEMO', 'label' => 'Tipologia dimostrativa', 'is_active' => true]);
     }
 
     private function businessData(): array

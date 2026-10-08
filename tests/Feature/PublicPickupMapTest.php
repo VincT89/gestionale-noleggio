@@ -28,7 +28,7 @@ class PublicPickupMapTest extends PublicBookingTestCase
         $return = Location::create(['organization_id' => $id] + $place->only(['name', 'city', 'address_line', 'country_code']));
         Location::findOrFail($id)->update(['lat' => $lat, 'lng' => 16.86]);
         return PublicDeliveryLocation::create(['organization_id' => $id, 'public_pickup_place_id' => $place->id,
-            'location_id' => $return->id, 'is_active' => true, 'custom_delivery_enabled' => true,
+            'location_id' => $return->id, 'is_active' => true, 'custom_delivery_enabled' => true, 'custom_delivery_fee_cents' => 0,
             'delivery_area' => 'Zona dimostrativa', 'delivery_origin_location_id' => $id, 'delivery_radius_km' => $radius]);
     }
 
@@ -99,8 +99,8 @@ class PublicPickupMapTest extends PublicBookingTestCase
         $this->assertSame('map', $point['source']);
         $this->assertEquals(41.12, $point['lat']); $this->assertEquals(16.86, $point['lng']);
         $this->get(route('public-cars.index', $filters))->assertOk()
-            ->assertViewHas('supplierResults', fn ($rows) => $rows->pluck('id')->all() === [2, 1])
-            ->assertSee('L’auto giusta, dove comincia il tuo viaggio.')->assertSee('Modifica il punto sulla mappa');
+            ->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [1, 2])
+            ->assertSee('Consegna e ritiro inclusi nel prezzo.')->assertSee('Modifica il punto sulla mappa');
         Http::assertNothingSent();
         $this->assertDatabaseCount('amd_rent_enquiries', 0);
     }

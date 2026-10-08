@@ -77,7 +77,7 @@ class PublicPortalDomainTest extends PublicBookingTestCase
             'map_lat' => 41.12, 'map_lng' => 16.86, 'map_zoom' => 17, 'map_confirmed' => 1,
         ])->assertStatus(303)->assertSessionHasNoErrors();
         $this->assertStringStartsWith(self::PUBLIC_URL, $response->headers->get('Location'));
-        $this->get($response->headers->get('Location'))->assertOk()->assertViewHas('showDeliverySuppliers', true);
+        $this->get($response->headers->get('Location'))->assertOk()->assertViewHas('deliveryLookupNeeded', false);
         $this->postJson(self::MANAGEMENT_URL.'/ritiro-mappa/cerca', ['query' => 'Comune di prova'])->assertNotFound();
         $this->postJson(self::PUBLIC_URL.'/catalogo-pubblico/anteprima/ritiro-mappa/cerca', ['query' => 'Comune di prova'])->assertNotFound();
         \Illuminate\Support\Facades\Http::assertSentCount(2);

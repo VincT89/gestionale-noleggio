@@ -30,7 +30,7 @@ class Form extends Component
         'fuel_type'                  => 'petrol',
         'transmission'               => 'manual',
         'seats'                      => null,
-        'segment'                    => null,
+        'vehicle_product_id'         => null,
         'cargos_vehicle_type_code' => null,
         'mileage_current'            => 0,
         'default_pickup_location_id' => null, // impostati solo backend
@@ -92,7 +92,7 @@ class Form extends Component
                 'fuel_type'                  => $this->safeEnum($this->vehicle->fuel_type, array_keys($this->fuelOptions), 'petrol'),
                 'transmission'               => $this->safeEnum($this->vehicle->transmission, array_keys($this->transmissionOptions), 'manual'),
                 'seats'                      => $this->vehicle->seats,
-                'segment'                    => $this->vehicle->segment,
+                'vehicle_product_id'         => $this->vehicle->vehicle_product_id,
                 'cargos_vehicle_type_code' => $this->vehicle->cargos_vehicle_type_code,
                 'mileage_current'            => (int) ($this->vehicle->mileage_current ?? 0),
                 'default_pickup_location_id' => $this->vehicle->default_pickup_location_id,
@@ -140,7 +140,7 @@ class Form extends Component
             'form.fuel_type'       => ['required','in:petrol,diesel,hybrid,electric,lpg,cng'],
             'form.transmission'    => ['required','in:manual,automatic'],
             'form.seats'           => ['nullable','integer','min:1','max:99'],
-            'form.segment'         => ['nullable','string','max:32'],
+            'form.vehicle_product_id' => [Rule::excludeIf(!auth()->user()->hasRole('admin')), 'nullable', 'integer', Rule::exists('vehicle_products', 'id')],
             'form.cargos_vehicle_type_code' => [
                 'required',
                 'string',
@@ -209,6 +209,7 @@ class Form extends Component
 
         // Costruisco il payload finale per il Model (rimuovo *_eur, aggiungo *_cents)
         $save = $data;
+        unset($save['vehicle_product_id']);
 
         unset(
             $save['lt_rental_monthly_eur'],
@@ -255,7 +256,9 @@ class Form extends Component
 
         if ($this->isEdit()) {
             // ✅ In EDIT non tocchiamo default_pickup_location_id
-            $this->vehicle->update($save);
+            $this->vehicle->fill($save);
+            if (array_key_exists('vehicle_product_id', $data)) $this->vehicle->vehicle_product_id = $data['vehicle_product_id'] ?: null;
+            $this->vehicle->save();
             $vehicle = $this->vehicle->fresh();
             $this->dispatch('toast', ['type' => 'success', 'message' => 'Veicolo aggiornato.']);
         } else {
@@ -277,7 +280,9 @@ class Form extends Component
             $save['default_pickup_location_id'] = $firstLocId;
             $save['is_active']                  = 1;
 
-            $vehicle = Vehicle::create($save);
+            $vehicle = new Vehicle($save);
+            if (array_key_exists('vehicle_product_id', $data)) $vehicle->vehicle_product_id = $data['vehicle_product_id'] ?: null;
+            $vehicle->save();
             $this->dispatch('toast', ['type' => 'success', 'message' => 'Veicolo creato.']);
         }
 

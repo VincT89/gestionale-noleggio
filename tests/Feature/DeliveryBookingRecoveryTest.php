@@ -184,7 +184,7 @@ class DeliveryBookingRecoveryTest extends PublicBookingTestCase
         $this->assertNotSame($oldBooking->id, $newBooking->id);
         $this->assertSame($newBooking->id, (int) $case->fresh()->public_booking_id);
         $this->assertSame(33000, $newBooking->total_cents);
-        $this->assertSame(6000, $newBooking->online_due_cents);
+        $this->assertSame(6600, $newBooking->online_due_cents);
         $this->assertSame('pending', $newBooking->payment_status);
         $this->assertDatabaseCount('public_bookings', 2);
         $this->assertDatabaseCount('rental_charges', 0);

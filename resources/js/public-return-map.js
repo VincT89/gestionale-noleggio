@@ -24,7 +24,7 @@ if (form && dialog) {
         select.disabled = choice.checked;
         select.required = !choice.checked;
         standard.hidden = choice.checked;
-        submit.textContent = choice.checked ? 'Richiedi ritiro e riconsegna' : 'Richiedi il ritiro a questo indirizzo';
+        submit.textContent = 'Continua con i tuoi dati';
         open.textContent = token.value ? 'Modifica il punto sulla mappa' : 'Scegli il punto sulla mappa';
     };
     const show = () => {

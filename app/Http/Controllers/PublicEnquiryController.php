@@ -39,6 +39,7 @@ class PublicEnquiryController extends Controller
         if ($known = AmdRentEnquiry::where('request_hash', $hash)->first()) return redirect()->to($known->publicUrl(), 303);
         $searchPeriod = $intent['period'];
         if (!empty($intent['delivery_destination'])) $searchPeriod += ['request_delivery' => 1, 'delivery_point' => $intent['delivery_destination']];
+        if (!empty($intent['return_destination'])) $searchPeriod += ['request_custom_return' => 1, 'return_point' => $intent['return_destination']];
         $car = $search->search(VehiclePricelist::forPublicRental()->whereKey($intent['pricelist']), $searchPeriod)->first();
         if ($car && !empty($intent['return_address'])) $car['return_address'] = $intent['return_address'];
         if ($car && !empty($intent['return_destination'])) $car['return_destination'] = $intent['return_destination'];
@@ -48,7 +49,9 @@ class PublicEnquiryController extends Controller
             'type' => 'delivery', 'reference' => 'CON-'.Str::upper(Str::random(12)), 'organization_id' => $car['supplier_id'],
             'customer_name' => trim($contact['first_name'].' '.$contact['last_name']), 'email' => $contact['email'], 'phone' => $contact['phone'],
             'delivery_address' => $data['delivery_address'], 'notes' => $data['delivery_notes'] ?? null,
+            'delivery_fee_cents' => $car['delivery_fee_cents'] ?? 0,
             'vehicle_request' => $car['title'], 'booking_context' => ['pricelist' => $intent['pricelist'], 'period' => array_replace($intent['period'], ['place_id' => $car['place_id']]), 'contact' => $contact, 'car' => $car,
+                'excluded_offers' => $intent['excluded_offers'] ?? '',
                 'delivery_destination' => $intent['delivery_destination'] ?? null,
                 'return_address' => $intent['return_address'] ?? null,
                 'return_destination' => $intent['return_destination'] ?? null],
@@ -73,6 +76,29 @@ class PublicEnquiryController extends Controller
             ? 'Richiesta riaperta. Prima di riprovare controlla validità della proposta, prezzo e disponibilità. Nessun pagamento è stato avviato.'
             : 'La richiesta è già stata aggiornata. Controlla il riepilogo attuale.');
     }
+    public function alternatives(string $reference)
+    {
+        $case = AmdRentEnquiry::where('reference', $reference)->where('type', 'delivery')->firstOrFail();
+        abort_if($case->public_booking_id || !in_array($case->status, ['lost', 'quoted']), 409);
+        $context = $case->booking_context;
+        $segment = \App\Models\VehicleProduct::find($context['car']['product_id'] ?? null);
+        $filters = $context['period'];
+        if ($segment) $filters['segment'] = $segment->name;
+        $filters['exclude'] = implode(',', array_unique(array_filter([
+            ...explode(',', $context['excluded_offers'] ?? ''), (string) $context['pricelist'],
+        ])));
+        if (!empty($context['delivery_destination'])) {
+            $point = $context['delivery_destination'];
+            $selection = app(\App\Services\Geocoding\PlaceSelection::class)->issue([$point])[0];
+            $filters += ['request_delivery' => 1, 'delivery_address' => $selection['label'], 'delivery_place' => $selection['token']];
+        }
+        if (!empty($context['return_destination'])) {
+            $selection = app(\App\Services\Geocoding\PlaceSelection::class)->issue([$context['return_destination']], 'public-return')[0];
+            unset($filters['place_id']);
+            $filters += ['request_custom_return' => 1, 'return_address' => $selection['label'], 'return_place' => $selection['token']];
+        }
+        return redirect()->route('public-cars.index', $filters)->with('status', 'Scegli un’altra auto prima di inviare una nuova richiesta.');
+    }
     public function acceptDelivery(Request $request, string $reference, PublicVehicleSearch $search)
     {
         $request->validate(['accept_quote' => ['accepted']]);
@@ -81,6 +107,8 @@ class PublicEnquiryController extends Controller
         $context = $case->booking_context;
         $searchPeriod = $context['period'];
         if (!empty($context['delivery_destination'])) $searchPeriod += ['request_delivery' => 1, 'delivery_point' => $context['delivery_destination']];
+        if (!empty($context['return_destination'])) $searchPeriod += ['request_custom_return' => 1, 'return_point' => $context['return_destination']];
+        $searchPeriod['approved_delivery_fee_cents'] = $case->delivery_fee_cents;
         $car = $search->search(VehiclePricelist::forPublicRental()->whereKey($context['pricelist']), $searchPeriod)->first();
         if (!$car) throw ValidationException::withMessages(['booking' => 'L’auto non è più disponibile. Contatta il noleggiatore per una nuova proposta.']);
         $car = app(DeliveryQuotes::class)->apply($car, $case);

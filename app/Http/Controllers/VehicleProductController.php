@@ -33,7 +33,7 @@ class VehicleProductController extends Controller
         $product->created_by = $request->user()->id;
         $this->saveProduct($product);
 
-        return redirect()->route('fleet-products.edit', $product)->with('status', 'Prodotto creato. Ora puoi associare le auto della flotta.');
+        return redirect()->route('fleet-products.edit', $product)->with('status', 'Segmento creato. Ora puoi associare le auto della flotta.');
     }
 
     public function edit(Request $request, VehicleProduct $product)
@@ -58,7 +58,7 @@ class VehicleProductController extends Controller
         $product->fill($this->validatedProduct($request, $product));
         $this->saveProduct($product);
 
-        return redirect()->route('fleet-products.edit', $product)->with('status', 'Prodotto aggiornato.');
+        return redirect()->route('fleet-products.edit', $product)->with('status', 'Segmento aggiornato.');
     }
 
     public function attach(Request $request, VehicleProduct $product)
@@ -77,7 +77,7 @@ class VehicleProductController extends Controller
             }
             if ($vehicles->contains(fn (Vehicle $vehicle) => $vehicle->vehicle_product_id !== null
                 && (int) $vehicle->vehicle_product_id !== (int) $product->id)) {
-                throw ValidationException::withMessages(['vehicle_ids' => 'Una delle auto appartiene già a un altro prodotto. Rimuovila da quel prodotto prima di associarla qui.']);
+                throw ValidationException::withMessages(['vehicle_ids' => 'Una delle auto appartiene già a un altro segmento. Rimuovila da quel segmento prima di associarla qui.']);
             }
 
             $added = 0;
@@ -92,7 +92,7 @@ class VehicleProductController extends Controller
         }, 3);
 
         return redirect()->route('fleet-products.edit', $product)
-            ->with('status', $added ? 'Auto associate al prodotto: '.$added.'.' : 'Le auto selezionate erano già associate a questo prodotto.');
+            ->with('status', $added ? 'Auto associate al segmento: '.$added.'.' : 'Le auto selezionate erano già associate a questo segmento.');
     }
 
     public function detach(VehicleProduct $product, int $vehicle)
@@ -127,7 +127,7 @@ class VehicleProductController extends Controller
         ]);
         validator(['name' => mb_strtolower($data['name'])], [
             'name' => [Rule::unique('vehicle_products', 'name_key')->ignore($product?->id)],
-        ], ['name.unique' => 'Esiste già un prodotto con questo nome.'])->validate();
+        ], ['name.unique' => 'Esiste già un segmento con questo nome.'])->validate();
 
         return $data;
     }
@@ -137,7 +137,7 @@ class VehicleProductController extends Controller
         try {
             $product->save();
         } catch (UniqueConstraintViolationException $exception) {
-            throw ValidationException::withMessages(['name' => 'Esiste già un prodotto con questo nome.']);
+            throw ValidationException::withMessages(['name' => 'Esiste già un segmento con questo nome.']);
         }
     }
 }

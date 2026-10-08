@@ -35,13 +35,13 @@
             <form method="post" action="{{ route($routePrefix.($isReturnMap ? '.return-map.store' : '.map.store')) }}" data-map-confirm>
                 @csrf
                 @unless($isReturnMap)
-                @foreach(\Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at', 'place_id', 'city', 'request_delivery', 'request_custom_return', 'return_address', 'return_place']) as $key => $fieldValue)
+                @foreach(\Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at', 'place_id', 'city', 'request_delivery', 'request_custom_return', 'return_address', 'return_place', 'segment', 'exclude']) as $key => $fieldValue)
                     @if($fieldValue !== null)<input type="hidden" name="{{ $key }}" value="{{ $fieldValue }}">@endif
                 @endforeach
                 @endunless
                 <input type="hidden" name="map_lat"><input type="hidden" name="map_lng"><input type="hidden" name="map_zoom">
                 <div class="amd-field"><label for="{{ $mapId }}-address">Indirizzo di {{ $mapLocation }}</label><input id="{{ $mapId }}-address" name="{{ $isReturnMap ? 'return_address' : 'delivery_address' }}" value="{{ $mapAddress }}" data-map-address minlength="8" maxlength="500" required aria-describedby="{{ $mapId }}-address-help {{ $mapId }}-address-status"><small id="{{ $mapId }}-address-help">Si aggiorna quando scegli un punto. Puoi precisare ingresso, terminal o civico.</small><small id="{{ $mapId }}-address-status" data-map-address-status role="status" aria-live="polite"></small></div>
-                <div class="amd-map-confirm-action"><p>Il noleggiatore confermerà {{ $isReturnMap ? 'la riconsegna' : 'la consegna' }} e l’eventuale supplemento.</p><button type="submit" class="amd-button" name="map_confirmed" value="1" disabled>{{ $isReturnMap ? 'Usa questo punto di riconsegna' : 'Conferma il punto e continua' }}</button></div>
+                <div class="amd-map-confirm-action"><p>Il noleggiatore confermerà la disponibilità e gli appuntamenti prima del pagamento.</p><button type="submit" class="amd-button" name="map_confirmed" value="1" disabled>{{ $isReturnMap ? 'Usa questo punto di riconsegna' : 'Conferma il punto e continua' }}</button></div>
             </form>
         </div>
         <details class="amd-map-instructions"><summary>Come usare la mappa</summary><p id="{{ $mapId }}-help">Ingrandisci fino a vedere la strada, poi tocca il punto di {{ $mapLocation }}. Trascina la mappa per spostarti.</p><p id="{{ $mapId }}-keyboard">Da tastiera: frecce per spostarti, tasti + e - per lo zoom, Invio per scegliere il punto al centro.</p></details>

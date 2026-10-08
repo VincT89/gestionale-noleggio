@@ -308,7 +308,7 @@
                             <dt class="app-muted">VIN</dt><dd>{{ $drawer['v']->vin ?? '—' }}</dd>
                             <dt class="app-muted">Colore</dt><dd>{{ $drawer['v']->color ?? '—' }}</dd>
                             <dt class="app-muted">Posti</dt><dd>{{ $drawer['v']->seats ?? '—' }}</dd>
-                            <dt class="app-muted">Segmento</dt><dd>{{ $drawer['v']->segment ?? '—' }}</dd>
+                            <dt class="app-muted">Segmento</dt><dd>{{ $drawer['v']->product?->name ?? $drawer['v']->segment ?? '—' }}</dd>
                             <dt class="app-muted">Sede</dt><dd>{{ $drawer['v']->defaultPickupLocation?->name ?? '—' }}</dd>
                             <dt class="app-muted">Org.</dt><dd>{{ $drawer['v']->adminOrganization?->name ?? '—' }}</dd>
                             <dt class="app-muted">Km</dt><dd>{{ number_format((int)$drawer['v']->mileage_current, 0, ',', '.') }}</dd>

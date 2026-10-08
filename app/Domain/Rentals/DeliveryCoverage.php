@@ -7,6 +7,11 @@ use Illuminate\Support\Collection;
 
 class DeliveryCoverage
 {
+    public function covers(PublicDeliveryLocation $delivery, array $point): bool
+    {
+        return $this->rank(collect([$delivery]), $point)->isNotEmpty();
+    }
+
     public function rank(Collection $deliveries, array $point): Collection
     {
         return $deliveries->filter(function (PublicDeliveryLocation $delivery) use ($point) {

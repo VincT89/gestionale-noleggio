@@ -16,8 +16,10 @@ class PublicBookingService
     {
         $fields = ['id', 'vehicle_id', 'supplier_id', 'title', 'organization', 'location', 'city', 'address', 'description', 'total_cents',
             'days', 'deposit_cents', 'km_per_day', 'extra_km_cents', 'prices_include_vat', 'place_id', 'pickup_location_id',
-            'custom_delivery_enabled', 'delivery_request_id', 'delivery_fee_cents', 'delivery_commission_bps', 'delivery_address', 'delivery_revision', 'return_address'];
+            'custom_delivery_enabled', 'delivery_request_id', 'delivery_fee_cents', 'commission_bps', 'delivery_commission_bps', 'delivery_address', 'delivery_revision', 'return_address'];
         $values = array_intersect_key($car, array_flip($fields));
+        // Invalidate checkouts issued before inclusive delivery pricing and the single commission.
+        $values['pricing_version'] = 'segments-inclusive-v1';
         // Coordinates stay bound to the accepted quote, independent of JSON key
         // order or numeric types used by the database. Keep legacy quotes valid.
         if (!empty($car['return_destination'])) {
@@ -31,7 +33,6 @@ class PublicBookingService
         $hash = hash('sha256', $intent['nonce']);
         if ($existing = PublicBooking::where('request_hash', $hash)->first()) return $existing;
         $stripe = config('amd_rent.payment_mode') === 'stripe';
-        if ($stripe) app(\App\Services\AmdRent\StripeCheckout::class)->requireReady();
         $candidate = VehiclePricelist::forPublicRental()->findOrFail($intent['pricelist']);
 
         return $this->transaction->run($candidate->renter_org_id, [$candidate->vehicle_id], function () use ($candidate, $intent, $contact, $hash, $stripe) {
@@ -42,16 +43,24 @@ class PublicBookingService
             }
             $searchPeriod = $intent['period'];
             if (!empty($intent['delivery_destination'])) $searchPeriod += ['request_delivery' => 1, 'delivery_point' => $intent['delivery_destination']];
-            $car = $this->search->search(VehiclePricelist::forPublicRental()->whereKey($pricelist->id), $searchPeriod)->first();
             $deliveryRequest = null;
             if (!empty($intent['delivery_request_id'])) {
                 [$deliveryRequest, $attempts] = app(\App\Services\AmdRent\DeliveryBookingRecovery::class)->lockRequest($intent['delivery_request_id']);
                 if ($deliveryRequest->public_booking_id) return $deliveryRequest->booking;
-                if ($car) $car = app(\App\Services\AmdRent\DeliveryQuotes::class)->apply($car, $deliveryRequest, $attempts);
+                $searchPeriod['approved_delivery_fee_cents'] = $deliveryRequest->delivery_fee_cents;
+                if (!empty($deliveryRequest->booking_context['return_destination'])) {
+                    $searchPeriod['return_point'] = $deliveryRequest->booking_context['return_destination'];
+                    $searchPeriod['request_custom_return'] = 1;
+                }
             }
+            $car = $this->search->search(VehiclePricelist::forPublicRental()->whereKey($pricelist->id), $searchPeriod)->first();
+            if ($car && $deliveryRequest) $car = app(\App\Services\AmdRent\DeliveryQuotes::class)->apply($car, $deliveryRequest, $attempts);
             $this->assertQuote($intent, $car);
+            $channel = $stripe ? 'amd_rent' : null;
             $onlineDue = $stripe ? \App\Services\AmdRent\DeliveryQuotes::onlineDue($car) : 0;
-            if ($stripe && $onlineDue < 50) throw ValidationException::withMessages(['booking' => 'L’importo online è inferiore al minimo supportato. Contatta AMD Rent.']);
+            if ($stripe && $onlineDue > 0 && $onlineDue < 50) throw ValidationException::withMessages(['booking' => 'L’importo online è inferiore al minimo supportato. Contatta AMD Rent.']);
+            $stripe = $stripe && $onlineDue > 0;
+            if ($stripe) app(\App\Services\AmdRent\StripeCheckout::class)->requireReady();
 
             // An unauthenticated visitor cannot claim or overwrite an existing customer by email.
             $customer = Customer::create($contact + [
@@ -70,7 +79,7 @@ class PublicBookingService
                 'planned_pickup_at' => $start, 'planned_return_at' => $end, 'status' => 'reserved',
                 'amount' => number_format($car['total_cents'] / 100, 2, '.', ''),
                 'final_amount_override' => number_format($car['total_cents'] / 100, 2, '.', ''),
-                'booking_channel' => $stripe ? 'amd_rent' : null,
+                'booking_channel' => $channel,
                 'notes' => ($stripe ? 'Prenotazione AMD Rent: quota online a AMD Rent, saldo al ritiro. ' : 'Prenotazione dal sito. Pagamento al ritiro. ')
                     .(!empty($car['delivery_address']) ? 'Consegna concordata: '.$car['delivery_address'].'. ' : '')
                     .(!empty($car['return_address']) ? 'Riconsegna concordata: '.$car['return_address'].'. Associare il luogo gestionale verificato prima della comunicazione CARGOS. ' : '')

@@ -1,21 +1,21 @@
 <x-app-layout>
     <x-slot name="header"><h1 class="text-xl font-semibold text-white break-words">{{ $product->name }}</h1></x-slot>
     <div class="max-w-7xl mx-auto space-y-6">
-        <a href="{{ route('fleet-products.index') }}" class="inline-block underline">Tutti i prodotti</a>
+        <a href="{{ route('fleet-products.index') }}" class="inline-block underline">Tutti i segmenti</a>
         @include('fleet-products.partials.feedback')
 
         <section class="app-surface rounded border p-4 space-y-4" aria-labelledby="product-title">
-            <h2 id="product-title" class="text-lg font-semibold">Dati prodotto</h2>
-            <p>ID prodotto: <strong id="product-id">{{ $product->id }}</strong></p>
+            <h2 id="product-title" class="text-lg font-semibold">Dati segmento</h2>
+            <p>ID segmento: <strong id="product-id">{{ $product->id }}</strong></p>
             <form method="post" action="{{ route('fleet-products.update', $product) }}" class="space-y-4">
                 @csrf @method('PUT')
                 @include('fleet-products.partials.fields')
-                <button type="submit" class="px-4 py-2 rounded bg-indigo-600 text-white font-semibold">Salva prodotto</button>
+                <button type="submit" class="px-4 py-2 rounded bg-indigo-600 text-white font-semibold">Salva segmento</button>
             </form>
         </section>
 
         <section class="app-surface rounded border p-4 space-y-4" aria-labelledby="members-title">
-            <h2 id="members-title" class="text-lg font-semibold">Auto associate al prodotto</h2>
+            <h2 id="members-title" class="text-lg font-semibold">Auto associate al segmento</h2>
             <p class="text-sm">Ogni auto conserva il proprio listino, le assegnazioni e le prenotazioni. Rimuovere un’associazione lascia l’auto nella flotta.</p>
             <form method="get" action="{{ route('fleet-products.edit', $product) }}" class="flex flex-wrap items-end gap-3">
                 <input type="hidden" name="q" value="{{ $query }}">
@@ -29,11 +29,11 @@
                         <div class="min-w-0 break-words"><p class="font-semibold">{{ $vehicle->plate }}</p><p>{{ $vehicle->make }} {{ $vehicle->model }}</p><p class="text-sm">{{ $vehicle->transmission_label }}@if($vehicle->fuel_type_label) · {{ $vehicle->fuel_type_label }}@endif @if($vehicle->trashed()) · Auto archiviata @elseif(!$vehicle->is_active) · Auto non attiva @endif</p></div>
                         <form method="post" action="{{ route('fleet-products.detach', ['product' => $product, 'vehicle' => $vehicle->id]) }}">
                             @csrf @method('DELETE')
-                            <button type="submit" class="px-4 py-2 rounded border font-semibold" aria-label="Rimuovi {{ $vehicle->plate }} dal prodotto">Rimuovi dal prodotto</button>
+                            <button type="submit" class="px-4 py-2 rounded border font-semibold" aria-label="Rimuovi {{ $vehicle->plate }} dal segmento">Rimuovi dal segmento</button>
                         </form>
                     </li>
                 @empty
-                    <li class="py-4">{{ $membersQuery !== '' ? 'Nessuna auto associata corrisponde alla ricerca.' : 'Non ci sono auto associate a questo prodotto.' }}</li>
+                    <li class="py-4">{{ $membersQuery !== '' ? 'Nessuna auto associata corrisponde alla ricerca.' : 'Non ci sono auto associate a questo segmento.' }}</li>
                 @endforelse
             </ul>
             {{ $members->links() }}
@@ -41,8 +41,8 @@
 
         <section class="app-surface rounded border p-4 space-y-4" aria-labelledby="candidates-title">
             <h2 id="candidates-title" class="text-lg font-semibold">Associa auto della flotta</h2>
-            <p class="text-sm">Cerca il modello o la targa e seleziona le auto da aggiungere. Qui compaiono solo le auto senza prodotto; l’associazione a un altro prodotto va prima rimossa.</p>
-            <p class="text-sm">Le auto senza prodotto compaiono singolarmente sul sito. La ricerca usa i luoghi di consegna, i listini attivi e la disponibilità nelle date richieste. Non serve pubblicare un’offerta separata.</p>
+            <p class="text-sm">Cerca il modello o la targa e seleziona le auto da aggiungere. Qui compaiono solo le auto senza segmento; l’associazione a un altro segmento va prima rimossa.</p>
+            <p class="text-sm">Le auto senza segmento compaiono singolarmente sul sito. La ricerca usa i luoghi di consegna, i listini attivi e la disponibilità nelle date richieste. Non serve pubblicare un’offerta separata.</p>
             <form method="get" action="{{ route('fleet-products.edit', $product) }}" class="flex flex-wrap items-end gap-3">
                 <input type="hidden" name="members_q" value="{{ $membersQuery }}">
                 <div class="w-full min-w-0 sm:flex-1 sm:w-auto"><label for="candidate-search" class="block text-sm font-medium mb-1">Cerca auto da associare</label><input id="candidate-search" type="search" name="q" value="{{ $query }}" maxlength="120" placeholder="Targa, marca o modello" class="app-field w-full rounded border"></div>
@@ -66,7 +66,7 @@
                 </form>
                 {{ $candidates->links() }}
             @else
-                <p>Nessuna auto senza prodotto corrisponde alla ricerca.</p>
+                <p>Nessuna auto senza segmento corrisponde alla ricerca.</p>
             @endif
         </section>
     </div>

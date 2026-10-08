@@ -8,31 +8,31 @@
 @else
 <div data-summary-standard-pickup @if($requestDelivery ?? false) hidden @endif><p class="amd-summary-label">Luogo di ritiro</p><p>{{ $car['location'] }} — {{ $car['city'] }}<br>{{ $car['address'] }}</p></div>
 @if(!isset($booking) && ($car['custom_delivery_enabled'] ?? false))
-<div data-summary-custom-pickup @unless($requestDelivery ?? false) hidden @endunless><p class="amd-summary-label">Ritiro richiesto</p><p data-summary-delivery-address>{{ isset($inputValue) ? $inputValue('delivery_address') : '' }}</p><p>Indirizzo e supplemento da confermare dal noleggiatore.</p></div>
+<div data-summary-custom-pickup @unless($requestDelivery ?? false) hidden @endunless><p class="amd-summary-label">Ritiro richiesto</p><p data-summary-delivery-address>{{ isset($inputValue) ? $inputValue('delivery_address') : '' }}</p><p>Disponibilità e appuntamenti da confermare. Consegna e ritiro inclusi.</p></div>
 @endif
 @endif
 <p class="amd-summary-label">Luogo di riconsegna</p>
 @if(!empty($car['return_address']))
 <p><strong>{{ $car['return_address'] }}</strong></p>
 @include('public-cars.partials.selected-map-point', ['point' => $car['return_destination'] ?? null, 'pointType' => 'return'])
-@if(empty($car['delivery_request_id']))<p>Luogo e supplemento da confermare dal noleggiatore.</p>@endif
+@if(empty($car['delivery_request_id']))<p>Appuntamento da confermare.</p>@endif
 @else<p>{{ $car['location'] }} — {{ $car['city'] }}<br>{{ $car['address'] }}</p>@endif
-<p>Servizio erogato da <strong>{{ $car['organization'] }}</strong>.</p>
+@if(isset($booking) || !empty($car['delivery_request_id']))<p>Servizio erogato da <strong>{{ $car['organization'] }}</strong>.</p>@endif
 <dl class="amd-quote-lines">
     <div><dt>Ritiro</dt><dd>{{ \Carbon\CarbonImmutable::parse($filters['pickup_at'])->format('d/m/Y H:i') }}</dd></div>
     <div><dt>Riconsegna</dt><dd>{{ \Carbon\CarbonImmutable::parse($filters['return_at'])->format('d/m/Y H:i') }}</dd></div>
     <div><dt>Durata tariffata</dt><dd>{{ $car['days'] }} {{ $car['days'] === 1 ? 'giorno' : 'giorni' }}</dd></div>
 </dl>
-<p class="amd-total-label">{{ ($requestDelivery ?? false) && empty($car['delivery_request_id']) ? 'Totale noleggio, IVA inclusa' : 'Totale concordato, IVA inclusa' }}</p>
-<strong class="amd-total">{{ $money($car['total_cents']) }}</strong>
+<p class="amd-total-label">{{ ($requestDelivery ?? false) && empty($car['delivery_request_id']) ? 'Totale richiesto, IVA inclusa' : 'Totale concordato, IVA inclusa' }}</p>
+<strong class="amd-total">{{ $money($car['total_cents']) }}</strong><p>{{ $money($car['total_cents'] / max(1, $car['days'])) }} al giorno in media.@if(!empty($car['delivery_destination'])) Consegna e ritiro inclusi.@endif</p>
 <p>{{ $car['prices_include_vat'] ? 'IVA inclusa' : 'Importo di listino, IVA da verificare' }}</p>
 <dl class="amd-quote-lines">
     <div><dt>Cauzione separata</dt><dd>{{ $money($car['deposit_cents']) }}</dd></div>
     <div><dt>Chilometri inclusi</dt><dd>{{ $car['km_per_day'] === null ? 'Illimitati' : $car['km_per_day'].' km/giorno' }}</dd></div>
     @if($car['km_per_day'] !== null)<div><dt>Chilometri extra</dt><dd>{{ $money($car['extra_km_cents']) }}/km</dd></div>@endif
 </dl>
-@if((isset($booking) && $booking->payment_method === 'stripe') || (!isset($booking) && config('amd_rent.payment_mode') === 'stripe'))
 @php $online = isset($booking) ? $booking->online_due_cents : \App\Services\AmdRent\DeliveryQuotes::onlineDue($car); @endphp
-<dl class="amd-quote-lines">@if(!empty($car['delivery_fee_cents']))<div><dt>Noleggio</dt><dd>{{ $money($car['rental_total_cents']) }}</dd></div><div><dt>{{ !empty($car['return_address']) ? 'Supplemento ritiro e riconsegna' : 'Supplemento consegna' }}</dt><dd>{{ $money($car['delivery_fee_cents']) }}</dd></div>@endif<div><dt>Quota online</dt><dd>{{ $money($online) }}</dd></div><div><dt>Saldo previsto al ritiro</dt><dd>{{ $money(isset($booking) ? $booking->pickup_due_cents : $car['total_cents'] - $online) }}</dd></div>@if(isset($booking))<div><dt>Versato online, al netto dei rimborsi</dt><dd>{{ $money($booking->online_paid_cents - $booking->refunded_cents) }}</dd></div>@endif</dl><p class="amd-booking-payment">La quota online sul noleggio è il 20%. Cauzione separata, da gestire con il noleggiatore.</p>
+@if($online > 0 && ((isset($booking) && $booking->payment_method === 'stripe') || (!isset($booking) && config('amd_rent.payment_mode') === 'stripe')))
+<dl class="amd-quote-lines"><div><dt>Quota online</dt><dd>{{ $money($online) }}</dd></div><div><dt>Saldo previsto al ritiro</dt><dd>{{ $money(isset($booking) ? $booking->pickup_due_cents : $car['total_cents'] - $online) }}</dd></div>@if(isset($booking))<div><dt>Versato online, al netto dei rimborsi</dt><dd>{{ $money($booking->online_paid_cents - $booking->refunded_cents) }}</dd></div>@endif</dl><p class="amd-booking-payment">La quota online è indicata sopra e viene calcolata sul totale. Cauzione separata, da gestire con il noleggiatore.</p>
 @else<p class="amd-booking-payment">Pagamento al ritiro. Nessun addebito online.</p>@endif
 @if($car['description'])<h3>Condizioni dell’offerta</h3><p class="amd-description">{{ $car['description'] }}</p>@endif

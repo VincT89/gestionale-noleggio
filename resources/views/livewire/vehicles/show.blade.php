@@ -162,7 +162,7 @@
                     <dt class="app-muted">VIN</dt><dd>{{ $v->vin ?? '—' }}</dd>
                     <dt class="app-muted">Colore</dt><dd>{{ $v->color ?? '—' }}</dd>
                     <dt class="app-muted">Posti</dt><dd>{{ $v->seats ?? '—' }}</dd>
-                    <dt class="app-muted">Segmento</dt><dd>{{ $v->segment ?? '—' }}</dd>
+                    <dt class="app-muted">Segmento</dt><dd>{{ $v->product?->name ?? $v->segment ?? '—' }}</dd>
                     <dt class="app-muted">Carburante</dt><dd>{{ $v->fuel_type_label ?? $v->fuel_type ?? '—' }}</dd>
                     <dt class="app-muted">Cambio</dt><dd>{{ $v->transmission_label ?? $v->transmission ?? '—' }}</dd>
                     <dt class="app-muted">Creato il</dt><dd>{{ optional($v->created_at)->format('d/m/Y H:i') }}</dd>

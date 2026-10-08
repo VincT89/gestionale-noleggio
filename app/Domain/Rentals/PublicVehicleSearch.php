@@ -32,14 +32,27 @@ class PublicVehicleSearch
             if (!$point) return collect();
         }
 
-        $deliveries = $this->deliveryOptions($filters, $point)->unique('organization_id')->keyBy('organization_id');
+        $returnPoint = $filters['return_point'] ?? null;
+        if (!empty($filters['request_custom_return']) && !empty($filters['return_place'])) {
+            $returnPoint = app(PlaceSelection::class)->resolve($filters['return_place'], $filters['return_address'] ?? null, 'public-return');
+            if (!$returnPoint) return collect();
+        }
+        $deliveries = $this->deliveryOptions($filters, $point, $returnPoint);
+        if ($point) {
+            $deliveries = $deliveries->filter(fn ($delivery) => $delivery->custom_delivery_fee_cents !== null
+                || isset($filters['approved_delivery_fee_cents']))
+                ->sort(fn ($a, $b) => ($a->custom_delivery_fee_cents <=> $b->custom_delivery_fee_cents)
+                    ?: ($a->distance_km <=> $b->distance_km) ?: ($a->id <=> $b->id));
+        }
+        $deliveries = $deliveries->unique('organization_id')->keyBy('organization_id');
         $query->whereIn('renter_org_id', $deliveries->keys());
+        if (!empty($filters['exclude'])) $query->whereNotIn('id', array_map('intval', explode(',', $filters['exclude'])));
         if (!empty($filters['supplier'])) $query->where('renter_org_id', $filters['supplier']);
         $query->whereHas('vehicle', function (Builder $q) use ($filters) {
             foreach (['transmission', 'fuel_type', 'segment'] as $field) {
                 if (!empty($filters[$field])) {
                     if ($field === 'segment') {
-                        $q->whereRaw('LOWER(segment) = ?', [mb_strtolower($filters[$field])]);
+                        $q->whereHas('product', fn (Builder $segment) => $segment->whereRaw('LOWER(name) = ?', [mb_strtolower($filters[$field])]));
                     } else {
                         $q->where($field, $filters[$field]);
                     }
@@ -63,17 +76,23 @@ class PublicVehicleSearch
         $available->load(['seasons', 'tiers', 'vehicle.media', 'vehicle.product']);
         $results = collect();
         $budget = isset($filters['budget']) ? (int) round((float) $filters['budget'] * 100) : null;
+        $commissionBps = \App\Services\AmdRent\Commission::currentBps();
 
         foreach ($available as $pricelist) {
             $quote = $this->pricing->quote($pricelist, $start, $end);
-            if ($quote['total'] < 0 || ($budget !== null && $quote['total'] > $budget)) {
+            $delivery = $deliveries->get($pricelist->renter_org_id);
+            $fee = $point ? (int) ($filters['approved_delivery_fee_cents'] ?? $delivery->custom_delivery_fee_cents) : 0;
+            if ($quote['total'] < 0 || ($budget !== null && $quote['total'] + $fee > $budget)) {
                 continue;
             }
             $result = $this->present($pricelist, $quote, $deliveries->get($pricelist->renter_org_id));
+            $result['commission_bps'] = $commissionBps;
             if ($point) {
-                $delivery = $deliveries->get($pricelist->renter_org_id);
                 $result += ['delivery_destination' => $point, 'delivery_distance_km' => $delivery->distance_km,
-                    'delivery_origin_name' => $delivery->origin->name];
+                    'delivery_origin_name' => $delivery->origin->name,
+                    'rental_total_cents' => $result['total_cents'], 'delivery_fee_cents' => $fee, 'delivery_service_id' => $delivery->id];
+                $result['total_cents'] += $fee;
+                if ($returnPoint) $result['return_destination'] = $returnPoint;
             }
             $results->push($result);
         }
@@ -82,7 +101,7 @@ class PublicVehicleSearch
     }
 
     /** Return choices use the same active services and geographic coverage as the search. */
-    public function deliveryOptions(array $filters, ?array $point = null): Collection
+    public function deliveryOptions(array $filters, ?array $point = null, ?array $returnPoint = null): Collection
     {
         if (!empty($filters['request_delivery']) && !empty($filters['request_custom_return'])) {
             unset($filters['place_id'], $filters['city']);
@@ -94,6 +113,7 @@ class PublicVehicleSearch
                 ->whereHas('place', fn ($place) => $place->whereRaw('LOWER(TRIM(city)) = ?', [mb_strtolower(trim($filters['city']))])))
             ->orderBy('id')->get();
 
+        if ($returnPoint) $deliveries = $deliveries->filter(fn ($delivery) => app(DeliveryCoverage::class)->covers($delivery, $returnPoint));
         return $point ? app(DeliveryCoverage::class)->rank($deliveries, $point) : $deliveries;
     }
 
@@ -129,7 +149,7 @@ class PublicVehicleSearch
             'vehicle_id' => (int) $pricelist->vehicle_id,
             'title' => trim($vehicle->make.' '.$vehicle->model),
             'year' => $vehicle->year,
-            'segment' => $vehicle->segment,
+            'segment' => $vehicle->product?->name,
             'seats' => $vehicle->seats,
             'transmission' => $vehicle->transmission_label,
             'fuel' => $vehicle->fuel_type_label,

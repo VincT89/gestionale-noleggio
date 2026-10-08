@@ -78,10 +78,12 @@ class PublicDeliveryLocationController extends Controller
             'delivery_area' => ['nullable', 'required_if:custom_delivery_enabled,1', 'string', 'max:500'],
             'delivery_origin_location_id' => ['nullable', 'required_with:delivery_radius_km', 'integer', 'min:1'],
             'delivery_radius_km' => ['nullable', 'required_with:delivery_origin_location_id', 'numeric', 'min:0.01', 'max:999999.99', 'decimal:0,2'],
+            'custom_delivery_fee' => ['nullable', 'required_if:custom_delivery_enabled,1', 'numeric', 'between:0,100000', 'decimal:0,2'],
             'origin_choice' => ['nullable', 'uuid'], 'origin_query' => ['nullable', 'string', 'min:3', 'max:500'],
             'locate_origin' => ['nullable', 'boolean'],
         ], ['delivery_origin_location_id.*' => 'Scegli la sede da cui parti per la consegna.',
-            'delivery_radius_km.*' => 'Indica il raggio di consegna in chilometri, maggiore di zero e con al massimo due decimali.']);
+            'delivery_radius_km.*' => 'Indica il raggio di consegna in chilometri, maggiore di zero e con al massimo due decimali.',
+            'custom_delivery_fee.*' => 'Indica il prezzo complessivo di consegna e ritiro, IVA inclusa. Inserisci 0 solo se il servizio è gratuito.']);
         $origin = empty($data['delivery_origin_location_id']) ? null
             : Location::where('organization_id', $model->organization_id)->findOrFail($data['delivery_origin_location_id']);
         $context = 'origin:'.$model->id.':'.$origin?->id;
@@ -97,7 +99,7 @@ class PublicDeliveryLocationController extends Controller
             return response()->view('public-cars.delivery-origin', [
                 'delivery' => $model->load(['place', 'organization']), 'origin' => $origin, 'query' => $query,
                 'choices' => $choices, 'lookupError' => $lookupError,
-                'fields' => array_intersect_key($data, array_flip(['is_active', 'custom_delivery_enabled', 'delivery_area', 'delivery_origin_location_id', 'delivery_radius_km'])),
+                'fields' => array_intersect_key($data, array_flip(['is_active', 'custom_delivery_enabled', 'delivery_area', 'delivery_origin_location_id', 'delivery_radius_km', 'custom_delivery_fee'])),
             ])->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer');
         }
         $point = empty($data['origin_choice']) ? null : app(PlaceSelection::class)->resolve($data['origin_choice'], context: $context);
@@ -117,6 +119,9 @@ class PublicDeliveryLocationController extends Controller
             $model->update(['is_active' => (bool) $data['is_active']]);
             if (array_key_exists('custom_delivery_enabled', $data)) $model->update(['custom_delivery_enabled' => (bool) $data['custom_delivery_enabled'], 'delivery_area' => $data['delivery_area'] ?? null]);
             $coverage = array_intersect_key($data, array_flip(['delivery_origin_location_id', 'delivery_radius_km']));
+            if (array_key_exists('custom_delivery_fee', $data)) {
+                $coverage['custom_delivery_fee_cents'] = $data['custom_delivery_fee'] === null ? null : (int) round($data['custom_delivery_fee'] * 100);
+            }
             if ($coverage) $model->update($coverage);
         });
         return redirect()->route('public-deliveries.index')->with('status', array_key_exists('custom_delivery_enabled', $data)

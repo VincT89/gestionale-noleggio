@@ -20,7 +20,7 @@ class PublicCustomPickupSearchTest extends PublicBookingTestCase
         $location = Location::create(['organization_id' => 1] + $place->only(['name', 'city', 'address_line', 'country_code']));
         $location->update(['lat' => 41.12, 'lng' => 16.86]);
         return PublicDeliveryLocation::create(['organization_id' => 1, 'public_pickup_place_id' => $place->id,
-            'location_id' => $location->id, 'is_active' => true, 'custom_delivery_enabled' => true,
+            'location_id' => $location->id, 'is_active' => true, 'custom_delivery_enabled' => true, 'custom_delivery_fee_cents' => 0,
             'delivery_origin_location_id' => $location->id, 'delivery_radius_km' => 10,
             'delivery_area' => 'Zona dimostrativa, indirizzo da confermare']);
     }
@@ -33,7 +33,7 @@ class PublicCustomPickupSearchTest extends PublicBookingTestCase
         return $this->period(array_replace(['city' => 'Bari', 'request_delivery' => 1, 'delivery_address' => self::ADDRESS, 'delivery_place' => $choice['token']], $changes));
     }
 
-    public function test_city_search_selects_a_capable_location_before_grouping_suppliers(): void
+    public function test_city_search_selects_a_capable_location_before_showing_cars(): void
     {
         $delivery = $this->airport();
         $this->offer(2, organization: 2);
@@ -43,7 +43,7 @@ class PublicCustomPickupSearchTest extends PublicBookingTestCase
             ->assertHeader('Referrer-Policy', 'no-referrer')
             ->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [1]
                 && $rows->first()['place_id'] === $delivery->public_pickup_place_id)
-            ->assertSee(self::ADDRESS)->assertSee('Luogo di riconsegna')
+            ->assertSee(self::ADDRESS)->assertSee('Riconsegna')
             ->assertDontSee('Ritiro e riconsegna nello stesso luogo');
 
         $this->get(route('public-cars.index', $this->period(['city' => 'Bari'])))
@@ -61,9 +61,9 @@ class PublicCustomPickupSearchTest extends PublicBookingTestCase
             ->assertSee(self::ADDRESS)->assertSee('Aeroporto dimostrativo')
             ->assertViewHas('returnPlaces', fn ($places) => $places->pluck('id')->all() === [$delivery->public_pickup_place_id])
             ->assertSee('value="'.$delivery->public_pickup_place_id.'" selected', false)
-            ->assertSee('Richiedi il ritiro a questo indirizzo');
+            ->assertSee('Continua con i tuoi dati');
         $page = $this->get($bookingUrl)->assertOk()->assertSee('value="'.self::ADDRESS.'"', false)
-            ->assertSee('Ritiro richiesto')->assertSee('Luogo di riconsegna')->assertSee('Invia richiesta di consegna');
+            ->assertSee('Ritiro richiesto')->assertSee('Luogo di riconsegna')->assertSee('Richiedi disponibilità');
         $form = $filters + ['first_name' => 'Cliente', 'last_name' => 'Dimostrativo', 'email' => 'ritiro@example.test',
             'phone' => '+393200000000', 'accept_summary' => 1, 'checkout_token' => $page->viewData('checkoutToken')];
         $response = $this->post(route('public-cars.booking.store', 1), $form)->assertStatus(303)->assertSessionHasNoErrors();
@@ -92,18 +92,16 @@ class PublicCustomPickupSearchTest extends PublicBookingTestCase
         $this->get($next)->assertOk()->assertViewHas('results', fn ($rows) => $rows->currentPage() === 2 && $rows->total() === 2);
     }
 
-    public function test_custom_pickup_keeps_supplier_and_return_copy_when_budget_has_no_results(): void
+    public function test_custom_pickup_keeps_return_copy_and_hides_suppliers_when_budget_has_no_results(): void
     {
         $this->airport();
         $filters = $this->custom(['supplier' => 1]);
         unset($filters['city']);
         $this->get(route('public-cars.index', $filters))->assertOk()
-            ->assertSee('Da scegliere tra i punti serviti')->assertDontSee('@else');
+            ->assertSee('La scegli dopo l’auto')->assertDontSee('@else');
         $this->get(route('public-cars.index', $filters + ['budget' => 1]))->assertOk()
             ->assertViewHas('results', fn ($rows) => $rows->isEmpty())
-            ->assertViewHas('suppliers', fn ($rows) => $rows->pluck('id')->all() === [1])
-            ->assertViewHas('showDeliverySuppliers', false)
-            ->assertSee('value="1" selected', false);
+            ->assertDontSee('name="supplier"', false);
     }
 
     public function test_custom_pickup_cannot_open_an_offer_whose_service_was_disabled(): void

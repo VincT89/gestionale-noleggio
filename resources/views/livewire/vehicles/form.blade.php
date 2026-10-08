@@ -114,9 +114,14 @@
             {{-- segment --}}
             <div class="col-span-12 sm:col-span-6 lg:col-span-4">
                 <label class="block text-xs app-muted" for="vehicle-segment">Segmento</label>
-                <input id="vehicle-segment" type="text" class="mt-1 w-full rounded border-gray-300 app-field"
-                       wire:model.defer="form.segment" maxlength="32" placeholder="SUV / Compact / ...">
-                @error('form.segment') <div class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div> @enderror
+                @if(auth()->user()->hasRole('admin'))
+                <select id="vehicle-segment" class="mt-1 w-full rounded border-gray-300 app-field" wire:model.defer="form.vehicle_product_id">
+                    <option value="">Da assegnare</option>
+                    @foreach(\App\Models\VehicleProduct::orderBy('name')->get() as $segment)<option value="{{ $segment->id }}">{{ $segment->name }}</option>@endforeach
+                </select>
+                <a class="text-sm underline" href="{{ route('fleet-products.index') }}">Gestisci i segmenti</a>
+                @error('form.vehicle_product_id') <div class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div> @enderror
+                @else<p>{{ $vehicle?->product?->name ?? 'Da assegnare dall’admin' }}</p>@endif
             </div>
 
             {{-- Tipologia veicolo CARGOS --}}

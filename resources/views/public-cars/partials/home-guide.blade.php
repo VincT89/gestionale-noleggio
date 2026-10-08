@@ -18,9 +18,9 @@
             </div>
             <div class="amd-pickup-panel" id="pickup-address">
                 <h3>Il tuo viaggio, dal tuo indirizzo.</h3>
-                <p>Scrivi l’hotel, il B&B o un indirizzo. Scopri i noleggiatori vicini che offrono la consegna, guarda auto e prezzi e invia la richiesta.</p>
+                <p>Scrivi l’hotel, il B&B o un indirizzo. Scopri le auto che possono raggiungerti, scegli quella per il tuo viaggio e richiedi disponibilità.</p>
                 <a class="amd-button" href="#car-search" data-search-hotel>Cerca dal tuo indirizzo</a>
-                <small>Consegna e supplemento vengono confermati prima del pagamento. Puoi scegliere un altro punto per la riconsegna.</small>
+                <small>Consegna e ritiro sono inclusi. La disponibilità viene confermata prima del pagamento. Puoi scegliere un altro punto per la riconsegna.</small>
             </div>
         </div>
         <div class="amd-pickup-gallery">
@@ -50,10 +50,10 @@
     <div class="amd-section-inner amd-answers-layout">
         <div><h2 id="answers-heading">Parti con<br>le idee chiare.</h2><p>Le risposte utili, prima di scegliere.</p><a class="amd-text-link" href="{{ route('public-site.how-it-works') }}">Come funziona la prenotazione</a></div>
         <div class="amd-home-faq">
-            <details><summary>Quanto pago per prenotare?</summary><div><p>Per il noleggio breve versi il 20% online con Stripe. Il saldo si paga al ritiro. La prenotazione viene confermata dopo la verifica del pagamento; la cauzione è separata.</p></div></details>
-            <details><summary>Posso ricevere l’auto in hotel?</summary><div><p>Sì, dove il servizio è offerto. Cerca l’hotel o un indirizzo, scegli tra i noleggiatori disponibili e invia la richiesta per l’auto che preferisci. Aspetta la conferma della consegna e dell’eventuale supplemento prima di pagare.</p></div></details>
-            <details><summary>Posso riconsegnarla in un altro luogo?</summary><div><p>Con il ritiro personalizzato puoi scegliere un punto servito oppure richiedere un altro luogo, come un aeroporto o un hotel. Il noleggiatore confermerà gli appuntamenti e l’eventuale supplemento prima del pagamento.</p></div></details>
-            <details><summary>Il prezzo comprende tutto?</summary><div><p>Il totale del noleggio è per l’intero periodo e include l’IVA. Cauzione, chilometri inclusi ed eventuali costi per chilometri extra sono indicati nella proposta. Per il ritiro personalizzato, l’eventuale supplemento arriva con la conferma del noleggiatore.</p></div></details>
+            <details><summary>Quanto pago per prenotare?</summary><div><p>@if(\App\Services\AmdRent\Commission::currentBps() === 0) Per il noleggio breve paghi al ritiro, senza addebiti online. Per la consegna personalizzata attendi prima la conferma del noleggiatore. La cauzione è separata. @else Per il noleggio breve versi il {{ \App\Services\AmdRent\Commission::label() }} online con Stripe. Il saldo si paga al ritiro. La prenotazione viene confermata dopo la verifica del pagamento; la cauzione è separata. @endif</p></div></details>
+            <details><summary>Posso ricevere l’auto in hotel?</summary><div><p>Sì, dove il servizio è offerto. Cerca l’hotel o un indirizzo, scegli l’auto e invia la richiesta. Aspetta la conferma della disponibilità prima di pagare.</p></div></details>
+            <details><summary>Posso riconsegnarla in un altro luogo?</summary><div><p>Con il ritiro personalizzato puoi scegliere un punto servito oppure richiedere un altro luogo, come un aeroporto o un hotel. Consegna e ritiro sono inclusi nel prezzo. Il noleggiatore confermerà auto e appuntamenti prima del pagamento.</p></div></details>
+            <details><summary>Il prezzo comprende tutto?</summary><div><p>Il totale del noleggio è per l’intero periodo e include l’IVA. Cauzione, chilometri inclusi ed eventuali costi per chilometri extra sono indicati nella proposta. Per il ritiro personalizzato, consegna e ritiro sono inclusi nel totale.</p></div></details>
             <details><summary>Devo creare un account?</summary><div><p>No. Puoi cercare, inviare la richiesta di consegna o prenotare dal sito pubblico senza registrarti.</p></div></details>
         </div>
     </div>

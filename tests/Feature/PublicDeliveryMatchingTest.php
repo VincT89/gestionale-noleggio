@@ -50,11 +50,11 @@ class PublicDeliveryMatchingTest extends PublicBookingTestCase
         $this->cover(2, $place); $this->cover(3, $place);
         $this->search($place->id)->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [1, 2]
             && $rows->pluck('location')->unique()->all() === [$place->name])
-            ->assertViewHas('suppliers', fn ($rows) => $rows->pluck('id')->sort()->values()->all() === [2, 3]);
-        $this->search($place->id, ['supplier' => 3])->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [2]);
+            ->assertDontSee('name="supplier"', false);
+        $this->search($place->id, ['supplier' => 3])->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [1, 2]);
     }
 
-    public function test_an_empty_budget_does_not_remove_the_selected_or_other_eligible_suppliers(): void
+    public function test_budget_and_model_filters_apply_without_a_supplier_selection(): void
     {
         $this->assignedOffer(1, 2);
         $this->assignedOffer(2, 3);
@@ -64,13 +64,13 @@ class PublicDeliveryMatchingTest extends PublicBookingTestCase
 
         $this->search($place->id, ['supplier' => 3, 'budget' => 1])
             ->assertViewHas('results', fn ($rows) => $rows->isEmpty())
-            ->assertViewHas('suppliers', fn ($rows) => $rows->pluck('id')->sort()->values()->all() === [2, 3])
-            ->assertSee('value="3" selected', false);
+            ->assertDontSee('name="supplier"', false)
+            ->assertDontSee('Noleggiatore di prova');
         $this->search($place->id, ['supplier' => 3, 'budget' => 1000])
-            ->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [2]);
+            ->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [1, 2]);
         $this->search($place->id, ['supplier' => 3, 'q' => 'Nessun modello corrispondente'])
             ->assertViewHas('results', fn ($rows) => $rows->isEmpty())
-            ->assertViewHas('suppliers', fn ($rows) => $rows->pluck('id')->sort()->values()->all() === [2, 3]);
+            ->assertDontSee('name="supplier"', false);
     }
 
     public function test_pickup_cards_render_the_actual_place_without_template_directives(): void

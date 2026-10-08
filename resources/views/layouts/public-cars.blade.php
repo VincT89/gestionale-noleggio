@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Cerca auto') | AMD Rent</title>
-    <meta name="description" content="@yield('description', 'Cerca un’auto a noleggio con AMD Rent. Scegli luogo e date, confronta le auto disponibili e prenota con il 20% online. Scopri anche il noleggio a lungo termine.')">
+    <meta name="description" content="@yield('description', 'Cerca un’auto a noleggio con AMD Rent. Scegli luogo e date, confronta le auto disponibili e richiedi la tua auto. Scopri anche il noleggio a lungo termine.')">
     <meta name="robots" content="noindex, follow">
     @vite(['resources/css/public-cars.css', 'resources/css/public-interface.css', 'resources/js/public-cars.js'])
 </head>
@@ -44,7 +44,7 @@
             <div class="amd-footer-about">
                 <a class="amd-footer-brand" href="{{ route($routePrefix.'.index') }}">AMD Rent</a>
                 <p>Il tuo viaggio, la tua auto.<br>Scegli il luogo, confronta le condizioni e parti con le idee chiare.</p>
-                <p class="amd-footer-payment">Noleggio auto: 20% online, saldo al ritiro.</p>
+                <p class="amd-footer-payment">@if(\App\Services\AmdRent\Commission::currentBps() === 0) Noleggio auto: pagamento al ritiro. @else Noleggio auto: {{ \App\Services\AmdRent\Commission::label() }} online, saldo al ritiro. @endif</p>
             </div>
             <nav class="amd-footer-column" aria-label="Esplora AMD Rent">
                 <h2>Esplora</h2>

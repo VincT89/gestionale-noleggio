@@ -37,7 +37,7 @@ class PublicProductSearchTest extends PublicBookingTestCase
         $this->assertSame('Automatico', $car['transmission']);
         $this->assertSame(2, $car['supplier_id']);
         $this->assertSame($product->id, $car['product_id']);
-        $response->assertSee('Panda')->assertSee('Noleggiatore di prova')->assertDontSee('NOTA INTERNA RISERVATA')
+        $response->assertSee('Panda')->assertDontSee('Noleggiatore di prova')->assertDontSee('NOTA INTERNA RISERVATA')
             ->assertDontSee('TESTPLATE')->assertDontSee('PRIVATE-VIN')
             ->assertSee(route('public-cars.show', ['pricelist' => $cheapest->id] + $this->period()));
     }
@@ -54,15 +54,15 @@ class PublicProductSearchTest extends PublicBookingTestCase
         $this->results()->assertViewHas('results', fn ($rows) => $rows->isEmpty());
     }
 
-    public function test_vehicle_and_supplier_filters_run_before_choosing_the_cheapest(): void
+    public function test_vehicle_filters_run_before_matching_and_legacy_supplier_filter_is_ignored(): void
     {
         $product = VehicleProduct::create(['name' => 'Panda']);
         $this->groupedOffer(1, $product, 1000, 1, ['transmission' => 'manual']);
         $this->groupedOffer(2, $product, 2000, 2, ['transmission' => 'automatic']);
         $this->results(['transmission' => 'automatic'])->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [2]);
-        $this->results(['supplier' => 2])->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [2])
-            ->assertViewHas('suppliers', fn ($rows) => $rows->pluck('id')->sort()->values()->all() === [1, 2]);
-        $this->results(['supplier' => 2, 'budget' => '59.99'])->assertViewHas('results', fn ($rows) => $rows->isEmpty());
+        $this->results(['supplier' => 2])->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [1])
+            ->assertDontSee('name="supplier"', false);
+        $this->results(['supplier' => 2, 'budget' => '29.99'])->assertViewHas('results', fn ($rows) => $rows->isEmpty());
     }
 
     public function test_cheaper_offer_outside_the_selected_delivery_place_is_not_used(): void
