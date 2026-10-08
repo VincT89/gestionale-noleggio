@@ -120,6 +120,7 @@ class PublicEnquiryController extends Controller
         $request->session()->put('public_booking_checkouts', array_slice($known, -20, null, true));
         return $this->page('public-cars.booking', ['car' => $car, 'filters' => $context['period'], 'preview' => false, 'routePrefix' => 'public-cars',
             'contact' => $context['contact'],
+            'deliveryRequestUrl' => $case->publicUrl(),
             'checkoutToken' => Crypt::encryptString(json_encode($intent, JSON_THROW_ON_ERROR))]);
     }
     private function page(string $view, array $data)

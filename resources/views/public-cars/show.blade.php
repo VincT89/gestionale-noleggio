@@ -8,7 +8,14 @@
 @endphp
 <a class="amd-back" href="{{ route($routePrefix.'.index', $filters) }}">Torna ai risultati</a>
 @if(!$car)
-    <div class="amd-empty"><h1>La disponibilità è cambiata</h1><p>Questa auto non è disponibile per le date o per entrambi i luoghi scelti. Cerca un’altra proposta compatibile: conserveremo date e indirizzi.</p><a class="amd-button" href="{{ route($routePrefix.'.index', $filters) }}">Cerca altre auto</a></div>
+    <div class="amd-empty">
+        <h1>La disponibilità è cambiata</h1>
+        <p>Questa auto non è disponibile per le date o per entrambi i luoghi scelti. Cerca un’altra proposta compatibile: conserveremo date e indirizzi.</p>
+        <a class="amd-button" href="{{ route($routePrefix.'.index', $filters) }}">Cerca altre auto</a>
+        @if($customReturn)
+            <p><a class="amd-button amd-button-secondary" href="{{ route($routePrefix.'.show', ['pricelist' => request()->route('pricelist')] + \Illuminate\Support\Arr::except($filters, ['request_custom_return', 'return_address', 'return_place', 'place_id', 'city', 'page'])) }}">Cambia luogo di riconsegna</a></p>
+        @endif
+    </div>
 @else
     <div class="amd-page-heading"><h1>{{ $car['title'] }}</h1><p>{{ $customPickup ? 'Ritiro richiesto: '.$filters['delivery_address'] : $car['city'].' — '.$car['location'] }}</p></div>
     @if($errors->any())<div class="amd-errors" role="alert"><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
@@ -26,7 +33,7 @@
                 </dialog>
             @endif
             <h2>Caratteristiche</h2><dl class="amd-specs amd-specs-detail">
-                @if($car['segment'])<div><dt>Categoria</dt><dd>{{ $car['segment'] }}</dd></div>@endif
+                @if($car['segment'])<div><dt>Tipo di veicolo</dt><dd>{{ $car['segment'] }}</dd></div>@endif
                 @if($car['seats'])<div><dt>Posti</dt><dd>{{ $car['seats'] }}</dd></div>@endif
                 @if($car['transmission'])<div><dt>Cambio</dt><dd>{{ $car['transmission'] }}</dd></div>@endif
                 @if($car['fuel'])<div><dt>Alimentazione</dt><dd>{{ $car['fuel'] }}</dd></div>@endif

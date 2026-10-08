@@ -79,6 +79,36 @@ class PublicSegmentJourneyTest extends PublicBookingTestCase
             ->assertViewHas('results', fn ($cars) => $cars->pluck('id')->all() === [1]);
     }
 
+    public function test_booked_panda_is_replaced_by_next_panda_and_stale_selection_cannot_create_request(): void
+    {
+        $this->car(1, 1, 3000, 1000);
+        $this->car(2, 2, 4000, 1000);
+        $this->car(3, 3, 2000, 1000, 'SUV');
+        DB::table('vehicles')->whereIn('id', [1, 2])->update(['make' => 'Fiat', 'model' => 'Panda']);
+        $filters = $this->trip(true) + ['segment' => 'Citycar'];
+        $url = route('public-cars.index', $filters);
+        $this->get($url)->assertOk()->assertViewHas('results', fn ($cars) => $cars->pluck('id')->all() === [1]);
+        $staleForm = $this->form($filters);
+
+        $firstRental = DB::table('rentals')->insertGetId(['organization_id' => 1, 'vehicle_id' => 1,
+            'status' => 'reserved', 'planned_pickup_at' => '2026-09-11', 'planned_return_at' => '2026-09-12']);
+        $this->get($url)->assertOk()->assertSee('Fiat Panda')->assertSee('130,00 €')
+            ->assertViewHas('results', fn ($cars) => $cars->pluck('vehicle_id')->all() === [2]);
+        $this->get(route('public-cars.show', ['pricelist' => 1] + $filters))->assertOk()
+            ->assertViewHas('car', null)->assertSee('La disponibilità è cambiata');
+        $this->post(route('public-cars.booking.store', 1), $staleForm)->assertSessionHasErrors('booking');
+        $this->assertDatabaseCount('amd_rent_enquiries', 0);
+        $this->assertDatabaseCount('public_bookings', 0);
+
+        DB::table('rentals')->insert(['organization_id' => 2, 'vehicle_id' => 2,
+            'status' => 'reserved', 'planned_pickup_at' => '2026-09-11', 'planned_return_at' => '2026-09-12']);
+        $this->get($url)->assertOk()->assertViewHas('results', fn ($cars) => $cars->isEmpty());
+        DB::table('rentals')->where('id', $firstRental)->update(['status' => 'cancelled']);
+        $this->get($url)->assertOk()->assertSee('100,00 €')
+            ->assertViewHas('results', fn ($cars) => $cars->pluck('vehicle_id')->all() === [1]);
+        Http::assertNothingSent();
+    }
+
     public function test_unconfigured_package_is_excluded_but_explicitly_free_service_is_available(): void
     {
         $service = $this->car(1, 1, 3000, null);
@@ -100,6 +130,38 @@ class PublicSegmentJourneyTest extends PublicBookingTestCase
             ->assertViewHas('results', fn ($cars) => $cars->pluck('id')->all() === [2]);
         $this->assertDatabaseCount('amd_rent_enquiries', 0);
         $this->assertDatabaseCount('public_bookings', 0);
+    }
+
+    public function test_customer_can_change_an_uncovered_return_without_losing_pickup_dates_or_vehicle_type(): void
+    {
+        $this->car(1, 1, 3000, 1000, radius: 3);
+        $filters = $this->trip(true, 41.22) + ['segment' => 'Citycar'];
+
+        foreach (['public-cars.booking.create' => ['pricelist' => 1], 'public-cars.index' => []] as $route => $parameters) {
+            $unavailable = $this->get(route($route, $parameters + $filters))->assertOk();
+            $document = new \DOMDocument();
+            $document->loadHTML($unavailable->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING);
+            $links = (new \DOMXPath($document))->query('//a[normalize-space(.)="Cambia luogo di riconsegna"]');
+            $this->assertSame(1, $links->length);
+
+            $recovered = $this->get($links->item(0)->getAttribute('href'))->assertOk();
+            $updatedFilters = $recovered->viewData('filters');
+            foreach (['pickup_at', 'return_at', 'request_delivery', 'delivery_address', 'delivery_place', 'segment'] as $key) {
+                $this->assertSame((string) $filters[$key], (string) $updatedFilters[$key]);
+            }
+            foreach (['request_custom_return', 'return_address', 'return_place', 'place_id', 'city'] as $key) {
+                $this->assertEmpty($updatedFilters[$key] ?? null);
+            }
+            if ($parameters) {
+                $recovered->assertViewHas('car', fn ($car) => $car['id'] === 1)
+                    ->assertSee('Dove riconsegni l’auto?');
+            } else {
+                $recovered->assertViewHas('results', fn ($cars) => $cars->pluck('id')->all() === [1]);
+            }
+        }
+        $this->assertDatabaseCount('amd_rent_enquiries', 0);
+        $this->assertDatabaseCount('public_bookings', 0);
+        Http::assertNothingSent();
     }
 
     public function test_changed_package_or_return_coverage_invalidates_summary_before_request_is_created(): void
@@ -136,7 +198,14 @@ class PublicSegmentJourneyTest extends PublicBookingTestCase
             'delivery_fee' => 30, 'quote_valid_until' => '2026-09-09', 'confirm_custom_return' => 1])->assertRedirect()->assertSessionHasNoErrors();
         $service->update(['custom_delivery_fee_cents' => 9000]);
         $page = $this->post(URL::signedRoute('public-enquiries.accept', ['reference' => $case->reference]), ['accept_quote' => 1])->assertOk()
-            ->assertDontSee('Supplemento consegna')->assertSee('110,00 € al giorno in media');
+            ->assertDontSee('Supplemento consegna')->assertSee('110,00 € al giorno in media')
+            ->assertSee('Torna alla proposta')->assertDontSee('Torna all’auto');
+        $document = new \DOMDocument();
+        $document->loadHTML($page->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING);
+        $backLink = (new \DOMXPath($document))->query('//a[normalize-space(.)="Torna alla proposta"]')->item(0);
+        $this->get($backLink->getAttribute('href'))->assertOk()->assertViewIs('public-cars.enquiry')
+            ->assertSee('Hotel dimostrativo, indirizzo di prova')->assertSee('Aeroporto dimostrativo, partenze')
+            ->assertSee('330,00 €');
         $car = $page->viewData('car');
         $this->assertSame(33000, $car['total_cents']);
         $this->assertSame(6600, DeliveryQuotes::onlineDue($car));

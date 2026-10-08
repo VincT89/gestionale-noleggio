@@ -22,8 +22,8 @@
 <article class="amd-information">
     <h2 id="luoghi-e-disponibilita">Luoghi serviti e auto disponibili</h2>
     <p>Scegli il luogo, le date e gli orari. Per il ritiro personalizzato, attiva l’opzione nella ricerca e inserisci un indirizzo oppure il nome dell’hotel o del B&B con il comune. Dopo aver scelto l’auto, scegli un punto di riconsegna servito oppure richiedi un altro luogo, per esempio un aeroporto.</p>
-    <p>Vuoi ricevere l’auto in hotel? Conferma il punto di ritiro e scopri le auto che possono raggiungerti. Per ogni segmento mostriamo la proposta disponibile al prezzo più basso per le tue date.</p>
-    <p>Filtra per segmento, budget, posti e tipo di cambio. Scegli l’auto, poi indica dove riconsegnarla: può essere un aeroporto o un altro indirizzo nella zona servita.</p>
+    <p>Vuoi ricevere l’auto in hotel? Conferma il punto di ritiro e scopri le auto che possono raggiungerti. Per ogni tipo di veicolo mostriamo la proposta disponibile al prezzo più basso per le tue date.</p>
+    <p>Filtra per tipo di veicolo, budget, numero di posti e cambio. Scegli l’auto, poi indica dove riconsegnarla: può essere un aeroporto o un altro indirizzo nella zona servita.</p>
     <p>Controlla separatamente il luogo di ritiro e quello di riconsegna nel riepilogo. Date e orari sono riferiti all’Italia.</p>
     <h2 id="prezzi-e-condizioni">Importi e condizioni prima di prenotare</h2>
     <p>Ogni scheda riporta il totale del noleggio, IVA inclusa, la cauzione separata e il chilometraggio incluso. Se previsti, trovi anche il costo dei chilometri extra e le condizioni indicate dal noleggiatore.</p>
@@ -38,7 +38,7 @@
     @endif
     <h2 id="consegna-personalizzata">Consegna e ritiro dove ti servono</h2>
     <p>Il prezzo comprende noleggio, consegna e ritiro: trovi un unico totale e la tariffa media giornaliera. I giorni sono periodi di 24 ore; una frazione aggiuntiva conta come un giorno. La cauzione resta separata.</p>
-    <p>Prima invii la richiesta completa con auto, date, luoghi e recapiti. Il noleggiatore verifica la disponibilità e conferma gli appuntamenti. Dopo la conferma controlli il riepilogo e procedi al pagamento. Se la proposta non è disponibile, puoi scegliere un’altra auto dello stesso segmento.</p>
+    <p>Prima invii la richiesta completa con auto, date, luoghi e recapiti. Il noleggiatore verifica la disponibilità e conferma gli appuntamenti. Dopo la conferma controlli il riepilogo e procedi al pagamento. Se la proposta non è disponibile, puoi scegliere un’altra auto dello stesso tipo.</p>
     <h2>Lungo termine</h2><p>Con il <a href="{{ route('public-site.long-term') }}">modulo dedicato</a> chiedi un preventivo per un privato o un’azienda. Seguiamo richiesta, proposte delle società e documenti. Il contratto viene concluso in presenza; la richiesta non comporta un pagamento online.</p>
     <p><a class="amd-button" href="{{ route('public-cars.index') }}">Cerca un’auto</a></p>
 </article>

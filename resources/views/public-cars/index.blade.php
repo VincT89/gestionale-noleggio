@@ -65,7 +65,7 @@
                     @foreach($baseFilters as $key => $filterValue)<input type="hidden" name="{{ $key }}" value="{{ $filterValue }}">@endforeach
                     <input type="hidden" name="sort" value="{{ $value('sort', 'price_asc') }}">
                     <div class="amd-field"><label for="budget">Budget massimo totale</label><div class="amd-money-input"><input id="budget" name="budget" type="number" min="0" max="1000000" step="0.01" inputmode="decimal" value="{{ $value('budget') }}" placeholder="Nessun limite" aria-describedby="budget-help"><span aria-hidden="true">€</span></div><small id="budget-help">Per tutto il periodo, cauzione esclusa.</small></div>
-                    <div class="amd-field"><label for="segment">Segmento</label><select id="segment" name="segment"><option value="">Tutti i segmenti</option>@foreach($segments as $segment)<option value="{{ $segment }}" @selected(mb_strtolower($value('segment')) === mb_strtolower($segment))>{{ $segment }}</option>@endforeach</select></div>
+                    <div class="amd-field"><label for="segment">Tipo di veicolo</label><select id="segment" name="segment"><option value="">Tutti i tipi di veicolo</option>@foreach($segments as $segment)<option value="{{ $segment }}" @selected(mb_strtolower($value('segment')) === mb_strtolower($segment))>{{ $segment }}</option>@endforeach</select></div>
                     <div class="amd-field"><label for="transmission">Cambio</label><select id="transmission" name="transmission"><option value="">Qualsiasi</option>@foreach(\App\Models\Vehicle::TRANSMISSION_LABELS_IT as $key => $label)<option value="{{ $key }}" @selected($value('transmission') === $key)>{{ $label }}</option>@endforeach</select></div>
                     <div class="amd-field"><label for="fuel-type">Alimentazione</label><select id="fuel-type" name="fuel_type"><option value="">Qualsiasi</option>@foreach(\App\Models\Vehicle::FUEL_TYPE_LABELS_IT as $key => $label)<option value="{{ $key }}" @selected($value('fuel_type') === $key)>{{ $label }}</option>@endforeach</select></div>
                     <div class="amd-field"><label for="seats">Posti minimi</label><input id="seats" name="seats" type="number" min="1" max="20" step="1" value="{{ $value('seats') }}" placeholder="Qualsiasi"></div>
@@ -81,7 +81,7 @@
                     <label for="sort">Ordina per</label><select id="sort" name="sort"><option value="price_asc" @selected(($filters['sort'] ?? '') !== 'price_desc')>Prezzo crescente</option><option value="price_desc" @selected(($filters['sort'] ?? '') === 'price_desc')>Prezzo decrescente</option></select><button class="amd-button amd-button-secondary" type="submit">Ordina</button>
                 </form>
             </div>
-            <p class="amd-result-period">Dal {{ \Carbon\CarbonImmutable::parse($filters['pickup_at'])->format('d/m/Y H:i') }} al {{ \Carbon\CarbonImmutable::parse($filters['return_at'])->format('d/m/Y H:i') }}. Prezzi per l’intero periodo. Per ogni segmento trovi l’auto disponibile al prezzo più basso.</p>
+            <p class="amd-result-period">Dal {{ \Carbon\CarbonImmutable::parse($filters['pickup_at'])->format('d/m/Y H:i') }} al {{ \Carbon\CarbonImmutable::parse($filters['return_at'])->format('d/m/Y H:i') }}. Prezzi per l’intero periodo. Per ogni tipo di veicolo trovi l’auto disponibile al prezzo più basso.</p>
             @if($customPickup)<p class="amd-result-period">Ritiro richiesto: <strong>{{ $value('delivery_address') }}</strong>. Consegna e ritiro inclusi nel prezzo. Scegli l’auto, indica dove riconsegnarla e richiedi disponibilità.</p>@endif
             <div class="amd-car-grid">
             @forelse($results as $car)
@@ -107,7 +107,14 @@
                     <div class="amd-car-price"><span>Totale per {{ $car['days'] }} {{ $car['days'] === 1 ? 'giorno' : 'giorni' }}</span><strong>{{ $money($car['total_cents']) }}</strong><small>{{ $car['prices_include_vat'] ? 'IVA inclusa' : 'Importo di listino, IVA da verificare' }}</small><small>{{ $money($car['total_cents'] / max(1, $car['days'])) }} al giorno in media</small><small>Cauzione separata: {{ $money($car['deposit_cents']) }}</small><small>@if($car['commission_bps'] === 0) Pagamento al ritiro @else {{ \App\Services\AmdRent\Commission::label($car['commission_bps']) }} online dopo la conferma, saldo al ritiro @endif</small><a class="amd-button" href="{{ route($routePrefix.'.show', ['pricelist' => $car['id']] + ($customPickup ? $filters : array_replace($filters, ['place_id' => $car['place_id']]))) }}">Scegli questa auto</a></div>
                 </article>
             @empty
-                <div class="amd-empty"><h3>Nessuna auto disponibile con questi criteri</h3><p>Prova altre date o rimuovi i filtri. Puoi anche scegliere un altro luogo di consegna.</p><a class="amd-button amd-button-secondary" href="{{ route($routePrefix.'.index', $baseFilters) }}">Rimuovi filtri</a><a class="amd-empty-edit" href="#car-search">Modifica luogo o date</a></div>
+                <div class="amd-empty">
+                    <h3>Nessuna auto disponibile con questi criteri</h3>
+                    <p>Prova altre date o rimuovi i filtri. Puoi anche scegliere un altro luogo di consegna.</p>
+                    @if($customPickup && !empty($filters['request_custom_return']))
+                        <p><a class="amd-button amd-button-secondary" href="{{ route($routePrefix.'.index', \Illuminate\Support\Arr::except($filters, ['request_custom_return', 'return_address', 'return_place', 'place_id', 'city', 'page'])) }}">Cambia luogo di riconsegna</a></p>
+                    @endif
+                    <a class="amd-button amd-button-secondary" href="{{ route($routePrefix.'.index', $baseFilters) }}">Rimuovi filtri</a><a class="amd-empty-edit" href="#car-search">Modifica luogo o date</a>
+                </div>
             @endforelse
             </div>
             @if($results->hasPages())<nav class="amd-pagination" aria-label="Pagine dei risultati">@if(!$results->onFirstPage())<a href="{{ $results->previousPageUrl() }}">Pagina precedente</a>@endif<span>Pagina {{ $results->currentPage() }} di {{ $results->lastPage() }}</span>@if($results->hasMorePages())<a href="{{ $results->nextPageUrl() }}">Pagina successiva</a>@endif</nav>@endif

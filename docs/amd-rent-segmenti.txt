@@ -23,19 +23,25 @@ Configurazione in ERA
 Percorso cliente
 
 Il cliente indica luogo e date. La ricerca mostra direttamente le auto,
-senza elenco o filtro noleggiatori. Per ogni segmento compare l'offerta
+senza elenco o filtro noleggiatori. La dicitura pubblica e' "Tipo di veicolo".
+Per ogni tipo di veicolo compare l'offerta
 disponibile con il totale piu' basso; il costo del servizio entra nel confronto.
 Gli ordinamenti e il budget si riferiscono al totale, cauzione esclusa.
 
 Dopo la scelta dell'auto, il cliente sceglie la riconsegna: punto servito
 oppure punto preciso sulla mappa. Per due indirizzi personalizzati entrambi
 devono rientrare nello stesso servizio del noleggiatore. Se la riconsegna
-non e' coperta, puo' cercare un'alternativa nello stesso segmento conservando
-date e luoghi. La disponibilita' dell'auto viene sempre ricontrollata.
+non e' coperta, puo' cercare un'alternativa dello stesso tipo conservando
+date e luoghi, oppure cambiare solo la riconsegna. Quest'ultimo comando
+mantiene date, ritiro personalizzato e filtri e rimuove la riconsegna non
+coperta, sia dalla scheda auto sia dai risultati vuoti.
+La disponibilita' dell'auto viene sempre ricontrollata.
 
 La richiesta completa arriva al noleggiatore prima di riservare l'auto
 o avviare un pagamento. Il noleggiatore verifica gli appuntamenti e conferma
 la proposta. Il cliente rivede e accetta il totale prima della prenotazione.
+Dal riepilogo di una consegna confermata, "Torna alla proposta" riapre
+la stessa richiesta e conserva indirizzi e condizioni concordate.
 In caso di rifiuto o scadenza puo' scegliere un'altra auto: la precedente
 offerta viene esclusa dalla ricerca e nessuna nuova richiesta parte da sola.
 
@@ -52,10 +58,11 @@ gia' previste da dev_vincenzo:
 - 2026_10_07_120000_add_custom_delivery_package_fee.php
 - 2026_10_07_120100_add_total_commission_to_amd_rent_settings.php
 
-Le migrazioni non sono state applicate al database operativo. Prima
+Le migrazioni sono state applicate dall'utente al database locale.
+Il rilascio in produzione resta da eseguire. Prima
 dell'attivazione verificare backup, ambiente e connessione corretti,
 quindi applicarle con la procedura di rilascio del progetto. Configurare
-i segmenti reali e i costi dei servizi da ERA prima della demo.
+i segmenti reali e i costi dei servizi da ERA prima del rilascio.
 Tornare al codice di dev_vincenzo non richiede eliminare le nuove colonne.
 Un rollback delle migrazioni elimina le rispettive nuove impostazioni:
 non eseguirlo solo per cambiare branch.
@@ -67,6 +74,60 @@ matching per segmento e prezzo completo, calendario, copertura dei due punti,
 ritorno ad alternative, dati manomessi, permessi, commissione modificabile,
 importi storici, pagamento con commissione zero e regressioni prenotazione.
 Build frontend verificata senza installare dipendenze.
-Il collaudo visivo desktop/mobile resta da completare: il browser di questa
-sessione non raggiunge il server isolato e l'ambiente nega l'accesso al socket
-locale. Nessuna modifica alle protezioni di rete e nessun server utente fermato.
+
+Collaudo locale dell'8 ottobre 2026 su dev_modifiche
+
+- Browser collegato al sito effettivo dell'utente, http://127.0.0.1:8000.
+  Provati desktop 1440px e telefoni 390px/320px. Corretto lo scorrimento
+  orizzontale a 320px causato dalla larghezza minima del body.
+- Ricerca Hotel Federiciano, 20-23 ottobre 2026, dalle 10:00 alle 10:00:
+  una proposta per tipo, ordinata per prezzo totale. Citycar: Fiat Panda,
+  155 euro per 3 giorni, inclusi 20 euro complessivi di consegna e ritiro.
+  Quota online mostrata: 31 euro, pari al 20% dell'intero totale.
+- Provati filtro Tipo di veicolo, scelta auto, ricerca del solo comune
+  Valenzano, zoom mappa e selezione precisa da tastiera con compilazione
+  dell'indirizzo. Riconsegna in Vico Paradiso correttamente accettata.
+- Aeroporto di Bari fuori dal raggio demo di 10km: offerta non disponibile.
+  Il comando per cambiare riconsegna ripristina la ricerca conservando
+  ritiro, periodo e Citycar. Nessuna prenotazione creata da questi passaggi.
+- Creata la richiesta dimostrativa locale CON-3PAY1YUQZT43,
+  organizzazione 10, dati di contatto fittizi e note DEMO LOCALE.
+  Verificate nel database le coordinate di entrambi i punti, date, tipo,
+  importi e commissione. Nessuna prenotazione o nuovo noleggio generato.
+  Dopo l'accesso admin eseguito dall'utente, la pratica e' stata confermata
+  da ERA, con stato "quoted" e proposta valida fino al 19 ottobre 2026.
+  Verificato il passaggio cliente al riepilogo prima del pagamento:
+  totale 155 euro, quota online 31 euro, saldo 124 euro, entrambi i luoghi
+  conservati. Provato anche il ritorno alla stessa proposta.
+  Il pagamento Stripe resta escluso. ERA usa http://localhost:8000;
+  il dominio pubblico non espone le pagine del gestionale.
+- Su autorizzazione dell'utente, le 7 Fiat Panda del vecchio gruppo Panda
+  sono state associate a Citycar, ora con 13 auto. Conservata copia delle
+  associazioni precedenti. Il gruppo Panda, rimasto vuoto, non appare
+  nel filtro pubblico; non e' stato eliminato.
+- Test mirati PublicSegmentJourneyTest, PublicCustomReturnTest,
+  PublicCarSearchTest e DeliveryBookingRecoveryTest: 63 test,
+  811 asserzioni, tutti superati.
+  Build frontend completata senza installare dipendenze. Nessun errore
+  o avviso della console browser durante il percorso verificato.
+
+Dati e prezzi sopra sono configurazione dimostrativa locale, non commerciale.
+
+Verifica aggiuntiva: auto occupata
+
+Ricerca locale Hotel Federiciano, Citycar, 20-23 ottobre 2026:
+la Panda (listino 49, veicolo 36) da 155 euro e' stata resa indisponibile
+con un blocco calendario temporaneo. Il browser ha mostrato la Citroen C3
+(listino 52, veicolo 37) da 170 euro, con scheda, prezzo e collegamento
+di scelta aggiornati. La successiva alternativa disponibile era la Peugeot
+208 da 275 euro. La selezione segue il tipo di veicolo e il prezzo totale;
+non e' vincolata allo stesso modello della prima offerta.
+Il blocco dimostrativo e' stato rimosso e il browser e' tornato a proporre
+la Panda da 155 euro. Richieste, prenotazioni e noleggi sono rimasti invariati.
+
+Test isolato aggiunto con due Panda e un SUV: un noleggio sovrapposto sulla
+prima Panda fa apparire la seconda, con il prezzo corretto. La vecchia
+selezione non puo' creare una richiesta per l'auto ormai occupata. Con
+entrambe le Panda occupate Citycar non propone risultati; cancellando
+il primo noleggio ricompare la prima Panda. PublicSegmentJourneyTest:
+13 test e 191 asserzioni superati.

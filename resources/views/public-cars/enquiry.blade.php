@@ -33,7 +33,7 @@
 <form method="post" action="{{ \Illuminate\Support\Facades\URL::signedRoute('public-enquiries.accept', ['reference' => $case->reference]) }}">@csrf
 <label class="amd-booking-accept"><input type="checkbox" name="accept_quote" value="1" required><span>Ho verificato auto, luoghi, date e importo della proposta.</span></label>
 <button class="amd-button">Controlla il totale e prosegui</button></form>
-<p><a href="{{ \Illuminate\Support\Facades\URL::signedRoute('public-enquiries.alternatives', ['reference' => $case->reference]) }}">Cerca un’altra auto dello stesso segmento</a></p>
+<p><a href="{{ \Illuminate\Support\Facades\URL::signedRoute('public-enquiries.alternatives', ['reference' => $case->reference]) }}">Cerca un’altra auto dello stesso tipo</a></p>
 @elseif($case->status === 'quoted' || $case->status === 'lost')
 <h3>{{ $case->status === 'lost' ? 'Questa proposta non è disponibile' : 'La proposta è scaduta' }}</h3>
 <p>Puoi scegliere un’altra auto mantenendo date e luoghi. Nessuna nuova richiesta sarà inviata senza la tua conferma.</p>

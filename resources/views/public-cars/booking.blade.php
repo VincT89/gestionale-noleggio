@@ -11,7 +11,11 @@
     $customReturn = !empty($car['return_address']);
     $needsOnlinePayment = config('amd_rent.payment_mode') === 'stripe' && \App\Services\AmdRent\DeliveryQuotes::onlineDue($car) > 0;
 @endphp
-<a class="amd-back" href="{{ route($routePrefix.'.show', ['pricelist' => $car['id']] + $filters) }}">Torna all’auto</a>
+@if(!empty($deliveryRequestUrl))
+    <a class="amd-back" href="{{ $deliveryRequestUrl }}">Torna alla proposta</a>
+@else
+    <a class="amd-back" href="{{ route($routePrefix.'.show', ['pricelist' => $car['id']] + $filters) }}">Torna all’auto</a>
+@endif
 <div class="amd-page-heading"><h1>{{ $fixedDelivery ? 'Richiedi disponibilità' : 'Prenota la tua auto' }}</h1><p>{{ $fixedDelivery ? 'Controlla auto, luoghi e date e inserisci i tuoi recapiti. Il noleggiatore confermerà auto e appuntamenti prima del pagamento.' : 'Controlla il riepilogo e inserisci i tuoi recapiti. La quota online e il saldo al ritiro sono indicati nel riepilogo.' }}</p></div>
 <div class="amd-detail amd-booking-layout">
     <aside class="amd-quote" aria-labelledby="booking-summary-title">@include('public-cars.partials.booking-summary')</aside>
