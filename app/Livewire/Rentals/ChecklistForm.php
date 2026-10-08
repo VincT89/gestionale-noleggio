@@ -1064,6 +1064,11 @@ class ChecklistForm extends Component
      */
     protected function payloadHash(array $payload): string
     {
+        // Existing unsigned return PDFs must be regenerated with the damage diagram.
+        // Pickup PDFs and signed documents keep their existing lifecycle.
+        if (($payload['base']['type'] ?? null) === 'return') {
+            $payload['pdf_template_version'] = 'return-damage-map-v1';
+        }
         // json_encode con opzioni stabili → poi sha256
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_PRESERVE_ZERO_FRACTION);
         return hash('sha256', $json);
