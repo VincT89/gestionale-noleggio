@@ -28,6 +28,8 @@ class AmdRentDemoFleetTest extends PublicBookingTestCase
         });
         Schema::table('vehicle_pricelists', function (Blueprint $t) {
             $t->text('notes')->nullable(); $t->integer('second_driver_daily_cents')->nullable();
+            /** Match the nullable deposit and extra-km columns from the production migrations. */
+            $t->integer('extra_km_cents')->nullable()->change(); $t->integer('deposit_cents')->nullable()->change();
             $t->unique(['vehicle_id', 'renter_org_id', 'active_flag']);
         });
         Schema::table('locations', function (Blueprint $t) {
@@ -361,5 +363,122 @@ class AmdRentDemoFleetTest extends PublicBookingTestCase
             $this->assertSame($before, $this->snapshot());
             $this->assertSame($files, Storage::disk('demo_photos')->allFiles());
         }
+    }
+
+    public function test_demo_rate_covers_missing_and_ambiguous_prices_and_preserves_unique_prices(): void
+    {
+        $this->sourceFleet();
+        $this->offer(3, 2, ['base_daily_cents' => 11750]);
+        DB::table('vehicle_pricelists')->insert(['vehicle_id' => 1, 'renter_org_id' => 1, 'base_daily_cents' => 24000]);
+        DB::table('public_rental_offers')->where('pricelist_id', 2)->delete();
+        DB::table('vehicle_pricelists')->where('id', 2)->delete();
+        $before = $this->snapshot();
+        $fleet = app(DemoFleet::class);
+        $plan = $fleet->preview(4, demoDailyCents: 5000, availablePhotos: true);
+        $this->assertSame([], $plan['errors']);
+        $this->assertSame([true, true, false], array_map(fn ($v) => $v['price']['is_demo'], $plan['vehicles']));
+        $this->assertSame($before, $this->snapshot());
+        $output = new \Symfony\Component\Console\Output\BufferedOutput;
+        $status = $this->app->make(\Illuminate\Contracts\Console\Kernel::class)->handle(
+            new \Symfony\Component\Console\Input\ArgvInput(['artisan', 'amd-rent:demo-fleet', 'DEMO', 'AMD', 'Rent',
+                '--demo-daily=50', '--available-photos', '--apply', '--confirm='.$plan['fingerprint']]), $output);
+        $this->assertSame(0, $status, $output->fetch());
+        $copies = Vehicle::where('notes', 'like', DemoFleet::MARKER.'4:vehicle:%')->orderBy('id')->get();
+        $this->assertCount(3, $copies);
+        foreach ($copies->take(2) as $vehicle) {
+            $price = $vehicle->pricelists()->sole();
+            $this->assertSame('DEMO - Tariffa dimostrativa', $price->name);
+            $this->assertSame(5000, $price->base_daily_cents);
+            $this->assertSame(0, $price->seasons()->count());
+            $this->assertSame(0, $price->tiers()->count());
+            $quote = app(VehiclePricingService::class)->quote($price,
+                CarbonImmutable::parse($this->period()['pickup_at']), CarbonImmutable::parse($this->period()['return_at']));
+            $this->assertSame(15000, $quote['total']);
+        }
+        $this->assertSame(11750, $copies->last()->pricelists()->sole()->base_daily_cents);
+        $results = app(PublicVehicleSearch::class)->search(VehiclePricelist::forPublicRental()->where('renter_org_id', 4), $this->period());
+        $this->assertEqualsCanonicalizing($copies->modelKeys(), $results->pluck('vehicle_id')->all());
+        foreach ($before as $table => $rows) {
+            foreach ($rows as $row) {
+                $this->assertSame($row, (array) DB::table($table)->where('id', $row['id'])->first(), $table.' source changed');
+            }
+        }
+    }
+
+    public function test_available_photos_preserves_valid_photos_and_falls_back_to_reference_images(): void
+    {
+        $this->sourceFleet();
+        $missing = $this->photo(2);
+        Storage::disk('demo_photos')->delete($missing.'/fixture.png');
+        config()->set('filesystems.disks.car_models', ['driver' => 'local', 'root' => $this->photoRoot.'/references', 'throw' => true]);
+        Storage::forgetDisk('car_models');
+        Storage::disk('car_models')->put('reference.png', Storage::disk('demo_photos')->get('1/fixture.png'));
+        config()->set('public_car_images', [['makes' => ['Marca test'], 'models' => ['Modello due'],
+            'mime_type' => 'image/png', 'file' => 'reference.png']]);
+        $before = $this->snapshot();
+        $fleet = app(DemoFleet::class);
+        $plan = $fleet->preview(4, availablePhotos: true);
+        $this->assertSame([], $plan['errors']);
+        $this->assertStringContainsString('Foto esclusa dalla copia', implode(' ', $plan['warnings']));
+        $this->assertSame($before, $this->snapshot());
+        $result = $fleet->apply(4, [], false, $plan['fingerprint'], availablePhotos: true);
+        $this->assertSame(1, $result['photos']);
+        $photos = app(PublicVehiclePhoto::class);
+        $actual = $photos->forVehicle(Vehicle::findOrFail($result['vehicles'][1]));
+        $reference = $photos->forVehicle(Vehicle::findOrFail($result['vehicles'][2]));
+        $this->assertFalse($actual['is_reference']);
+        $this->assertNotSame('1/fixture.png', $actual['path']);
+        $this->assertSame(Storage::disk('demo_photos')->get('1/fixture.png'), Storage::disk($actual['disk'])->get($actual['path']));
+        $this->assertTrue($reference['is_reference']);
+        $this->assertSame('reference.png', $reference['path']);
+        $this->assertSame(0, Vehicle::findOrFail($result['vehicles'][2])->getMedia('vehicle_photos')->count());
+        $this->assertNotNull(DB::table('media')->find($missing));
+    }
+
+    public function test_explicit_pricelist_choice_is_not_replaced_by_a_demo_rate(): void
+    {
+        $this->sourceFleet();
+        DB::table('vehicle_pricelists')->insert(['vehicle_id' => 1, 'renter_org_id' => 1, 'base_daily_cents' => 24000]);
+        $fleet = app(DemoFleet::class);
+        $plan = $fleet->preview(4, [1 => 1], demoDailyCents: 5000);
+        $this->assertSame([], $plan['errors']);
+        $this->assertFalse($plan['vehicles'][0]['price']['is_demo']);
+        $this->assertSame(6500, $plan['vehicles'][0]['price']['attributes']['base_daily_cents']);
+        $invalid = $fleet->preview(4, [1 => 2], demoDailyCents: 5000);
+        $this->assertNotEmpty($invalid['errors']);
+        $this->assertNull($invalid['vehicles'][0]['price']);
+    }
+
+    public function test_demo_options_are_validated_and_bound_to_the_reviewed_preview(): void
+    {
+        $this->sourceFleet();
+        $before = $this->snapshot();
+        foreach (['0', '-50', '50.005', '1e2', '', '1000000', '50abc'] as $amount) {
+            $this->artisan('amd-rent:demo-fleet', ['renter' => 4, '--demo-daily' => $amount])->assertFailed();
+        }
+        $this->artisan('amd-rent:demo-fleet', ['renter' => 4, '--without-photos' => true, '--available-photos' => true])->assertFailed();
+        $plan = app(DemoFleet::class)->preview(4, demoDailyCents: 5000, availablePhotos: true);
+        foreach ([['--demo-daily' => '60', '--available-photos' => true], ['--demo-daily' => '50']] as $options) {
+            $this->artisan('amd-rent:demo-fleet', $options + ['renter' => 4, '--apply' => true, '--confirm' => $plan['fingerprint']])->assertFailed();
+        }
+        $this->assertSame($before, $this->snapshot());
+    }
+
+    public function test_product_and_legacy_segment_are_both_linked_to_searchable_demo_categories(): void
+    {
+        $this->sourceFleet();
+        $product = DB::table('vehicle_products')->insertGetId(['name' => 'Categoria di prova', 'name_key' => 'categoria di prova']);
+        DB::table('vehicles')->where('id', 1)->update(['vehicle_product_id' => $product, 'segment' => null]);
+        $result = $this->prepare();
+        $search = app(PublicVehicleSearch::class);
+        foreach ([1 => 'Categoria di prova', 2 => 'SUV'] as $source => $category) {
+            $copy = Vehicle::findOrFail($result['vehicles'][$source]);
+            $this->assertSame('DEMO 4 - '.$category, $copy->product->name);
+            $this->assertNotSame($product, $copy->vehicle_product_id);
+            $results = $search->search(VehiclePricelist::forPublicRental()->where('renter_org_id', 4),
+                $this->period(['segment' => $copy->product->name]));
+            $this->assertSame([$copy->id], $results->pluck('vehicle_id')->all());
+        }
+        $this->assertSame($product, Vehicle::findOrFail(1)->vehicle_product_id);
     }
 }

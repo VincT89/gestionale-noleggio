@@ -39,8 +39,14 @@ class DemoFleet
     }
 
     /** This method only reads: even missing photos or ambiguous prices leave the database untouched. */
-    public function preview(int $renterId, array $priceChoices = [], bool $withoutPhotos = false): array
+    public function preview(int $renterId, array $priceChoices = [], bool $withoutPhotos = false, ?int $demoDailyCents = null, bool $availablePhotos = false): array
     {
+        if ($demoDailyCents !== null && ($demoDailyCents < 1 || $demoDailyCents > 99999999)) {
+            throw new RuntimeException('La tariffa demo deve essere un importo positivo valido in centesimi.');
+        }
+        if ($withoutPhotos && $availablePhotos) {
+            throw new RuntimeException('Scegliere --available-photos oppure --without-photos, non entrambi.');
+        }
         $renter = Organization::query()->select('id', 'name', 'type', 'is_active', 'deleted_at')->find($renterId);
         if (!$renter || $renter->type !== 'renter' || !$renter->is_active || !preg_match('/^DEMO\b/iu', $renter->name)) {
             throw new RuntimeException('Serve un noleggiatore attivo il cui nome inizi con DEMO, creato dalla schermata Nuovo renter.');
@@ -60,10 +66,11 @@ class DemoFleet
         }
 
         $plan = [
-            'already_created' => false, 'version' => 1,
+            'already_created' => false, 'version' => 2,
             'renter' => $renter->only(['id', 'name', 'type', 'is_active']),
             'database' => ['driver' => DB::connection()->getDriverName(), 'host' => DB::connection()->getConfig('host'), 'name' => DB::connection()->getDatabaseName()],
-            'without_photos' => $withoutPhotos, 'price_choices' => $priceChoices,
+            'without_photos' => $withoutPhotos, 'available_photos' => $availablePhotos,
+            'demo_daily_cents' => $demoDailyCents, 'price_choices' => $priceChoices,
             'vehicles' => [], 'locations' => [], 'deliveries' => [], 'products' => [], 'errors' => [], 'warnings' => [],
         ];
         $organizations = Organization::query()->where('is_active', true)->whereKeyNot($renterId)
@@ -116,22 +123,39 @@ class DemoFleet
             } else {
                 $plan['warnings'][] = "Auto {$source->id}: categoria assente, la copia non avrà un segmento selezionabile.";
             }
-            $price = $this->choosePrice($source, $priceChoices, $organizations->keys()->all(), $plan['errors']);
+            $price = $this->choosePrice($source, $priceChoices, $organizations->keys()->all(), $plan['errors'], $demoDailyCents !== null);
             if ($price) {
-                $row['price'] = ['source_id' => $price->id, 'source_renter' => $price->renter_org_id,
+                $row['price'] = ['is_demo' => false, 'source_id' => $price->id, 'source_renter' => $price->renter_org_id,
                     'source_status' => $price->status, 'attributes' => $price->only(self::PRICE_FIELDS),
                     'seasons' => $price->seasons->sortBy('id')->map(fn ($s) => $s->only(self::SEASON_FIELDS))->values()->all(),
                     'tiers' => $price->tiers->sortBy('id')->map(fn ($t) => $t->only(self::TIER_FIELDS))->values()->all()];
                 if ($price->status !== 'active' || !$price->active_flag) {
                     $plan['warnings'][] = "Auto {$source->id}: il listino {$price->id} scelto esplicitamente verrà attivato soltanto sulla copia.";
                 }
+            } elseif ($demoDailyCents !== null && !isset($priceChoices[$source->id])) {
+                /** A fallback is a new explicitly demonstrative rate, never a modification of an original pricelist. */
+                $row['price'] = ['is_demo' => true, 'source_id' => null, 'source_renter' => null, 'source_status' => 'demo',
+                    'attributes' => ['currency' => 'EUR', 'base_daily_cents' => $demoDailyCents,
+                        'weekend_pct' => 0, 'km_included_per_day' => null, 'extra_km_cents' => null,
+                        'deposit_cents' => null, 'rounding' => 'none', 'second_driver_daily_cents' => null],
+                    'seasons' => [], 'tiers' => []];
+                $plan['warnings'][] = "Auto {$source->id}: listino assente o ambiguo; sulla sola copia sarà creata la tariffa DEMO di "
+                    .number_format($demoDailyCents / 100, 2, ',', '.').' EUR/giorno. Nessuna maggiorazione o sconto; cauzione, km ed extra non configurati.';
             }
             if ($source->default_pickup_location_id && !isset($plan['locations'][$source->default_pickup_location_id])) {
                 $plan['warnings'][] = "Auto {$source->id}: sede predefinita non copiabile, la copia avrà sede predefinita vuota.";
                 $row['attributes']['default_pickup_location_id'] = null;
             }
             if (!$withoutPhotos) {
-                $row['photos'] = $this->planPhotos($source, $plan['errors']);
+                $photoIssues = [];
+                $row['photos'] = $this->planPhotos($source, $photoIssues);
+                foreach ($photoIssues as $issue) {
+                    if ($availablePhotos) {
+                        $plan['warnings'][] = $issue.' Foto esclusa dalla copia (--available-photos).';
+                    } else {
+                        $plan['errors'][] = $issue.' Ripristinare il file oppure scegliere --available-photos o --without-photos.';
+                    }
+                }
             }
             if (!$row['photos']) {
                 $plan['warnings'][] = "Auto {$source->id}: nessuna foto reale copiata; il portale userà l'immagine di riferimento, se disponibile.";
@@ -155,7 +179,7 @@ class DemoFleet
         }
     }
 
-    private function choosePrice(Vehicle $vehicle, array $choices, array $organizations, array &$errors): ?VehiclePricelist
+    private function choosePrice(Vehicle $vehicle, array $choices, array $organizations, array &$errors, bool $allowDemo = false): ?VehiclePricelist
     {
         $usable = $vehicle->pricelists->filter(fn ($p) => $p->currency === 'EUR' && $p->base_daily_cents !== null
             && $p->base_daily_cents >= 0 && in_array((int) $p->renter_org_id, $organizations, true));
@@ -169,6 +193,9 @@ class DemoFleet
         $active = $usable->filter(fn ($p) => $p->status === 'active' && $p->active_flag);
         if ($active->count() === 1) {
             return $active->first();
+        }
+        if ($allowDemo) {
+            return null;
         }
         $candidates = $usable->map(fn ($p) => "{$p->id} (org {$p->renter_org_id}, {$p->status}, ".number_format($p->base_daily_cents / 100, 2, '.', '').' EUR/giorno)')->implode('; ');
         $errors[] = "Auto {$vehicle->id} ({$vehicle->make} {$vehicle->model}): ".($active->isEmpty() ? 'nessun listino attivo univoco' : 'più listini attivi')
@@ -245,7 +272,7 @@ class DemoFleet
                     'file_name' => $media->file_name, 'mime_type' => $disk->mimeType($path), 'disk' => $media->disk,
                     'size' => $disk->size($path), 'order_column' => $media->order_column];
             } catch (Throwable) {
-                $errors[] = "Auto {$vehicle->id}, foto {$media->id}: file assente o non copiabile in questa installazione. Ripristinare i file oppure scegliere esplicitamente --without-photos.";
+                $errors[] = "Auto {$vehicle->id}, foto {$media->id}: file assente o non copiabile in questa installazione.";
             }
         }
 
@@ -276,16 +303,16 @@ class DemoFleet
     }
 
     /** Lock only the demo organization. A changed preview or any failed insert rolls back the whole batch. */
-    public function apply(int $renter, array $choices, bool $withoutPhotos, string $fingerprint): array
+    public function apply(int $renter, array $choices, bool $withoutPhotos, string $fingerprint, ?int $demoDailyCents = null, bool $availablePhotos = false): array
     {
         $writtenFiles = [];
         try {
-            return DB::transaction(function () use ($renter, $choices, $withoutPhotos, $fingerprint, &$writtenFiles) {
+            return DB::transaction(function () use ($renter, $choices, $withoutPhotos, $fingerprint, $demoDailyCents, $availablePhotos, &$writtenFiles) {
                 $locked = DB::table('organizations')->where('id', $renter)->lockForUpdate()->first(['id']);
                 if (!$locked) {
                     throw new RuntimeException('Noleggiatore non trovato.');
                 }
-                $plan = $this->preview($renter, $choices, $withoutPhotos);
+                $plan = $this->preview($renter, $choices, $withoutPhotos, $demoDailyCents, $availablePhotos);
                 if ($plan['already_created']) {
                     throw new RuntimeException('Copie demo già presenti: nessuna nuova copia creata.');
                 }
@@ -330,9 +357,10 @@ class DemoFleet
                     $this->insert('vehicle_states', ['vehicle_id' => $vehicle, 'state' => 'assigned',
                         'started_at' => $now, 'ended_at' => null], $now);
                     $price = $this->insert('vehicle_pricelists', $row['price']['attributes'] + [
-                        'vehicle_id' => $vehicle, 'renter_org_id' => $renter, 'name' => 'DEMO - Listino '.$row['price']['source_id'],
+                        'vehicle_id' => $vehicle, 'renter_org_id' => $renter,
+                        'name' => $row['price']['is_demo'] ? 'DEMO - Tariffa dimostrativa' : 'DEMO - Listino '.$row['price']['source_id'],
                         'version' => 1, 'status' => 'active', 'active_flag' => true, 'is_active' => true, 'published_at' => $now,
-                        'notes' => self::marker($renter, 'price', $row['price']['source_id']),
+                        'notes' => self::marker($renter, 'price', $row['price']['source_id'] ?? 'demo-vehicle-'.$row['source_id']),
                     ], $now);
                     foreach (['seasons' => 'vehicle_pricelist_seasons', 'tiers' => 'vehicle_pricelist_tiers'] as $kind => $table) {
                         foreach ($row['price'][$kind] as $child) {

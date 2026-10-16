@@ -13,7 +13,9 @@ class PrepareAmdRentDemo extends Command
     protected $signature = 'amd-rent:demo-fleet
         {renter* : ID o nome completo univoco del nuovo noleggiatore DEMO}
         {--price=* : Scelta esplicita AUTO:LISTINO, ripetibile quando ci sono prezzi ambigui}
+        {--demo-daily= : Euro/giorno dimostrativi solo per auto senza un listino attivo univoco}
         {--without-photos : Copia senza fotografie reali; restano le immagini di riferimento disponibili}
+        {--available-photos : Copia solo le foto disponibili, segnalando quelle mancanti o non copiabili}
         {--apply : Crea le copie dopo aver controllato l\'anteprima}
         {--confirm= : Impronta completa mostrata dall\'anteprima da applicare}';
 
@@ -48,7 +50,16 @@ class PrepareAmdRentDemo extends Command
             }
             ksort($choices);
             $withoutPhotos = (bool) $this->option('without-photos');
-            $plan = $fleet->preview((int) $id, $choices, $withoutPhotos);
+            $availablePhotos = (bool) $this->option('available-photos');
+            $demoDailyCents = null;
+            if ($this->option('demo-daily') !== null) {
+                $amount = (string) $this->option('demo-daily');
+                if (!preg_match('/^([0-9]{1,6})(?:[.,]([0-9]{1,2}))?$/', $amount, $match)) {
+                    throw new RuntimeException('Indicare --demo-daily in euro, per esempio --demo-daily=50 oppure --demo-daily=50.50.');
+                }
+                $demoDailyCents = (int) $match[1] * 100 + (int) str_pad($match[2] ?? '', 2, '0');
+            }
+            $plan = $fleet->preview((int) $id, $choices, $withoutPhotos, $demoDailyCents, $availablePhotos);
             if ($plan['already_created']) {
                 $this->warn('Copie demo già presenti: '.$plan['existing_vehicles'].'. Nessun dato aggiornato e nessun doppione creato.');
                 $this->line('Questo comando crea una sola istantanea; non sincronizza o ripristina una demo già modificata.');
@@ -62,11 +73,13 @@ class PrepareAmdRentDemo extends Command
                 ['Sedi da copiare', count($plan['locations'])],
                 ['Luoghi serviti demo', count($plan['deliveries'])],
                 ['Categorie demo', count($plan['products'])],
+                ['Listini con tariffa dimostrativa', count(array_filter($plan['vehicles'], fn ($v) => $v['price']['is_demo'] ?? false))],
                 ['Fotografie originali da copiare', array_sum(array_map(fn ($v) => count($v['photos']), $plan['vehicles']))],
             ]);
-            $this->table(['Auto origine', 'Targa demo', 'Marca/modello', 'Listino origine', 'EUR/giorno', 'Stagioni', 'Fasce'],
+            $this->table(['Auto origine', 'Targa demo', 'Marca/modello', 'Tipo/categoria', 'Listino origine', 'EUR/giorno', 'Stagioni', 'Fasce'],
                 array_map(fn ($v) => [$v['source_id'], $v['plate'], $v['attributes']['make'].' '.$v['attributes']['model'],
-                    $v['price']['source_id'] ?? 'DA SCEGLIERE',
+                    $plan['products'][$v['product_key']]['name'] ?? 'NON CONFIGURATA',
+                    ($v['price']['is_demo'] ?? false) ? 'TARIFFA DEMO' : ($v['price']['source_id'] ?? 'DA SCEGLIERE'),
                     $v['price'] ? number_format($v['price']['attributes']['base_daily_cents'] / 100, 2, ',', '.') : '-',
                     count($v['price']['seasons'] ?? []), count($v['price']['tiers'] ?? [])], $plan['vehicles']));
             $this->table(['Luogo demo', 'Città', 'Consegna a domicilio'], array_map(fn ($d) => [
@@ -91,7 +104,7 @@ class PrepareAmdRentDemo extends Command
                 $this->line('Dopo il backup e la verifica, ripetere gli stessi argomenti aggiungendo --apply --confirm='.$plan['fingerprint']);
                 return self::SUCCESS;
             }
-            $result = $fleet->apply((int) $id, $choices, $withoutPhotos, (string) $this->option('confirm'));
+            $result = $fleet->apply((int) $id, $choices, $withoutPhotos, (string) $this->option('confirm'), $demoDailyCents, $availablePhotos);
             $this->info('Demo creata: '.count($result['vehicles']).' auto, '.$result['pricelists'].' listini, '
                 .count($result['locations']).' sedi, '.$result['deliveries'].' luoghi serviti e '.$result['photos'].' foto.');
             $this->line('Assegnazioni aperte da questo momento, solo sulle copie. Nessun cliente, noleggio, pagamento o documento copiato.');
