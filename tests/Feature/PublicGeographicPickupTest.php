@@ -236,7 +236,7 @@ class PublicGeographicPickupTest extends PublicBookingTestCase
     public function test_management_requires_an_owned_origin_and_explicit_radius(): void
     {
         $service = $this->service(2, 41.13, null);
-        $this->actingAs($this->publisher(2, 'renter'));
+        $this->actingAs($this->publisher());
         $form = ['is_active' => 1, 'custom_delivery_enabled' => 1, 'custom_delivery_fee' => 0, 'delivery_area' => 'Zona dimostrativa',
             'delivery_origin_location_id' => 2, 'delivery_radius_km' => 12.5];
         $this->put(route('public-deliveries.update', $service), array_replace($form, ['delivery_origin_location_id' => 1]))->assertNotFound();
@@ -295,7 +295,7 @@ class PublicGeographicPickupTest extends PublicBookingTestCase
     {
         $service = $this->service(2, 41.13, null);
         Location::findOrFail(2)->update(['lat' => null, 'lng' => null]);
-        $this->actingAs($this->publisher(2, 'renter'));
+        $this->actingAs($this->publisher());
         Http::fake(['*' => Http::response([$this->responsePlace('Sede dimostrativa, Bari, Italia', 41.125)])]);
         $form = ['is_active' => 1, 'custom_delivery_enabled' => 1, 'custom_delivery_fee' => 0, 'delivery_area' => 'Zona dimostrativa',
             'delivery_origin_location_id' => 2, 'delivery_radius_km' => 12.5];

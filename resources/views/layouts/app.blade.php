@@ -19,6 +19,7 @@
         @livewireStyles
     </head>
     <body
+        data-era-interface="modern"
         x-data="{ isOpen: false, openSection: null }"
         @keydown.escape.window="if (isOpen) { isOpen = false; $refs.sidebarToggle.focus() }"
         class="font-sans antialiased flex h-dvh overflow-hidden text-gray-900 dark:text-gray-100"

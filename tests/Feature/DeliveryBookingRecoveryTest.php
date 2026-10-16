@@ -73,11 +73,11 @@ class DeliveryBookingRecoveryTest extends PublicBookingTestCase
         ]);
         PublicDeliveryLocation::first()->update(['custom_delivery_enabled' => true, 'delivery_area' => 'Zona dimostrativa']);
         $page = $this->get(route('public-cars.booking.create', ['pricelist' => 1] + $this->period()))->assertOk();
-        $this->post(route('public-cars.booking.store', 1), $this->contact() + $this->period() + [
-            'checkout_token' => $page->viewData('checkoutToken'), 'request_delivery' => 1,
-            'delivery_address' => 'Hotel dimostrativo, via di prova 10, Bari',
-        ])->assertStatus(303);
-        $case = AmdRentEnquiry::firstOrFail();
+        // Recovery also supports historical proposals without a geographic point.
+        $case = AmdRentEnquiry::create(['reference' => 'CON-LEGACY', 'type' => 'delivery', 'organization_id' => 2,
+            'customer_name' => 'Cliente Dimostrativo', 'email' => $this->contact()['email'], 'phone' => $this->contact()['phone'],
+            'delivery_address' => 'Hotel dimostrativo, via di prova 10, Bari', 'vehicle_request' => $page->viewData('car')['title'],
+            'booking_context' => ['pricelist' => 1, 'period' => $this->period(['place_id' => $page->viewData('car')['place_id']]), 'contact' => $this->contact(), 'car' => $page->viewData('car')]]);
         $case->update(['status' => 'quoted', 'delivery_fee_cents' => 3000, 'quote_expires_at' => now()->addDay(), 'revision' => 2]);
         DB::table('amd_rent_settings')->insert(['id' => 1, 'delivery_commission_bps' => 0]);
         return $case;
@@ -233,7 +233,7 @@ class DeliveryBookingRecoveryTest extends PublicBookingTestCase
         $old = $this->bookDelivery($case);
         $this->expire($old);
         $case->update(['quote_expires_at' => now()->subMinute()]);
-        $this->actingAs($this->publisher(2, 'renter'));
+        $this->actingAs($this->publisher());
         $this->get(route('amd-rent.enquiries.show', $case))->assertOk()->assertSee('Riapri richiesta');
         $this->post(route('amd-rent.enquiries.reopen', $case), $this->retryData($case))->assertRedirect()->assertSessionHasNoErrors();
         $this->assertTrue($case->fresh()->quote_expires_at->isPast());
@@ -318,14 +318,14 @@ class DeliveryBookingRecoveryTest extends PublicBookingTestCase
         $this->assertSame(0, $case->events()->count());
     }
 
-    public function test_staff_reopening_is_scoped_to_the_assigned_organization_and_write_permission(): void
+    public function test_renters_cannot_reopen_own_or_other_organizations_requests(): void
     {
         $case = $this->quotedDelivery();
         $booking = $this->bookDelivery($case);
         $this->expire($booking);
         $data = $this->retryData($case);
         $this->actingAs($this->publisher(3, 'renter'))
-            ->post(route('amd-rent.enquiries.reopen', $case), $data)->assertNotFound();
+            ->post(route('amd-rent.enquiries.reopen', $case), $data)->assertForbidden();
         $this->flushSession();
         $operator = $this->publisher(2, 'renter');
         DB::table('role_has_permissions')->where('role_id', 2)->where('permission_id', 4)->delete();

@@ -11,6 +11,11 @@
 <section class="amd-detail-info amd-enquiry-summary"><h2>{{ $case->vehicle_request }}</h2><p>Conserva il collegamento a questa pagina per ritrovare la richiesta. Per assistenza, indica il riferimento {{ $case->reference }}.</p>
 @if($errors->any())<div class="amd-errors" role="alert"><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 @if($case->type === 'delivery')<p>Consegna richiesta: <strong>{{ $case->delivery_address }}</strong>.</p>
+<dl class="amd-quote-lines" aria-label="Date del noleggio">
+    @foreach(['pickup_at' => 'Ritiro', 'return_at' => 'Riconsegna'] as $dateField => $dateLabel)
+        @if(!empty($case->booking_context['period'][$dateField]))<div><dt>{{ $dateLabel }}</dt><dd>{{ \Carbon\CarbonImmutable::parse($case->booking_context['period'][$dateField])->format('d/m/Y H:i') }}</dd></div>@endif
+    @endforeach
+</dl>
 @if($customReturn)<p>Riconsegna richiesta: <strong>{{ $case->booking_context['return_address'] }}</strong>.</p>
 @else<p>Riconsegna presso {{ $case->booking_context['car']['location'] }} — {{ $case->booking_context['car']['city'] }}.</p>@endif
 @include('public-cars.partials.selected-map-point', ['point' => $case->booking_context['delivery_destination'] ?? null])

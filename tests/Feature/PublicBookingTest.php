@@ -247,7 +247,7 @@ class PublicBookingTest extends PublicBookingTestCase
         foreach (['customers', 'rentals', 'public_bookings', 'renter_contract_number_ledger'] as $table) $this->assertDatabaseCount($table, 0);
     }
 
-    public function test_renter_only_sees_its_own_incoming_bookings(): void
+    public function test_booking_management_is_reserved_to_admin_and_keeps_all_incoming_bookings(): void
     {
         $this->offer(); $this->submit($this->form()); $own = PublicBooking::first();
         $this->offer(2, 2);
@@ -255,8 +255,9 @@ class PublicBookingTest extends PublicBookingTestCase
         $this->submit(array_replace($this->form(2), ['email' => 'altro@example.test']), 2)->assertStatus(303);
         $incoming = PublicBooking::where('organization_id', 2)->first();
         $this->actingAs($this->publisher(2, 'renter'));
-        $this->get(route('public-bookings.index'))->assertOk()->assertDontSee($own->reference)->assertDontSee($own->email)
-            ->assertSee($incoming->reference)->assertSee('altro@example.test');
+        $this->get(route('public-bookings.index'))->assertForbidden()->assertDontSee($own->reference)->assertDontSee($incoming->reference);
+        $this->flushSession(); $this->actingAs($this->publisher());
+        $this->get(route('public-bookings.index'))->assertOk()->assertSee($own->reference)->assertSee($incoming->reference);
     }
 
     public function test_admin_can_open_incoming_bookings_in_the_rental_workflow(): void

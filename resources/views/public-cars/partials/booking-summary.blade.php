@@ -8,7 +8,7 @@
 @else
 <div data-summary-standard-pickup @if($requestDelivery ?? false) hidden @endif><p class="amd-summary-label">Luogo di ritiro</p><p>{{ $car['location'] }} — {{ $car['city'] }}<br>{{ $car['address'] }}</p></div>
 @if(!isset($booking) && ($car['custom_delivery_enabled'] ?? false))
-<div data-summary-custom-pickup @unless($requestDelivery ?? false) hidden @endunless><p class="amd-summary-label">Ritiro richiesto</p><p data-summary-delivery-address>{{ isset($inputValue) ? $inputValue('delivery_address') : '' }}</p><p>Disponibilità e appuntamenti da confermare. Consegna e ritiro inclusi.</p></div>
+<div data-summary-custom-pickup @unless($requestDelivery ?? false) hidden @endunless><p class="amd-summary-label">Ritiro richiesto</p><p>{{ $car['delivery_destination']['label'] ?? '' }}</p><p>Disponibilità e appuntamenti da confermare. Consegna e ritiro inclusi.</p></div>
 @endif
 @endif
 <p class="amd-summary-label">Luogo di riconsegna</p>

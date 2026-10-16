@@ -172,10 +172,10 @@ class PublicDeliveryMatchingTest extends PublicBookingTestCase
         $this->get(route('public-cars.index'))->assertOk()->assertDontSee($place->name);
     }
 
-    public function test_renter_can_select_shared_place_and_cannot_manage_another_renter(): void
+    public function test_admin_manages_shared_places_for_each_renter_without_duplicating_them(): void
     {
         $place = $this->place(); $foreign = $this->cover(3, $place);
-        $this->actingAs($this->publisher(2, 'renter'));
+        $this->actingAs($this->publisher());
         $data = ['organization_id' => 2, 'place_id' => $place->id, 'confirm_delivery' => 1];
         $this->post(route('public-deliveries.store'), $data)->assertRedirect(route('public-deliveries.index'));
         $own = PublicDeliveryLocation::where('organization_id', 2)->sole();
@@ -183,9 +183,9 @@ class PublicDeliveryMatchingTest extends PublicBookingTestCase
         $this->assertSame($place->name, $own->location->name);
         $this->post(route('public-deliveries.store'), $data)->assertRedirect();
         $this->assertSame(1, PublicDeliveryLocation::where('organization_id', 2)->count());
-        $this->get(route('public-deliveries.index'))->assertOk()->assertViewHas('deliveries', fn ($rows) => $rows->modelKeys() === [$own->id]);
-        $this->post(route('public-deliveries.store'), array_replace($data, ['organization_id' => 3]))->assertNotFound();
-        $this->put(route('public-deliveries.update', $foreign), ['is_active' => 0])->assertNotFound();
+        $this->get(route('public-deliveries.index'))->assertOk()->assertViewHas('deliveries', fn ($rows) => $rows->modelKeys() === [$own->id, $foreign->id]);
+        $this->post(route('public-deliveries.store'), array_replace($data, ['organization_id' => 3]))->assertRedirect();
+        $this->assertTrue($foreign->fresh()->is_active);
         $this->put(route('public-deliveries.update', $own), ['is_active' => 0])->assertRedirect();
         $this->assertFalse($own->fresh()->is_active);
         $this->assertTrue($foreign->fresh()->is_active);
@@ -193,7 +193,7 @@ class PublicDeliveryMatchingTest extends PublicBookingTestCase
 
     public function test_new_places_are_normalized_without_changing_existing_shared_names(): void
     {
-        $this->actingAs($this->publisher(2, 'renter'));
+        $this->actingAs($this->publisher());
         $data = ['organization_id' => 2, 'name' => 'Aeroporto Dimostrativo', 'kind' => 'airport', 'city' => 'Bari',
             'address_line' => 'Ingresso dimostrativo', 'country_code' => 'IT', 'confirm_delivery' => 1];
         $this->post(route('public-deliveries.store'), $data)->assertRedirect();
@@ -212,7 +212,7 @@ class PublicDeliveryMatchingTest extends PublicBookingTestCase
     public function test_delivery_requires_explicit_conditions_acceptance(): void
     {
         $place = $this->place();
-        $this->actingAs($this->publisher(3, 'renter'));
+        $this->actingAs($this->publisher());
         $this->post(route('public-deliveries.store'), ['organization_id' => 3, 'place_id' => $place->id])->assertSessionHasErrors('confirm_delivery');
         $this->assertDatabaseCount('public_delivery_locations', 0);
     }

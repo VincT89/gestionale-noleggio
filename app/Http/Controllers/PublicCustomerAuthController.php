@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PublicCustomer;
 use App\Services\AmdRent\PublicCustomerRecords;
+use App\Services\AmdRent\PublicBookingNavigation;
 use Illuminate\Auth\Events\{PasswordReset, Verified};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Auth, DB, Password, RateLimiter};
@@ -12,7 +13,11 @@ use Illuminate\Validation\{Rule, Rules\Password as PasswordRule, ValidationExcep
 
 class PublicCustomerAuthController extends Controller
 {
-    public function loginForm() { return view('public-account.login'); }
+    public function loginForm(Request $request)
+    {
+        app(PublicBookingNavigation::class)->remember($request);
+        return view('public-account.login');
+    }
     public function registerForm() { return view('public-account.register'); }
     public function forgotForm() { return view('public-account.forgot-password'); }
     public function resetForm(Request $request, string $token)
@@ -42,6 +47,10 @@ class PublicCustomerAuthController extends Controller
     {
         if (!$customer->hasVerifiedEmail()) return redirect()->route('public-account.verification.notice');
         app(PublicCustomerRecords::class)->link($customer);
+        if ($booking = app(PublicBookingNavigation::class)->consume($request)) {
+            $request->session()->forget('public_customer_intended');
+            return redirect()->to($booking);
+        }
         $intended = $request->session()->pull('public_customer_intended');
         if (is_string($intended) && preg_match('#^/area-cliente(?:/|\?|$)#', $intended)) {
             return redirect()->to($intended);
@@ -169,7 +178,7 @@ class PublicCustomerAuthController extends Controller
     public function logout(Request $request)
     {
         Auth::guard('public_customer')->logout();
-        $request->session()->forget(['public_customer_password_hash', 'public_customer_intended']);
+        $request->session()->forget(['public_customer_password_hash', 'public_customer_intended', 'public_booking_resume', 'public_booking_resumes']);
         $request->session()->regenerate(true);
         return redirect()->route('public-account.login')->with('status', 'Hai effettuato l’uscita dall’area cliente.');
     }

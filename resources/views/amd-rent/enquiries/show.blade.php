@@ -8,7 +8,15 @@
 <p>Consegna: {{ \Carbon\Carbon::parse($case->booking_context['period']['pickup_at'])->format('d/m/Y H:i') }}. Riconsegna: {{ \Carbon\Carbon::parse($case->booking_context['period']['return_at'])->format('d/m/Y H:i') }} presso {{ $customReturn ? $case->booking_context['return_address'] : $case->booking_context['car']['location'] }}.</p><p>Costo complessivo di consegna e ritiro: <strong>{{ $money($case->delivery_fee_cents) }}</strong>. La richiesta non impegna l’auto: disponibilità e prezzo del noleggio saranno ricontrollati prima del pagamento.</p>@endif
 @if($case->type === 'delivery')
 <p>Segmento: <strong>{{ $case->booking_context['car']['product_name'] ?? 'Non assegnato' }}</strong>.</p>
-<p>Totale mostrato al cliente: <strong>{{ $money($case->booking_context['car']['total_cents']) }}</strong>.
+@php
+    $requestedCar = $case->booking_context['car'];
+    $deliveryTotal = $case->booking?->total_cents ?? ($case->status === 'quoted'
+        ? ($requestedCar['rental_total_cents'] ?? $requestedCar['total_cents']) + $case->delivery_fee_cents
+        : $requestedCar['total_cents']);
+    $deliveryTotalLabel = $case->booking ? 'Totale prenotato dal cliente'
+        : ($case->status === 'quoted' ? 'Totale della proposta al cliente' : 'Totale richiesto dal cliente');
+@endphp
+<p>{{ $deliveryTotalLabel }}: <strong>{{ $money($deliveryTotal) }}</strong>.
 @if(isset($case->booking_context['car']['commission_bps'])) Commissione AMD Rent sul totale, cauzione esclusa: <strong>{{ \App\Services\AmdRent\Commission::label($case->booking_context['car']['commission_bps']) }}</strong>.
 @else Questa richiesta mantiene il precedente calcolo delle commissioni. @endif</p>
 @endif

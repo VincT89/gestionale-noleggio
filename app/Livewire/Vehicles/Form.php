@@ -31,6 +31,7 @@ class Form extends Component
         'transmission'               => 'manual',
         'seats'                      => null,
         'vehicle_product_id'         => null,
+        'segment'                    => null,
         'cargos_vehicle_type_code' => null,
         'mileage_current'            => 0,
         'default_pickup_location_id' => null, // impostati solo backend
@@ -93,6 +94,7 @@ class Form extends Component
                 'transmission'               => $this->safeEnum($this->vehicle->transmission, array_keys($this->transmissionOptions), 'manual'),
                 'seats'                      => $this->vehicle->seats,
                 'vehicle_product_id'         => $this->vehicle->vehicle_product_id,
+                'segment'                    => $this->vehicle->segment,
                 'cargos_vehicle_type_code' => $this->vehicle->cargos_vehicle_type_code,
                 'mileage_current'            => (int) ($this->vehicle->mileage_current ?? 0),
                 'default_pickup_location_id' => $this->vehicle->default_pickup_location_id,
@@ -141,6 +143,9 @@ class Form extends Component
             'form.transmission'    => ['required','in:manual,automatic'],
             'form.seats'           => ['nullable','integer','min:1','max:99'],
             'form.vehicle_product_id' => [Rule::excludeIf(!auth()->user()->hasRole('admin')), 'nullable', 'integer', Rule::exists('vehicle_products', 'id')],
+            // Retain the historical descriptive field for the classic interface.
+            // It does not assign or modify the public vehicle type, reserved to admin.
+            'form.segment' => [Rule::excludeIf(auth()->user()->hasRole('admin')), 'nullable', 'string', 'max:32'],
             'form.cargos_vehicle_type_code' => [
                 'required',
                 'string',

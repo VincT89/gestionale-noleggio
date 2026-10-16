@@ -57,7 +57,7 @@ class FleetProductsTest extends PublicCarsTestCase
         $this->put(route('fleet-products.update', $product), ['name' => 'Iniettato'])->assertForbidden();
         $this->post(route('fleet-products.attach', $product), ['vehicle_ids' => [1]])->assertForbidden();
         $this->delete(route('fleet-products.detach', [$product, 1]))->assertForbidden();
-        $this->get(route('public-deliveries.index'))->assertOk()->assertDontSee('Segmenti della flotta');
+        $this->get(route('public-deliveries.index'))->assertForbidden()->assertDontSee('Segmenti della flotta');
         $this->assertDatabaseCount('vehicle_products', 1);
         $this->assertNull(Vehicle::findOrFail(1)->vehicle_product_id);
     }
@@ -160,9 +160,12 @@ class FleetProductsTest extends PublicCarsTestCase
             ->call('save')->assertHasNoErrors();
         $vehicle = Vehicle::sole();
         $this->assertSame($citycar->id, (int) $vehicle->vehicle_product_id);
+        $vehicle->update(['segment' => 'Descrizione storica']);
         Livewire::test(Form::class, ['vehicle' => $vehicle])->set('form.vehicle_product_id', $suv->id)
+            ->set('form.segment', null)
             ->call('save')->assertHasNoErrors();
         $this->assertSame($suv->id, (int) $vehicle->fresh()->vehicle_product_id);
+        $this->assertSame('Descrizione storica', $vehicle->fresh()->segment);
         Livewire::test(Form::class, ['vehicle' => $vehicle->fresh()])->set('form.vehicle_product_id', 999999)
             ->call('save')->assertHasErrors('form.vehicle_product_id');
         $this->assertSame($suv->id, (int) $vehicle->fresh()->vehicle_product_id);
@@ -179,8 +182,10 @@ class FleetProductsTest extends PublicCarsTestCase
         $this->actingAs($operator);
         Livewire::test(Form::class, ['vehicle' => Vehicle::findOrFail(1)])
             ->assertDontSee('Gestisci i segmenti')->set('form.vehicle_product_id', $other->id)
+            ->set('form.segment', 'Descrizione aggiornata')
             ->set('form.color', 'Blu')->call('save')->assertHasNoErrors();
         $this->assertSame($segment->id, (int) Vehicle::findOrFail(1)->vehicle_product_id);
+        $this->assertSame('Descrizione aggiornata', Vehicle::findOrFail(1)->segment);
         $this->assertSame('Blu', Vehicle::findOrFail(1)->color);
     }
 

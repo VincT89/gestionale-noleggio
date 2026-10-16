@@ -35,7 +35,7 @@
             <form method="post" action="{{ route($routePrefix.($isReturnMap ? '.return-map.store' : '.map.store')) }}" data-map-confirm>
                 @csrf
                 @unless($isReturnMap)
-                @foreach(\Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at', 'place_id', 'city', 'request_delivery', 'request_custom_return', 'return_address', 'return_place', 'segment', 'exclude']) as $key => $fieldValue)
+                @foreach(\Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at', 'place_id', 'city', 'request_delivery', 'request_custom_return', 'return_address', 'return_place', 'segment', 'exclude', 'sort', 'budget', 'transmission', 'fuel_type', 'seats', 'q']) as $key => $fieldValue)
                     @if($fieldValue !== null)<input type="hidden" name="{{ $key }}" value="{{ $fieldValue }}">@endif
                 @endforeach
                 @endunless

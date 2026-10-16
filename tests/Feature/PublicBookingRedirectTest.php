@@ -89,12 +89,19 @@ class PublicBookingRedirectTest extends PublicBookingTestCase
     {
         PublicDeliveryLocation::first()->update(['custom_delivery_enabled' => true, 'delivery_area' => 'Zona dimostrativa']);
         $data = $this->form() + ['request_delivery' => 1, 'delivery_address' => 'Hotel dimostrativo, via di prova 10, Bari'];
-        $this->post(route('public-cars.booking.store', 1), $data)->assertStatus(303);
-        $case = AmdRentEnquiry::firstOrFail();
+        // A proposal saved before geographic pickup was introduced must remain usable.
+        $car = $this->get($this->formUrl())->assertOk()->viewData('car');
+        $case = AmdRentEnquiry::create(['reference' => 'CON-LEGACY', 'type' => 'delivery', 'organization_id' => 1,
+            'customer_name' => 'Cliente Dimostrativo', 'email' => $data['email'], 'phone' => $data['phone'],
+            'delivery_address' => $data['delivery_address'], 'vehicle_request' => $car['title'],
+            'booking_context' => ['pricelist' => 1, 'period' => $this->period(['place_id' => $car['place_id']]), 'car' => $car,
+                'contact' => array_intersect_key($data, array_flip(['first_name', 'last_name', 'email', 'phone']))]]);
         $case->update(['status' => 'quoted', 'delivery_fee_cents' => 3000, 'quote_expires_at' => now()->addDay()]);
         DB::table('amd_rent_settings')->updateOrInsert(['id' => 1], ['delivery_commission_bps' => 0]);
         $accept = URL::signedRoute('public-enquiries.accept', ['reference' => $case->reference]);
         $page = $this->post($accept, ['accept_quote' => 1])->assertOk();
+        $this->get($page->viewData('loginUrl'))->assertOk();
+        $this->assertSame($case->publicUrl(), app(\App\Services\AmdRent\PublicBookingNavigation::class)->consume(request()));
         $data = array_replace($data, $page->viewData('filters'), ['request_delivery' => 0, 'checkout_token' => $page->viewData('checkoutToken')]);
         $this->get(route('public-cars.photo', 1))->assertOk();
         $this->post(route('public-cars.booking.store', 1), array_replace($data, ['email' => 'invalid']))
@@ -108,5 +115,24 @@ class PublicBookingRedirectTest extends PublicBookingTestCase
         $this->flushSession();
         $this->post(route('public-cars.booking.store', 1), $data)->assertRedirect(route('public-cars.booking.create', ['pricelist' => 1] + $page->viewData('filters')))
             ->assertSessionHasErrors('checkout_token');
+    }
+
+    public function test_city_search_and_sort_survive_details_booking_and_validation(): void
+    {
+        $filters = $this->period(['city' => 'Bari', 'sort' => 'price_desc', 'q' => 'Yaris', 'budget' => '500']);
+        $index = $this->get(route('public-cars.index', $filters))->assertOk();
+        $filters = $index->viewData('filters');
+        $detailUrl = route('public-cars.show', ['pricelist' => 1] + $filters);
+        $formUrl = route('public-cars.booking.create', ['pricelist' => 1] + $filters);
+        $index->assertSee(e($detailUrl), false);
+        $this->get($detailUrl)->assertOk()->assertSee(e(route('public-cars.index', $filters)), false)
+            ->assertSee(e($formUrl), false);
+        $page = $this->get($formUrl)->assertOk()->assertSee(e($detailUrl), false);
+        $this->assertSame('Bari', $page->viewData('browseFilters')['city']);
+        $this->assertArrayNotHasKey('place_id', $page->viewData('browseFilters'));
+        $this->assertNotEmpty($page->viewData('filters')['place_id']);
+        $this->post(route('public-cars.booking.store', 1), $page->viewData('filters') + [
+            'checkout_token' => $page->viewData('checkoutToken'), 'email' => 'invalid',
+        ])->assertRedirect($formUrl)->assertSessionHasErrors('email');
     }
 }

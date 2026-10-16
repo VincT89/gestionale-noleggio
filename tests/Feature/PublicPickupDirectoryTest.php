@@ -71,23 +71,27 @@ class PublicPickupDirectoryTest extends PublicBookingTestCase
         $period = $this->period(['city' => 'Bari']);
         $this->get(route('public-cars.index', $period))->assertOk()
             ->assertViewHas('results', fn ($rows) => $rows->sole()['place_id'] === $servedPlace->id);
-        $bookingUrl = route('public-cars.booking.create', ['pricelist' => 1] + $this->period(['place_id' => $servedPlace->id]));
+        $bookingUrl = route('public-cars.booking.create', ['pricelist' => 1] + $period);
         $this->get(route('public-cars.show', ['pricelist' => 1] + $period))->assertOk()
             ->assertViewHas('car', fn ($car) => $car['place_id'] === $servedPlace->id)->assertSee($bookingUrl);
-        $this->get($bookingUrl)->assertOk()->assertViewHas('car', fn ($car) => $car['place_id'] === $servedPlace->id);
+        $this->get($bookingUrl)->assertOk()->assertViewHas('car', fn ($car) => $car['place_id'] === $servedPlace->id)
+            ->assertViewHas('filters', fn ($filters) => $filters['place_id'] === $servedPlace->id)
+            ->assertViewHas('browseFilters', fn ($filters) => $filters['city'] === 'Bari' && !isset($filters['place_id']));
         $this->assertDatabaseCount('public_bookings', 0);
     }
 
-    public function test_inactive_and_foreign_preview_destinations_are_excluded(): void
+    public function test_preview_is_admin_only_and_excludes_inactive_destinations(): void
     {
         $own = PublicDeliveryLocation::forLocation(Location::findOrFail(2));
         PublicDeliveryLocation::forLocation(Location::findOrFail(3));
         $this->landmark(1, 'Punto disattivato', 'location', 'Città disattivata');
         PublicDeliveryLocation::where('organization_id', 1)->update(['is_active' => false]);
         $this->get(route('public-cars.index'))->assertOk()->assertDontSee('Città disattivata');
-        $this->actingAs($this->publisher(2, 'renter'))->get(route('public-cars.preview.index'))->assertOk()
-            ->assertViewHas('destinations', fn ($items) => $items->pluck('value')->all() === ['city:Bari'])
-            ->assertDontSee('Roma')->assertDontSee($own->place->name);
+        $this->actingAs($this->publisher(2, 'renter'))->get(route('public-cars.preview.index'))->assertForbidden();
+        $this->flushSession(); $this->actingAs($this->publisher());
+        $this->get(route('public-cars.preview.index'))->assertOk()
+            ->assertViewHas('destinations', fn ($items) => $items->pluck('value')->all() === ['city:Bari', 'city:Roma'])
+            ->assertDontSee('Città disattivata')->assertDontSee($own->place->name);
     }
 
     public function test_legacy_exact_point_links_still_work_without_listing_the_office_name_on_home(): void

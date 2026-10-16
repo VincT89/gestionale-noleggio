@@ -1,0 +1,62 @@
+/* Preserve the production appearance; contain narrow layouts and navigation. */
+[data-era-interface="classic"] #main-content,
+[data-era-interface="classic"] main {
+    min-width: 0;
+}
+
+.era-sidebar-backdrop {
+    display: none;
+}
+
+#era-classic-sidebar {
+    height: 100%;
+    max-height: 100vh;
+    overflow-y: auto;
+}
+
+@media (max-width: 767px) {
+    .era-sidebar-shell {
+        position: fixed;
+        inset: 0 auto 0 0;
+        z-index: 40;
+    }
+
+    .era-sidebar-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 30;
+        background: rgb(0 0 0 / 40%);
+    }
+
+    [data-era-interface="classic"] main {
+        padding: 1rem;
+    }
+
+    [data-era-interface="classic"] main > .p-6 {
+        padding: 0;
+    }
+
+    .era-vehicle-counters,
+    .era-vehicle-selection,
+    .era-rental-search {
+        flex-wrap: wrap;
+    }
+
+    .era-vehicle-filters > div {
+        grid-column: span 6;
+        min-width: 0;
+    }
+
+    .era-vehicle-filters > div:first-child {
+        grid-column: 1 / -1;
+    }
+
+    .era-rental-search > div {
+        width: 100%;
+    }
+
+    .era-rental-search input {
+        width: 100%;
+    }
+}

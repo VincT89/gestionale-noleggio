@@ -34,6 +34,9 @@ class PublicEnquiryController extends Controller
     }
     public function delivery(Request $request, array $intent, array $contact, PublicVehicleSearch $search)
     {
+        if (empty($intent['delivery_destination'])) {
+            throw ValidationException::withMessages(['delivery_address' => 'Scegli il ritiro sulla mappa per verificare la zona servita e il prezzo aggiornato.']);
+        }
         $data = $request->validate(['delivery_address' => ['required', 'string', 'min:8', 'max:500'], 'delivery_notes' => ['nullable', 'string', 'max:2000']]);
         $hash = hash('sha256', 'delivery:'.$intent['nonce']);
         if ($known = AmdRentEnquiry::where('request_hash', $hash)->first()) return redirect()->to($known->publicUrl(), 303);
@@ -121,6 +124,7 @@ class PublicEnquiryController extends Controller
         return $this->page('public-cars.booking', ['car' => $car, 'filters' => $context['period'], 'preview' => false, 'routePrefix' => 'public-cars',
             'contact' => $context['contact'],
             'deliveryRequestUrl' => $case->publicUrl(),
+            'loginUrl' => app(\App\Services\AmdRent\PublicBookingNavigation::class)->loginUrl($request, $case->publicUrl()),
             'checkoutToken' => Crypt::encryptString(json_encode($intent, JSON_THROW_ON_ERROR))]);
     }
     private function page(string $view, array $data)

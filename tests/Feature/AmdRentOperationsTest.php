@@ -29,10 +29,10 @@ class AmdRentOperationsTest extends PublicBookingTestCase
             return Http::response($this->stripeSession($booking));
         }]);
     }
-    private function form(int $pricelist = 1): array
+    private function form(int $pricelist = 1, array $filters = []): array
     {
-        $page = $this->get(route('public-cars.booking.create', ['pricelist' => $pricelist] + $this->period()))->assertOk();
-        return $this->period() + ['checkout_token' => $page->viewData('checkoutToken'), 'first_name' => 'Cliente', 'last_name' => 'Dimostrativo',
+        $page = $this->get(route('public-cars.booking.create', ['pricelist' => $pricelist] + $this->period($filters)))->assertOk();
+        return $page->viewData('filters') + ['checkout_token' => $page->viewData('checkoutToken'), 'first_name' => 'Cliente', 'last_name' => 'Dimostrativo',
             'email' => 'cliente@example.test', 'phone' => '+393200000000', 'accept_summary' => 1];
     }
     private function book(): PublicBooking
@@ -152,6 +152,36 @@ class AmdRentOperationsTest extends PublicBookingTestCase
         $this->assertFalse(Gate::forUser($admin)->allows('cancel', $booking->rental));
         $this->assertTrue(Gate::forUser($admin)->allows('view', $booking->rental));
     }
+    public function test_classic_renter_keeps_payment_protection_and_receives_an_accessible_next_step(): void
+    {
+        $this->offer(1, 2);
+        DB::table('vehicle_assignments')->insert(['vehicle_id' => 1, 'renter_org_id' => 2,
+            'status' => 'active', 'start_at' => '2026-09-01 00:00:00']);
+        $this->post(route('public-cars.booking.store', 1), $this->form())->assertStatus(303);
+        $booking = PublicBooking::sole();
+        $admin = $this->publisher();
+        $renter = $this->publisher(2, 'renter');
+        foreach (['rentals.update', 'rentals.cancel'] as $permission) {
+            $renter->givePermissionTo(\Spatie\Permission\Models\Permission::findOrCreate($permission, 'web'));
+        }
+
+        foreach ([$admin, $renter] as $user) {
+            $this->assertFalse(Gate::forUser($user)->allows('update', $booking->rental));
+            $this->assertFalse(Gate::forUser($user)->allows('cancel', $booking->rental));
+            $this->assertTrue(Gate::forUser($user)->allows('view', $booking->rental));
+            $this->flushSession();
+            $this->actingAs($user)->postJson(route('rentals.cancel', $booking->rental))->assertStatus(409)
+                ->assertJsonPath('message', fn ($message) => str_contains($message,
+                    $user->hasRole('admin') ? 'sezione AMD Rent' : 'Contatta l’amministratore'));
+        }
+        $this->assertSame('reserved', $booking->rental->fresh()->status);
+        $this->assertSame('pending', $booking->fresh()->payment_status);
+        $this->assertDatabaseCount('rental_charges', 0);
+
+        $this->webhook('checkout.session.completed', $this->stripeSession($booking, ['payment_status' => 'paid', 'status' => 'complete']))->assertOk();
+        $this->assertTrue(Gate::forUser($renter)->allows('update', $booking->rental->fresh()));
+        $this->assertTrue(Gate::forUser($renter)->allows('cancel', $booking->rental->fresh()));
+    }
     public function test_refund_delivered_before_checkout_completion_is_recovered_and_never_reconfirms(): void
     {
         $booking = $this->book();
@@ -260,30 +290,36 @@ class AmdRentOperationsTest extends PublicBookingTestCase
     {
         $mine = $this->enquiry(2); $other = $this->enquiry(3);
         $this->actingAs($this->publisher(2, 'renter'));
-        $this->get(route('amd-rent.enquiries.index'))->assertOk()->assertSee($mine->reference)->assertDontSee($other->reference);
-        $this->get(route('amd-rent.enquiries.show', $other))->assertNotFound();
-        $this->post(route('amd-rent.enquiries.quote', $other), $this->quoteData())->assertNotFound();
+        $this->get(route('amd-rent.enquiries.index'))->assertForbidden()->assertDontSee($mine->reference)->assertDontSee($other->reference);
+        $this->get(route('amd-rent.enquiries.show', $other))->assertForbidden();
+        $this->post(route('amd-rent.enquiries.quote', $other), $this->quoteData())->assertForbidden();
         $this->get(route('amd-rent.settings'))->assertForbidden();
         $this->put(route('amd-rent.settings.save'), ['delivery_percent' => 0])->assertForbidden();
-        $this->put(route('amd-rent.enquiries.update', $mine), ['revision' => 1, 'status' => 'working', 'organization_id' => 3])->assertSessionHasErrors('organization_id');
+        $this->put(route('amd-rent.enquiries.update', $mine), ['revision' => 1, 'status' => 'working', 'organization_id' => 3])->assertForbidden();
         $this->put(route('amd-rent.enquiries.commissions', $mine), [])->assertForbidden();
     }
-    public function test_renter_cannot_see_platform_commission_and_private_documents_are_scoped(): void
+    public function test_only_admin_can_read_practice_commissions_and_manage_private_documents(): void
     {
         Storage::fake('amd_rent_private');
         $case = $this->enquiry(2, ['platform_commission_cents' => 876543, 'renter_commission_cents' => 12345]);
         $renter = $this->publisher(2, 'renter'); $other = $this->publisher(3, 'renter');
-        $this->actingAs($renter)->get(route('amd-rent.enquiries.show', $case))->assertOk()->assertDontSee('8.765,43')->assertSee('123,45');
-        $this->post(route('amd-rent.enquiries.upload', $case), ['kind' => 'company', 'document' => UploadedFile::fake()->create('pratica-di-prova.pdf', 10, 'application/pdf')])->assertRedirect();
+        $this->actingAs($renter)->get(route('amd-rent.enquiries.show', $case))->assertForbidden()->assertDontSee('8.765,43');
+        $upload = ['kind' => 'company', 'document' => UploadedFile::fake()->create('pratica-di-prova.pdf', 10, 'application/pdf')];
+        $this->post(route('amd-rent.enquiries.upload', $case), $upload)->assertForbidden();
+        $this->assertSame(0, $case->documents()->count());
+        $this->flushSession(); $this->actingAs($this->publisher());
+        $this->post(route('amd-rent.enquiries.upload', $case), $upload)->assertRedirect();
         $file = $case->documents()->firstOrFail();
         $this->get(route('amd-rent.enquiries.download', [$case, $file]))->assertDownload('pratica-di-prova.pdf');
-        $this->flushSession();
-        $this->actingAs($other)->get(route('amd-rent.enquiries.download', [$case, $file]))->assertNotFound();
+        foreach ([$renter, $other] as $user) {
+            $this->flushSession(); $this->actingAs($user);
+            $this->get(route('amd-rent.enquiries.download', [$case, $file]))->assertForbidden();
+        }
     }
     public function test_long_term_cannot_conclude_without_accepted_quote_and_signed_contract(): void
     {
         Storage::fake('amd_rent_private'); $case = $this->enquiry(2);
-        $this->actingAs($this->publisher(2, 'renter'));
+        $this->actingAs($this->publisher());
         $this->put(route('amd-rent.enquiries.update', $case), ['revision' => 1, 'status' => 'signed'])->assertSessionHasErrors();
         $this->post(route('amd-rent.enquiries.quote', $case), $this->quoteData())->assertRedirect();
         $quote = $case->quotes()->firstOrFail();
@@ -308,12 +344,21 @@ class AmdRentOperationsTest extends PublicBookingTestCase
         $this->assertDatabaseCount('amd_rent_enquiries', 1); $this->assertDatabaseCount('rentals', 0);
         $this->get($response->headers->get('Location'))->assertOk();
         $this->get(route('public-enquiries.show', $case->reference))->assertForbidden();
-        $this->actingAs($this->publisher(2, 'renter'))->get(route('amd-rent.enquiries.show', $case))->assertNotFound();
+        $this->actingAs($this->publisher(2, 'renter'))->get(route('amd-rent.enquiries.show', $case))->assertForbidden();
     }
     public function test_delivery_is_quoted_before_payment_and_commission_applies_to_complete_total(): void
     {
-        $this->offer(); PublicDeliveryLocation::first()->update(['custom_delivery_enabled' => true, 'delivery_area' => 'Zona di collaudo']);
-        $form = $this->form() + ['request_delivery' => 1, 'delivery_address' => 'Hotel dimostrativo, via di prova 10, Bari'];
+        $this->offer();
+        \App\Models\Location::findOrFail(1)->update(['lat' => 41.12, 'lng' => 16.86]);
+        $service = PublicDeliveryLocation::first();
+        $service->update(['custom_delivery_enabled' => true, 'delivery_origin_location_id' => 1,
+            'delivery_radius_km' => 10, 'custom_delivery_fee_cents' => 3000]);
+        $this->startSession();
+        $point = app(\App\Services\Geocoding\PlaceSelection::class)->issue([
+            ['label' => 'Hotel dimostrativo, via di prova 10, Bari', 'lat' => 41.12, 'lng' => 16.86],
+        ])[0];
+        $form = $this->form(filters: ['place_id' => $service->public_pickup_place_id, 'request_delivery' => 1,
+            'delivery_address' => $point['label'], 'delivery_place' => $point['token']]);
         $this->post(route('public-cars.booking.store', 1), $form)->assertStatus(303);
         $this->assertDatabaseCount('rentals', 0); $this->assertDatabaseCount('public_bookings', 0);
         $case = AmdRentEnquiry::firstOrFail();
@@ -328,6 +373,8 @@ class AmdRentOperationsTest extends PublicBookingTestCase
         $booking = PublicBooking::firstOrFail();
         $this->assertSame(33000, $booking->total_cents); $this->assertSame(6600, $booking->online_due_cents);
         $this->assertSame($booking->id, (int) $case->fresh()->public_booking_id);
+        $this->get(route('amd-rent.enquiries.show', $case))->assertOk()
+            ->assertSee('Totale prenotato dal cliente')->assertSee('330,00 €');
         $this->webhook('checkout.session.completed', $this->stripeSession($booking, ['payment_status' => 'paid', 'status' => 'complete']))->assertOk();
         $fee = app(\App\Domain\Fees\AdminFeeResolver::class)->calculateForRental($booking->fresh()->rental);
         $this->assertEquals(20, $fee['percent']);
@@ -361,9 +408,9 @@ class AmdRentOperationsTest extends PublicBookingTestCase
         $this->assertSame('paid', $case->fresh()->commission_status);
         $this->put(route('amd-rent.enquiries.commissions', $case), ['revision' => 1, 'platform_commission' => 0, 'commission_status' => 'expected'])->assertStatus(409);
     }
-    public function test_dashboard_and_configuration_are_accessible_only_to_operational_roles(): void
+    public function test_dashboard_and_configuration_are_accessible_only_to_admin(): void
     {
-        $this->actingAs($this->publisher(2, 'renter'))->get(route('amd-rent.index'))->assertOk();
+        $this->actingAs($this->publisher(2, 'renter'))->get(route('amd-rent.index'))->assertForbidden();
         $this->flushSession();
         $this->actingAs($this->publisher(3, 'viewer'))->get(route('amd-rent.index'))->assertForbidden();
         $this->flushSession();

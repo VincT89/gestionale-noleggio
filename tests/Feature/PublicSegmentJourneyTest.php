@@ -10,6 +10,92 @@ use Tests\Support\PublicBookingTestCase;
 
 class PublicSegmentJourneyTest extends PublicBookingTestCase
 {
+    public function test_standard_checkout_cannot_add_unquoted_delivery_even_with_a_valid_map_token(): void
+    {
+        $this->car(1, 1, 3000, 2000);
+        $data = $this->form($this->period());
+        foreach ([[], ['delivery_place' => $this->trip()['delivery_place']]] as $selection) {
+            $this->postJson(route('public-cars.booking.store', 1), $data + $selection + [
+                'request_delivery' => 1, 'delivery_address' => 'Hotel dimostrativo, indirizzo di prova',
+            ])->assertUnprocessable()->assertJsonValidationErrors('delivery_address');
+        }
+        $this->assertDatabaseCount('amd_rent_enquiries', 0);
+        $this->assertDatabaseCount('public_bookings', 0);
+        Http::assertNothingSent();
+    }
+
+    public function test_map_from_standard_booking_rechecks_coverage_fee_and_keeps_dates_and_type(): void
+    {
+        $this->car(1, 1, 3000, 2000);
+        $filters = $this->period(['city' => 'Bari', 'segment' => 'Citycar', 'sort' => 'price_asc', 'budget' => '200']);
+        $page = $this->get(route('public-cars.booking.create', ['pricelist' => 1] + $filters))->assertOk()
+            ->assertSee('Scegli il ritiro sulla mappa')->assertDontSee('data-delivery-choice', false);
+        $dom = new \DOMDocument();
+        @$dom->loadHTML('<?xml encoding="utf-8" ?>'.$page->getContent());
+        $xpath = new \DOMXPath($dom);
+        $mapData = [];
+        foreach ($xpath->query('//form[@data-map-confirm]//input[@type="hidden"]') as $input) {
+            $mapData[$input->getAttribute('name')] = $input->getAttribute('value');
+        }
+        $this->assertSame('Citycar', $mapData['segment']);
+        $this->assertArrayNotHasKey('city', $mapData);
+        $this->assertArrayNotHasKey('place_id', $mapData);
+        $response = $this->post(route('public-cars.map.store'), array_replace($mapData, [
+            'map_lat' => 41.12, 'map_lng' => 16.86, 'map_zoom' => 17, 'map_confirmed' => 1,
+            'delivery_address' => 'Hotel dimostrativo, indirizzo di prova',
+        ]))->assertStatus(303)->assertSessionHasNoErrors();
+        $result = $this->get($response->headers->get('Location'))->assertOk();
+        $this->assertSame(11000, $result->viewData('results')->sole()['total_cents']);
+        $this->assertSame($filters['pickup_at'], $result->viewData('filters')['pickup_at']);
+        $this->assertSame($filters['return_at'], $result->viewData('filters')['return_at']);
+        $this->assertSame('Citycar', $result->viewData('filters')['segment']);
+        $this->assertSame('price_asc', $result->viewData('filters')['sort']);
+        $response = $this->post(route('public-cars.map.store'), array_replace($mapData, [
+            'map_lat' => 42, 'map_lng' => 16.86, 'map_zoom' => 17, 'map_confirmed' => 1,
+            'delivery_address' => 'Indirizzo dimostrativo fuori zona',
+        ]))->assertStatus(303);
+        $this->get($response->headers->get('Location'))->assertOk()->assertViewHas('results', fn ($cars) => $cars->isEmpty());
+        $this->assertDatabaseCount('amd_rent_enquiries', 0);
+    }
+
+    public function test_delivery_summary_shows_pickup_and_return_dates_before_and_after_quote(): void
+    {
+        $this->car(1, 1, 3000, 2000);
+        $form = $this->form($this->trip(true));
+        $this->post(route('public-cars.booking.store', 1), $form)->assertStatus(303);
+        $case = AmdRentEnquiry::sole();
+        $this->get($case->publicUrl())->assertOk()->assertSee('10/09/2026 10:00')->assertSee('13/09/2026 10:00');
+        $case->update(['status' => 'quoted', 'quote_expires_at' => now()->addDay()]);
+        $this->get($case->publicUrl())->assertOk()->assertSee('10/09/2026 10:00')->assertSee('13/09/2026 10:00')
+            ->assertSee('Ho verificato auto, luoghi, date e importo');
+    }
+
+    public function test_admin_and_customer_summaries_show_updated_delivery_total_and_preserve_original_request(): void
+    {
+        $this->car(1, 1, 3000, 2000);
+        $this->post(route('public-cars.booking.store', 1), $this->form($this->trip(true)))->assertStatus(303);
+        $case = AmdRentEnquiry::sole();
+        $this->assertSame(11000, $case->booking_context['car']['total_cents']);
+        $this->actingAs($this->publisher());
+        $this->get(route('amd-rent.enquiries.show', $case))->assertOk()
+            ->assertSee('Totale richiesto dal cliente')->assertSee('110,00 €');
+
+        foreach ([35 => '125,00 €', 0 => '90,00 €'] as $fee => $total) {
+            $this->put(route('amd-rent.enquiries.update', $case), [
+                'revision' => $case->fresh()->revision, 'status' => 'quoted',
+                'delivery_fee' => $fee, 'quote_valid_until' => now()->addDay()->toDateString(),
+                'confirm_custom_return' => 1,
+            ])->assertRedirect()->assertSessionHasNoErrors();
+
+            $this->get(route('amd-rent.enquiries.show', $case))->assertOk()
+                ->assertSee('Totale della proposta al cliente')->assertSee($total)->assertDontSee('110,00 €');
+            $this->get($case->publicUrl())->assertOk()->assertSee('La tua proposta: '.$total);
+            $this->assertSame(11000, $case->fresh()->booking_context['car']['total_cents']);
+        }
+        $this->assertDatabaseCount('public_bookings', 0);
+        Http::assertNothingSent();
+    }
+
     private function car(int $id, int $organization, int $daily, ?int $package, string $segment = 'Citycar', float $radius = 20): PublicDeliveryLocation
     {
         $group = VehicleProduct::firstOrCreate(['name_key' => mb_strtolower($segment)], ['name' => $segment]);

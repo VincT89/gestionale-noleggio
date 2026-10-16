@@ -3,7 +3,7 @@
 use App\Http\Controllers\{AmdRentController, AmdRentEnquiryController};
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('amd-rent')->name('amd-rent.')->group(function () {
+Route::middleware(\App\Http\Middleware\RequireModernEra::class)->prefix('amd-rent')->name('amd-rent.')->group(function () {
     Route::get('/', [AmdRentController::class, 'index'])->name('index');
     Route::get('/impostazioni', [AmdRentController::class, 'settings'])->name('settings');
     Route::put('/impostazioni', [AmdRentController::class, 'saveSettings'])->name('settings.save');

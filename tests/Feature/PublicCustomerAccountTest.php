@@ -68,6 +68,62 @@ class PublicCustomerAccountTest extends PublicBookingTestCase
         $this->get('/login')->assertOk()->assertSee('data-password-toggle', false);
     }
 
+    public function test_login_from_booking_returns_to_same_car_and_search_with_profile_prefilled(): void
+    {
+        $customer = $this->customer();
+        $this->offer();
+        $filters = $this->period(['city' => 'Bari', 'sort' => 'price_desc', 'budget' => '500']);
+        $target = route('public-cars.booking.create', ['pricelist' => 1] + $filters);
+        $page = $this->get($target)->assertOk();
+        $this->get($page->viewData('loginUrl'))->assertOk();
+        $this->post(route('public-account.login.store'), ['email' => $customer->email, 'password' => 'wrong'])
+            ->assertSessionHasErrors('email');
+        $response = $this->post(route('public-account.login.store'), ['email' => $customer->email, 'password' => self::SECRET]);
+        $response->assertRedirectContains('/auto/1/prenota?');
+        parse_str(parse_url($response->headers->get('Location'), PHP_URL_QUERY), $resumed);
+        $this->assertEquals($filters, $resumed);
+        $this->get($target)->assertOk()->assertSee('value="cliente@example.test"', false);
+        $this->assertNull(session('public_booking_resume'));
+        $this->assertDatabaseCount('public_bookings', 0);
+    }
+
+    public function test_booking_resume_survives_email_verification(): void
+    {
+        $customer = $this->customer(verified: false);
+        $this->offer();
+        $target = route('public-cars.booking.create', ['pricelist' => 1] + $this->period());
+        $page = $this->get($target)->assertOk();
+        $this->get($page->viewData('loginUrl'))->assertOk();
+        $this->post(route('public-account.login.store'), ['email' => $customer->email, 'password' => self::SECRET])
+            ->assertRedirect(route('public-account.verification.notice'));
+        $this->get($this->verifyUrl($customer))->assertRedirect($target);
+    }
+
+    public function test_booking_resume_from_another_session_or_an_external_url_is_ignored(): void
+    {
+        $customer = $this->customer();
+        $this->offer();
+        $page = $this->get(route('public-cars.booking.create', ['pricelist' => 1] + $this->period()))->assertOk();
+        $loginUrl = $page->viewData('loginUrl');
+        $this->flushSession();
+        $this->get($loginUrl)->assertOk();
+        $this->assertNull(session('public_booking_resume'));
+        $this->get(route('public-account.login', ['resume' => 'https://example.invalid', 'return_url' => '//example.invalid']))->assertOk();
+        $this->post(route('public-account.login.store'), ['email' => $customer->email, 'password' => self::SECRET])
+            ->assertRedirect(route('public-account.bookings'));
+    }
+
+    public function test_expired_booking_resume_is_not_followed_after_login(): void
+    {
+        $customer = $this->customer();
+        $this->offer();
+        $page = $this->get(route('public-cars.booking.create', ['pricelist' => 1] + $this->period()))->assertOk();
+        $this->get($page->viewData('loginUrl'))->assertOk();
+        $this->travel(121)->minutes();
+        $this->post(route('public-account.login.store'), ['email' => $customer->email, 'password' => self::SECRET])
+            ->assertRedirect(route('public-account.bookings'));
+    }
+
     public function test_registration_creates_only_a_separate_customer_and_requires_email_verification(): void
     {
         $this->post(route('public-account.register.store'), $this->registration(['email' => ' CLIENTE@Example.test ', 'email_verified_at' => now(), 'role' => 'admin']))->assertRedirect(route('public-account.verification.notice'));
@@ -293,9 +349,9 @@ class PublicCustomerAccountTest extends PublicBookingTestCase
             ->assertRedirect(route('public-account.enquiry', $case->reference))->assertSessionHasErrors('document');
     }
 
-    public function test_staff_may_share_only_documents_in_their_own_cases(): void
+    public function test_admin_may_share_documents_while_renters_cannot_change_visibility(): void
     {
-        $owner = $this->publisher(2, 'renter');
+        $owner = $this->publisher();
         $other = $this->publisher(3, 'renter');
         $case = $this->enquiry();
         $this->actingAs($owner)->post(route('amd-rent.enquiries.upload', $case), ['kind' => 'quote', 'document' => UploadedFile::fake()->image('test.png')])->assertRedirect();
@@ -303,7 +359,7 @@ class PublicCustomerAccountTest extends PublicBookingTestCase
         $this->assertFalse($document->customer_visible);
         $route = route('amd-rent.enquiries.document-visibility', [$case, $document]);
         Auth::forgetGuards();
-        $this->withSession(['password_hash_sanctum' => $other->password, 'password_hash_web' => $other->password])->actingAs($other, 'web')->put($route, ['customer_visible' => 1])->assertNotFound();
+        $this->withSession(['password_hash_sanctum' => $other->password, 'password_hash_web' => $other->password])->actingAs($other, 'web')->put($route, ['customer_visible' => 1])->assertForbidden();
         Auth::forgetGuards();
         $this->withSession(['password_hash_sanctum' => $owner->password, 'password_hash_web' => $owner->password])->actingAs($owner, 'web')->put($route, ['customer_visible' => 1])->assertRedirect();
         $this->assertTrue($document->fresh()->customer_visible);

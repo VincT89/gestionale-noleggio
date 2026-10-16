@@ -44,7 +44,7 @@ class PublicPickupMapController extends Controller
         $point = ['label' => $data['delivery_address'], 'lat' => round((float) $data['map_lat'], 7),
             'lng' => round((float) $data['map_lng'], 7), 'source' => 'map'];
         $choice = $selection->issue([$point])[0];
-        $filters = Arr::only($data, ['pickup_at', 'return_at', 'place_id', 'city', 'request_delivery', 'delivery_address', 'request_custom_return', 'return_address', 'return_place', 'segment', 'exclude']);
+        $filters = Arr::only($data, ['pickup_at', 'return_at', 'place_id', 'city', 'request_delivery', 'delivery_address', 'request_custom_return', 'return_address', 'return_place', 'segment', 'exclude', 'sort', 'budget', 'transmission', 'fuel_type', 'seats', 'q']);
         $filters['delivery_place'] = $choice['token'];
 
         return redirect()->route(($request->routeIs('public-cars.preview.*') ? 'public-cars.preview' : 'public-cars').'.index', $filters, 303)

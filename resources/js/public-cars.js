@@ -180,25 +180,5 @@ pickupDate?.addEventListener('change', () => {
     if (returnDate && pickupDate.value) returnDate.min = pickupDate.value;
 });
 
-const deliveryChoice = document.querySelector('[data-delivery-choice]');
-if (deliveryChoice) {
-    const submit = document.querySelector('[data-checkout-submit]');
-    const originalLabel = submit?.dataset.standardCheckoutLabel || submit?.textContent;
-    const address = document.querySelector('[data-delivery-address]');
-    const updateDeliveryChoice = () => {
-        if (submit) submit.textContent = deliveryChoice.checked ? (submit.dataset.deliveryCheckoutLabel || 'Invia richiesta di consegna') : originalLabel;
-        if (address) address.required = deliveryChoice.checked;
-        const standardPickup = document.querySelector('[data-summary-standard-pickup]');
-        const customPickup = document.querySelector('[data-summary-custom-pickup]');
-        const summaryAddress = document.querySelector('[data-summary-delivery-address]');
-        if (standardPickup) standardPickup.hidden = deliveryChoice.checked;
-        if (customPickup) customPickup.hidden = !deliveryChoice.checked;
-        if (summaryAddress) summaryAddress.textContent = address?.value || 'Indica l’indirizzo nel modulo.';
-    };
-    deliveryChoice.addEventListener('change', updateDeliveryChoice);
-    address?.addEventListener('input', updateDeliveryChoice);
-    window.addEventListener('pageshow', updateDeliveryChoice);
-    updateDeliveryChoice();
-}
-
 import './public-return-map';
+import './public-booking-pickup';

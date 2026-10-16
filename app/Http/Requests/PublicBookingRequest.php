@@ -28,17 +28,17 @@ class PublicBookingRequest extends PublicCarSearchRequest
         // Never trust a posted return URL or a checkout issued in another session.
         if ($summary = $this->deliverySummaryUrl()) return $summary;
 
-        $period = [];
+        $intent = $this->checkoutIntent();
+        $period = $intent['browse_filters'] ?? [];
         foreach (['pickup_at', 'return_at'] as $field) {
             $value = $this->input($field);
-            if (is_string($value) && strlen($value) < 30) $period[$field] = $value;
+            if (!isset($period[$field]) && is_string($value) && strlen($value) < 30) $period[$field] = $value;
         }
-        if (is_int($this->input('place_id')) && $this->input('place_id') > 0) $period['place_id'] = $this->input('place_id');
+        if (!isset($intent['browse_filters']) && is_int($this->input('place_id')) && $this->input('place_id') > 0) $period['place_id'] = $this->input('place_id');
         $selection = $this->input('delivery_place');
         if (is_string($selection) && $point = app(\App\Services\Geocoding\PlaceSelection::class)->resolve($selection)) {
             $period += ['request_delivery' => 1, 'delivery_address' => $point['label'], 'delivery_place' => $selection];
         }
-        $intent = $this->checkoutIntent();
         if (!empty($period['request_delivery']) && ($returnAddress = ($intent['return_address'] ?? null))) {
             $period += ['request_custom_return' => 1, 'return_address' => $returnAddress];
             if (!empty($intent['return_destination'])) {
@@ -75,6 +75,10 @@ class PublicBookingRequest extends PublicCarSearchRequest
             || ($intent['preview'] ?? null) !== $this->routeIs('public-cars.preview.*')
             || !is_string($intent['nonce'] ?? null)
             || !$this->session()->get('public_booking_checkouts.'.$intent['nonce'])) return null;
+        // Browsing state belongs to the issued checkout, never to posted return URLs.
+        // Keep it in the session so long search filters do not inflate the checkout token.
+        $known = $this->session()->get('public_booking_checkouts.'.$intent['nonce']);
+        if (is_array($known) && isset($known['browse_filters'])) $intent['browse_filters'] = $known['browse_filters'];
         return $intent;
     }
 

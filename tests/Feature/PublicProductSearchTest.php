@@ -111,13 +111,15 @@ class PublicProductSearchTest extends PublicBookingTestCase
         }
     }
 
-    public function test_search_recognizes_the_product_name_and_renter_preview_keeps_its_own_scope(): void
+    public function test_search_recognizes_the_product_name_and_preview_requires_admin(): void
     {
         $product = VehicleProduct::create(['name' => 'Citycar dimostrativa']);
         $this->groupedOffer(1, $product, 1000); $this->groupedOffer(2, $product, 2000, 2);
         $this->results(['q' => 'citycar dimostrativa'])->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [1]);
-        $this->actingAs($this->publisher(2, 'renter'))->get(route('public-cars.preview.index', $this->period()))->assertOk()
-            ->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [2]);
+        $this->actingAs($this->publisher(2, 'renter'))->get(route('public-cars.preview.index', $this->period()))->assertForbidden();
+        $this->flushSession(); $this->actingAs($this->publisher());
+        $this->get(route('public-cars.preview.index', $this->period()))->assertOk()
+            ->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [1]);
     }
 
     public function test_booking_reserves_exactly_the_winning_vehicle_then_search_falls_back_to_the_next_one(): void

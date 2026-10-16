@@ -11,7 +11,10 @@ class ProtectAmdRentPayment
         if (!$request->isMethodSafe() && $request->user() && ($parameter = $request->route('rental'))) {
             $rental = $parameter instanceof Rental ? $parameter : (is_scalar($parameter) ? Rental::find($parameter) : null);
             if ($rental?->booking_channel === 'amd_rent' && PublicBooking::where('rental_id', $rental->id)->whereIn('payment_status', ['pending', 'review'])->exists()) {
-                abort(409, 'La prenotazione AMD Rent ha un pagamento in attesa o da verificare. Gestiscila dalla sezione AMD Rent prima di modificare il noleggio.');
+                $nextStep = \App\Support\EraInterface::modern($request->user())
+                    ? 'Gestiscila dalla sezione AMD Rent prima di modificare il noleggio.'
+                    : 'Contatta l’amministratore prima di modificare il noleggio.';
+                abort(409, 'La prenotazione AMD Rent ha un pagamento in attesa o da verificare. '.$nextStep);
             }
         }
         return $next($request);

@@ -196,17 +196,15 @@ class PublicCarSearchTest extends PublicCarsTestCase
         $this->get(route('public-deliveries.index'))->assertOk()->assertDontSee('Offerte del sito');
     }
 
-    public function test_renter_preview_cannot_expand_to_other_organizations(): void
+    public function test_renter_cannot_access_catalog_preview_even_for_own_cars(): void
     {
-        $this->offer();
-        $this->offer(2, organization: 2);
-        DB::table('vehicle_assignments')->insert(['vehicle_id' => 2, 'renter_org_id' => 2, 'status' => 'active', 'start_at' => '2026-01-01', 'end_at' => null]);
+        $this->offer(); $this->offer(2, organization: 2);
         $this->actingAs($this->publisher(2, 'renter'));
-        $this->get(route('public-cars.preview.show', ['pricelist' => 1] + $this->period()))->assertNotFound();
-        $this->get($this->url(['organization_id' => 1], 'public-cars.preview.index'))->assertOk()
-            ->assertViewHas('results', fn ($r) => $r->pluck('id')->all() === [2]);
-        $this->get($this->url(['supplier' => 1], 'public-cars.preview.index'))->assertOk()
-            ->assertViewHas('results', fn ($r) => $r->pluck('id')->all() === [2]);
+        foreach ([1, 2] as $id) {
+            $this->get(route('public-cars.preview.show', ['pricelist' => $id] + $this->period()))->assertForbidden();
+        }
+        $this->get($this->url(['organization_id' => 1], 'public-cars.preview.index'))->assertForbidden();
+        $this->get($this->url(['supplier' => 2], 'public-cars.preview.index'))->assertForbidden();
     }
 
     public function test_permission_and_active_user_are_required_for_management_preview(): void

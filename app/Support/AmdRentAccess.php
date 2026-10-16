@@ -10,7 +10,7 @@ final class AmdRentAccess
 {
     public static function check(User $user, bool $write = false): void
     {
-        abort_unless($user->is_active && $user->organization?->is_active && $user->hasAnyRole(['admin', 'renter']), 403);
+        abort_unless($user->is_active && $user->organization?->is_active && EraInterface::modern($user), 403);
         Gate::forUser($user)->authorize($write ? 'rentals.create' : 'rentals.viewAny');
     }
     public static function scope(Builder $query, User $user): Builder

@@ -130,7 +130,7 @@ class PublicCustomReturnTest extends PublicBookingTestCase
         $this->assertSame('quoted', $case->fresh()->status);
         $this->assertSame(3500, $case->fresh()->delivery_fee_cents);
         $this->flushSession();
-        $this->actingAs($this->publisher(2, 'renter'))->put(route('amd-rent.enquiries.update', $case), array_replace($quote, ['revision' => $case->fresh()->revision, 'confirm_custom_return' => 1]))->assertNotFound();
+        $this->actingAs($this->publisher(2, 'renter'))->put(route('amd-rent.enquiries.update', $case), array_replace($quote, ['revision' => $case->fresh()->revision, 'confirm_custom_return' => 1]))->assertForbidden();
     }
 
     public function test_confirmed_return_survives_expired_search_session_booking_and_documents(): void

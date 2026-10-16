@@ -164,8 +164,8 @@ function mount(root) {
     }
 
     function magnify(amount) {
-        cancelAddress();
-        zoom = clamp(zoom + amount, 3, 19); chosen = false; render();
+        // Zoom keeps the same coordinates and any address lookup for that point.
+        zoom = clamp(zoom + amount, 3, 19); render();
     }
     root.querySelector('[data-map-zoom-in]').addEventListener('click', () => magnify(1));
     root.querySelector('[data-map-zoom-out]').addEventListener('click', () => magnify(-1));

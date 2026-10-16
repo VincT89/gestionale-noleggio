@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Domain\Rentals\{PublicBookingService, PublicVehicleSearch};
 use App\Http\Requests\{PublicBookingRequest, PublicCarSearchRequest};
 use App\Models\{PublicBooking, VehiclePricelist};
+use App\Services\AmdRent\PublicBookingNavigation;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Crypt, Gate};
 use Illuminate\Support\Str;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\ValidationException;
 
 class PublicBookingController extends Controller
@@ -28,26 +30,26 @@ class PublicBookingController extends Controller
         $preview = $request->routeIs('public-cars.preview.*');
         $scope = $this->scope($request, $preview)->whereKey($pricelist);
         abort_unless((clone $scope)->exists(), 404);
+        $browseFilters = $request->validated();
         $period = array_filter($request->safe()->only(['pickup_at', 'return_at', 'place_id']), fn ($value) => $value !== null);
-        $filters = $period + $request->safe()->only(['request_delivery', 'delivery_address', 'delivery_place', 'request_custom_return', 'return_address', 'return_place']);
+        $filters = $period + $request->safe()->only(['city', 'request_delivery', 'delivery_address', 'delivery_place', 'request_custom_return', 'return_address', 'return_place']);
         $customReturn = !empty($filters['request_custom_return']);
         // Both requested points must belong to the same configured service area.
-        $car = $search->search($scope, $customReturn ? \Illuminate\Support\Arr::except($filters, ['place_id']) : $filters)->first();
+        $car = $search->search($scope, $customReturn ? Arr::except($filters, ['place_id']) : $filters)->first();
         $prefix = $preview ? 'public-cars.preview' : 'public-cars';
         if (!empty($filters['request_delivery']) && !$customReturn && empty($period['place_id'])) {
-            return redirect()->route($prefix.'.show', ['pricelist' => $pricelist] + $filters)
+            return redirect()->route($prefix.'.show', ['pricelist' => $pricelist] + $browseFilters)
                 ->withErrors(['place_id' => 'Scegli dove riconsegnare l’auto prima di continuare.']);
         }
         if (!$car) {
             $segment = (clone $scope)->with('vehicle.product')->first()?->vehicle?->product?->name;
-            if ($segment) $filters['segment'] = $segment;
-            return $this->page('public-cars.show', ['car' => null, 'filters' => $filters, 'preview' => $preview, 'routePrefix' => $prefix]);
+            if ($segment) $browseFilters['segment'] = $segment;
+            return $this->page('public-cars.show', ['car' => null, 'filters' => $browseFilters, 'preview' => $preview, 'routePrefix' => $prefix]);
         }
 
+        // Resolve the actual service point without narrowing the original search links.
+        if ($customReturn || !empty($filters['city'])) $filters['place_id'] = $period['place_id'] = $car['place_id'];
         if ($customReturn) {
-            // This id identifies the serving business internally; the customer's
-            // actual return appointment is stored independently below.
-            $filters['place_id'] = $period['place_id'] = $car['place_id'];
             $car['return_address'] = $filters['return_address'];
             $car['return_destination'] = app(\App\Services\Geocoding\PlaceSelection::class)
                 ->resolve($filters['return_place'], $filters['return_address'], 'public-return');
@@ -62,10 +64,12 @@ class PublicBookingController extends Controller
             $intent['return_destination'] = $car['return_destination'];
         }
         $known = $request->session()->get('public_booking_checkouts', []);
-        $known[$intent['nonce']] = true;
+        $known[$intent['nonce']] = ['browse_filters' => $browseFilters];
         $request->session()->put('public_booking_checkouts', array_slice($known, -20, null, true));
         return $this->page('public-cars.booking', [
-            'car' => $car, 'filters' => $filters, 'preview' => $preview, 'routePrefix' => $prefix,
+            'car' => $car, 'filters' => $filters, 'browseFilters' => $browseFilters, 'preview' => $preview, 'routePrefix' => $prefix,
+            'loginUrl' => !$preview ? app(PublicBookingNavigation::class)->loginUrl($request,
+                route($prefix.'.booking.create', ['pricelist' => $pricelist] + $browseFilters)) : route('public-account.login'),
             'checkoutToken' => Crypt::encryptString(json_encode($intent, JSON_THROW_ON_ERROR)),
         ]);
     }

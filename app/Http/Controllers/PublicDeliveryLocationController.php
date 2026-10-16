@@ -14,7 +14,7 @@ class PublicDeliveryLocationController extends Controller
     private function organizations(Request $request)
     {
         Gate::authorize('vehicle_pricing.update');
-        abort_unless($request->user()?->is_active && $request->user()?->organization?->is_active && $request->user()->hasAnyRole(['admin', 'renter']), 403);
+        \App\Support\AmdRentAccess::check($request->user());
         return Organization::where('is_active', true)->when(!$request->user()->hasRole('admin'),
             fn ($q) => $q->whereKey($request->user()->organization_id));
     }

@@ -66,9 +66,10 @@ Route::middleware([
     */
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     require __DIR__.'/amd-rent.php';
-    Route::get('/prenotazioni-sito', [PublicBookingController::class, 'index'])->middleware('can:rentals.viewAny')->name('public-bookings.index');
+    Route::get('/prenotazioni-sito', [PublicBookingController::class, 'index'])
+        ->middleware([\App\Http\Middleware\RequireModernEra::class, 'can:rentals.viewAny'])->name('public-bookings.index');
 
-    Route::middleware('can:manage.renters')->prefix('prodotti-flotta')->name('fleet-products.')->group(function () {
+    Route::middleware([\App\Http\Middleware\RequireModernEra::class, 'can:manage.renters'])->prefix('prodotti-flotta')->name('fleet-products.')->group(function () {
         Route::get('/', [VehicleProductController::class, 'index'])->name('index');
         Route::post('/', [VehicleProductController::class, 'store'])->name('store');
         Route::get('/{product}', [VehicleProductController::class, 'edit'])->whereNumber('product')->name('edit');
@@ -78,7 +79,7 @@ Route::middleware([
             ->whereNumber('product')->whereNumber('vehicle')->name('detach');
     });
 
-    Route::middleware('can:vehicle_pricing.update')->group(function () {
+    Route::middleware([\App\Http\Middleware\RequireModernEra::class, 'can:vehicle_pricing.update'])->group(function () {
         Route::get('/catalogo-pubblico', fn () => redirect()->route('public-deliveries.index'))->name('public-offers.index');
         Route::get('/catalogo-pubblico/luoghi', [PublicDeliveryLocationController::class, 'index'])->name('public-deliveries.index');
         Route::post('/catalogo-pubblico/luoghi', [PublicDeliveryLocationController::class, 'store'])->name('public-deliveries.store');

@@ -57,7 +57,7 @@
             <p class="amd-availability">{{ $customPickup ? 'Richiedi conferma per auto e appuntamenti.' : 'Disponibile per il periodo selezionato.' }}</p>
             @if($customPickup)
                 <form class="amd-return-choice" method="get" action="{{ route($routePrefix.'.booking.create', ['pricelist' => $car['id']]) }}" data-return-choice>
-                    @foreach(\Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at', 'request_delivery', 'delivery_address', 'delivery_place', 'exclude']) as $key => $fieldValue)<input type="hidden" name="{{ $key }}" value="{{ $fieldValue }}">@endforeach
+                    @foreach(\Illuminate\Support\Arr::except($filters, ['place_id', 'city', 'request_custom_return', 'return_address', 'return_place']) as $key => $fieldValue)<input type="hidden" name="{{ $key }}" value="{{ $fieldValue }}">@endforeach
                     <div class="amd-field" data-return-standard><label for="return-place">Dove riconsegni l’auto?</label><select id="return-place" name="place_id" aria-describedby="return-place-help"><option value="">Scegli un punto di riconsegna</option>@foreach($returnPlaces as $place)<option value="{{ $place->id }}" @selected((string) ($filters['place_id'] ?? '') === (string) $place->id)>{{ $place->label }}</option>@endforeach</select><small id="return-place-help">Scegli un punto servito oppure indica un indirizzo sulla mappa.</small></div>
                     <label class="amd-booking-accept amd-return-toggle" for="request-custom-return"><input id="request-custom-return" name="request_custom_return" type="checkbox" value="1" data-custom-return-toggle aria-controls="custom-return-field" @checked($customReturn)><span>Voglio riconsegnare l’auto in un altro luogo</span></label>
                     <div class="amd-field amd-custom-return-field" id="custom-return-field" data-custom-return-field>
@@ -72,7 +72,7 @@
                     <button class="amd-button" type="submit" data-return-submit>Continua con i tuoi dati</button>
                 </form>
             @else
-                <a class="amd-button" href="{{ route($routePrefix.'.booking.create', ['pricelist' => $car['id']] + \Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at']) + ['place_id' => $car['place_id']]) }}">Prenota questa auto</a>
+                <a class="amd-button" href="{{ route($routePrefix.'.booking.create', ['pricelist' => $car['id']] + $filters) }}">Prenota questa auto</a>
             @endif
             @if($customPickup)
                 <small>Invii prima la richiesta completa. Pagherai soltanto dopo la conferma di disponibilità.</small>
