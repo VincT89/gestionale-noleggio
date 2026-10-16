@@ -336,4 +336,30 @@ class AmdRentDemoFleetTest extends PublicBookingTestCase
         $this->artisan('amd-rent:demo-fleet', ['renter' => 'DEMO AMD Rent'])->assertFailed();
         $this->assertSame($before, $this->snapshot());
     }
+
+    public function test_hosting_panel_arguments_accept_split_names_without_writing(): void
+    {
+        $this->sourceFleet();
+        $before = $this->snapshot();
+        $files = Storage::disk('demo_photos')->allFiles();
+        $kernel = $this->app->make(\Illuminate\Contracts\Console\Kernel::class);
+        foreach ([['DEMO AMD Rent'], ['DEMO', 'AMD', 'Rent'], ['"DEMO', 'AMD', 'Rent"'],
+            ["'DEMO", 'AMD', "Rent'"], ['4'], ['DEMO', 'AMD', 'Rent', '--without-photos', '--price=1:1']] as $arguments) {
+            $output = new \Symfony\Component\Console\Output\BufferedOutput;
+            $status = $kernel->handle(new \Symfony\Component\Console\Input\ArgvInput(
+                ['artisan', 'amd-rent:demo-fleet', ...$arguments]
+            ), $output);
+            $this->assertSame(0, $status, $text = $output->fetch());
+            $this->assertStringContainsString('Solo anteprima: nessun dato o file creato.', $text);
+            $this->assertSame($before, $this->snapshot());
+            $this->assertSame($files, Storage::disk('demo_photos')->allFiles());
+        }
+        foreach ([['4', 'parola-inattesa'], ['DEMO', 'AMD', 'Rent', '--apply']] as $arguments) {
+            $this->assertSame(1, $kernel->handle(new \Symfony\Component\Console\Input\ArgvInput(
+                ['artisan', 'amd-rent:demo-fleet', ...$arguments]
+            ), new \Symfony\Component\Console\Output\BufferedOutput));
+            $this->assertSame($before, $this->snapshot());
+            $this->assertSame($files, Storage::disk('demo_photos')->allFiles());
+        }
+    }
 }

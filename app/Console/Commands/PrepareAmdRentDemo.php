@@ -11,7 +11,7 @@ use Throwable;
 class PrepareAmdRentDemo extends Command
 {
     protected $signature = 'amd-rent:demo-fleet
-        {renter : ID o nome completo univoco del nuovo noleggiatore DEMO}
+        {renter* : ID o nome completo univoco del nuovo noleggiatore DEMO}
         {--price=* : Scelta esplicita AUTO:LISTINO, ripetibile quando ci sono prezzi ambigui}
         {--without-photos : Copia senza fotografie reali; restano le immagini di riferimento disponibili}
         {--apply : Crea le copie dopo aver controllato l\'anteprima}
@@ -22,7 +22,11 @@ class PrepareAmdRentDemo extends Command
     public function handle(DemoFleet $fleet): int
     {
         try {
-            $id = (string) $this->argument('renter');
+            /** Accept the same name when a hosting panel passes its words as separate arguments. */
+            $id = trim(implode(' ', (array) $this->argument('renter')));
+            if (strlen($id) >= 2 && in_array($id[0], ['"', "'"], true) && $id[0] === substr($id, -1)) {
+                $id = substr($id, 1, -1);
+            }
             if (!ctype_digit($id)) {
                 $matches = Organization::query()->where('name', $id)->where('type', 'renter')
                     ->where('is_active', true)->limit(2)->pluck('id');
