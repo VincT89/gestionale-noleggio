@@ -37,6 +37,10 @@ class PublicBookingController extends Controller
         // Both requested points must belong to the same configured service area.
         $car = $search->search($scope, $customReturn ? Arr::except($filters, ['place_id']) : $filters)->first();
         $prefix = $preview ? 'public-cars.preview' : 'public-cars';
+        if (!empty($car['is_demo'])) {
+            return redirect()->route($prefix.'.show', ['pricelist' => $pricelist] + $browseFilters)
+                ->withErrors(['booking' => 'Auto dimostrativa: puoi esplorare prezzi e disponibilità, senza effettuare prenotazioni.']);
+        }
         if (!empty($filters['request_delivery']) && !$customReturn && empty($period['place_id'])) {
             return redirect()->route($prefix.'.show', ['pricelist' => $pricelist] + $browseFilters)
                 ->withErrors(['place_id' => 'Scegli dove riconsegnare l’auto prima di continuare.']);

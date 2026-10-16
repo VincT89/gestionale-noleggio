@@ -123,6 +123,7 @@ class PublicBookingService
     public function assertQuote(array $intent, ?array $car): void
     {
         if (!$car) throw ValidationException::withMessages(['booking' => 'L’auto non è più disponibile per questo periodo. Scegli un’altra auto o modifica le date.']);
+        if (!empty($car['is_demo'])) throw ValidationException::withMessages(['booking' => 'Auto dimostrativa: prenotazioni, richieste di consegna e pagamenti non sono disponibili.']);
         if ($intent['expires_at'] < now()->timestamp || !hash_equals($intent['fingerprint'], self::fingerprint($car))) {
             throw ValidationException::withMessages(['booking' => 'Il riepilogo è scaduto o le condizioni sono cambiate. Controlla il riepilogo aggiornato e conferma nuovamente.']);
         }

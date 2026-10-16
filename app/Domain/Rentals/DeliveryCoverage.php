@@ -3,6 +3,7 @@
 namespace App\Domain\Rentals;
 
 use App\Models\PublicDeliveryLocation;
+use App\Services\AmdRent\DemoMap;
 use Illuminate\Support\Collection;
 
 class DeliveryCoverage
@@ -14,7 +15,15 @@ class DeliveryCoverage
 
     public function rank(Collection $deliveries, array $point): Collection
     {
+        if (!is_numeric($point['lat'] ?? null) || !is_numeric($point['lng'] ?? null)
+            || !is_finite((float) $point['lat']) || !is_finite((float) $point['lng'])
+            || abs((float) $point['lat']) > 90 || abs((float) $point['lng']) > 180) return collect();
         return $deliveries->filter(function (PublicDeliveryLocation $delivery) use ($point) {
+            /** Explicit demo coverage has no physical radius; address validation still applies. */
+            if (DemoMap::isDelivery($delivery)) {
+                $delivery->setAttribute('distance_km', null);
+                return true;
+            }
             $origin = $delivery->origin;
             if (!$delivery->custom_delivery_enabled || !$origin || (int) $origin->organization_id !== (int) $delivery->organization_id
                 || !$delivery->delivery_radius_km || !is_numeric($origin->lat) || !is_numeric($origin->lng)

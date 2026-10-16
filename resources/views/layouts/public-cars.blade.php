@@ -85,6 +85,7 @@
     </footer>
     <button type="button" class="amd-back-to-top" data-back-to-top aria-label="Torna su, all’inizio della pagina" hidden>
         <img src="{{ asset('images/amd-rent-car-top-v1.png') }}" width="160" height="320" alt="" aria-hidden="true" loading="lazy" decoding="async">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" style="position:absolute;top:9%;left:50%;transform:translateX(-50%);pointer-events:none" fill="none" stroke="#102e4d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V4M5 11l7-7 7 7"/></svg>
     </button>
     @include('public-legal.partials.cookie-notice')
 </body>

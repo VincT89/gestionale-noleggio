@@ -6,6 +6,8 @@ use App\Domain\Pricing\VehiclePricingService;
 use App\Domain\Rentals\{PublicVehiclePhoto, PublicVehicleSearch};
 use App\Models\{Location, PublicDeliveryLocation, Vehicle, VehiclePricelist};
 use App\Services\AmdRent\DemoFleet;
+use App\Services\AmdRent\DemoMap;
+use App\Domain\Rentals\{DeliveryCoverage, PublicBookingService};
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\{DB, File, Http, Mail, Queue, Schema, Storage};
@@ -480,5 +482,101 @@ class AmdRentDemoFleetTest extends PublicBookingTestCase
             $this->assertSame([$copy->id], $results->pluck('vehicle_id')->all());
         }
         $this->assertSame($product, Vehicle::findOrFail(1)->vehicle_product_id);
+    }
+
+    public function test_existing_demo_map_configuration_is_previewed_and_does_not_duplicate_or_change_originals(): void
+    {
+        $this->sourceFleet();
+        $this->prepare();
+        $before = $this->snapshot();
+        $map = app(DemoMap::class);
+        $plan = $map->preview(4);
+        $this->artisan('amd-rent:demo-fleet', ['renter' => 4, '--enable-demo-map' => true])->assertSuccessful();
+        $this->artisan('amd-rent:demo-fleet', ['renter' => 4, '--enable-demo-map' => true, '--apply' => true])->assertFailed();
+        $this->assertSame($before, $this->snapshot());
+        $this->artisan('amd-rent:demo-fleet', ['renter' => ['DEMO', 'AMD', 'Rent'], '--enable-demo-map' => true,
+            '--apply' => true, '--confirm' => $plan['fingerprint']])->assertSuccessful();
+        foreach ($before as $table => $rows) {
+            $this->assertSame(count($rows), DB::table($table)->count());
+            foreach ($rows as $row) {
+                if ($table === 'public_delivery_locations' && $row['organization_id'] === 4) continue;
+                $this->assertSame($row, (array) DB::table($table)->where('id', $row['id'])->first());
+            }
+        }
+        $after = $this->snapshot();
+        $this->artisan('amd-rent:demo-fleet', ['renter' => 4, '--enable-demo-map' => true, '--apply' => true])->assertSuccessful();
+        $this->assertSame($after, $this->snapshot());
+    }
+
+    public function test_demo_map_accepts_distant_pickup_and_return_but_real_coverage_remains_limited(): void
+    {
+        $this->sourceFleet();
+        $result = $this->prepare();
+        $map = app(DemoMap::class);
+        $map->apply(4, $map->preview(4)['fingerprint']);
+        $search = app(PublicVehicleSearch::class);
+        $scope = VehiclePricelist::forPublicRental()->where('renter_org_id', 4);
+        foreach ([[41.14, 16.76], [45.46, 9.19], [40.71, -74.00], [-33.86, 151.21]] as [$lat, $lng]) {
+            $cars = $search->search($scope, $this->period(['request_delivery' => 1,
+                'delivery_point' => ['lat' => $lat, 'lng' => $lng, 'label' => 'Indirizzo di prova'],
+                'request_custom_return' => 1, 'return_point' => ['lat' => 51.5, 'lng' => -0.12, 'label' => 'Riconsegna di prova']]));
+            $this->assertEqualsCanonicalizing(array_values($result['vehicles']), $cars->pluck('vehicle_id')->all());
+            $this->assertTrue($cars->every(fn ($car) => $car['is_demo'] && $car['delivery_fee_cents'] === 0));
+        }
+        $real = PublicDeliveryLocation::where('organization_id', 2)->firstOrFail();
+        $coverage = app(DeliveryCoverage::class);
+        $this->assertTrue($coverage->covers($real, ['lat' => 41.1, 'lng' => 16.9]));
+        $this->assertFalse($coverage->covers($real, ['lat' => 45.46, 'lng' => 9.19]));
+        $demo = PublicDeliveryLocation::where('organization_id', 4)->firstOrFail();
+        foreach ([['lat' => 91, 'lng' => 0], ['lat' => 0, 'lng' => 181], ['lat' => 'invalid', 'lng' => 0]] as $invalid) {
+            $this->assertFalse($coverage->covers($demo, $invalid));
+        }
+        $real->delivery_area = DemoMap::NOTICE;
+        $this->assertFalse(DemoMap::isDelivery($real));
+    }
+
+    public function test_demo_map_rejects_real_targets_mixed_fleets_and_changed_previews(): void
+    {
+        $this->sourceFleet();
+        $this->prepare();
+        $before = $this->snapshot();
+        $this->artisan('amd-rent:demo-fleet', ['renter' => 2, '--enable-demo-map' => true])->assertFailed();
+        $this->assertSame($before, $this->snapshot());
+        $plan = app(DemoMap::class)->preview(4);
+        DB::table('public_delivery_locations')->where('organization_id', 4)->update(['custom_delivery_fee_cents' => 100]);
+        $changed = $this->snapshot();
+        $this->artisan('amd-rent:demo-fleet', ['renter' => 4, '--enable-demo-map' => true, '--apply' => true,
+            '--confirm' => $plan['fingerprint']])->assertFailed();
+        $this->assertSame($changed, $this->snapshot());
+        DB::table('vehicle_pricelists')->insert(['vehicle_id' => 1, 'renter_org_id' => 4, 'base_daily_cents' => 10000]);
+        $mixed = $this->snapshot();
+        $this->artisan('amd-rent:demo-fleet', ['renter' => 4, '--enable-demo-map' => true])->assertFailed();
+        $this->assertSame($mixed, $this->snapshot());
+    }
+
+    public function test_demo_search_is_labelled_and_cannot_create_bookings_or_payments(): void
+    {
+        $this->sourceFleet();
+        $result = $this->prepare();
+        $map = app(DemoMap::class);
+        $map->apply(4, $map->preview(4)['fingerprint']);
+        $price = VehiclePricelist::where('vehicle_id', $result['vehicles'][1])->sole();
+        $car = app(PublicVehicleSearch::class)->search(VehiclePricelist::forPublicRental()->whereKey($price->id), $this->period())->sole();
+        $this->get(route('public-cars.show', ['pricelist' => $price->id] + $this->period()))
+            ->assertOk()->assertSee('Auto dimostrativa.')->assertDontSee('Prenota questa auto')->assertDontSee('Continua con i tuoi dati');
+        $this->get(route('public-cars.booking.create', ['pricelist' => $price->id] + $this->period()))->assertRedirect();
+        $before = $this->snapshot();
+        try {
+            app(PublicBookingService::class)->reserve(['nonce' => 'demo-test', 'pricelist' => $price->id,
+                'period' => $this->period(), 'fingerprint' => PublicBookingService::fingerprint($car), 'expires_at' => now()->addHour()->timestamp], []);
+            $this->fail('Demo booking was allowed.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->assertStringContainsString('dimostrativa', $exception->getMessage());
+        }
+        $this->assertSame($before, $this->snapshot());
+        $realCar = $car;
+        $realCar['is_demo'] = false;
+        app(PublicBookingService::class)->assertQuote(['fingerprint' => PublicBookingService::fingerprint($realCar),
+            'expires_at' => now()->addHour()->timestamp], $realCar);
     }
 }

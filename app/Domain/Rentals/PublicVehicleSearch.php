@@ -5,6 +5,7 @@ namespace App\Domain\Rentals;
 use App\Domain\Pricing\VehiclePricingService;
 use App\Models\VehiclePricelist;
 use App\Models\PublicDeliveryLocation;
+use App\Services\AmdRent\DemoMap;
 use App\Services\Geocoding\PlaceSelection;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -81,6 +82,7 @@ class PublicVehicleSearch
         foreach ($available as $pricelist) {
             $quote = $this->pricing->quote($pricelist, $start, $end);
             $delivery = $deliveries->get($pricelist->renter_org_id);
+            if (DemoMap::isDelivery($delivery) && !DemoMap::isVehicle($pricelist->vehicle, $pricelist->renter_org_id)) continue;
             $fee = $point ? (int) ($filters['approved_delivery_fee_cents'] ?? $delivery->custom_delivery_fee_cents) : 0;
             if ($quote['total'] < 0 || ($budget !== null && $quote['total'] + $fee > $budget)) {
                 continue;
@@ -106,7 +108,7 @@ class PublicVehicleSearch
         if (!empty($filters['request_delivery']) && !empty($filters['request_custom_return'])) {
             unset($filters['place_id'], $filters['city']);
         }
-        $deliveries = PublicDeliveryLocation::available()->with(['place', 'location', 'origin'])
+        $deliveries = PublicDeliveryLocation::available()->with(['place', 'location', 'origin', 'organization'])
             ->when(!empty($filters['request_delivery']), fn ($q) => $q->where('custom_delivery_enabled', true))
             ->when(!empty($filters['place_id']), fn ($q) => $q->where('public_pickup_place_id', $filters['place_id']))
             ->when(empty($filters['place_id']) && !empty($filters['city']), fn ($q) => $q
@@ -146,6 +148,7 @@ class PublicVehicleSearch
 
         return [
             'id' => (int) $pricelist->id,
+            'is_demo' => DemoMap::isVehicle($vehicle, $pricelist->renter_org_id),
             'vehicle_id' => (int) $pricelist->vehicle_id,
             'title' => trim($vehicle->make.' '.$vehicle->model),
             'year' => $vehicle->year,

@@ -89,6 +89,7 @@
                     <figure class="amd-car-photo">@if($car['has_photo'])<img src="{{ route($routePrefix.'.photo', $car['id']) }}" alt="{{ $car['photo_is_reference'] ? 'Immagine indicativa: '.$car['title'] : $car['title'] }}" loading="lazy" width="360" height="240">@if($car['photo_is_reference'])<figcaption>Immagine indicativa del modello</figcaption>@endif @else<span>Foto non disponibile</span>@endif</figure>
                     <div class="amd-car-info"><h3 id="car-{{ $car['id'] }}">{{ $car['product_name'] ?? $car['title'] }}</h3>
                         @if($car['product_name'] !== null && $car['product_name'] !== $car['title'])<p>{{ $car['title'] }}</p>@endif
+                        @if(!empty($car['is_demo']))<p>Auto dimostrativa: prezzi e copertura simulati, prenotazioni disabilitate.</p>@endif
                         <dl class="amd-specs">@if($car['seats'])<div><dt>Posti</dt><dd>{{ $car['seats'] }}</dd></div>@endif @if($car['transmission'])<div><dt>Cambio</dt><dd>{{ $car['transmission'] }}</dd></div>@endif @if($car['fuel'])<div><dt>Alimentazione</dt><dd>{{ $car['fuel'] }}</dd></div>@endif</dl>
                         <div class="amd-car-pickup">
                             <span>{{ $customPickup ? 'Riconsegna' : 'Punto di ritiro' }}</span>
@@ -104,7 +105,7 @@
                         </div>
                         <p class="amd-car-mileage">{{ $car['km_per_day'] === null ? 'Chilometraggio illimitato' : $car['km_per_day'].' km inclusi al giorno' }}</p>
                     </div>
-                    <div class="amd-car-price"><span>Totale per {{ $car['days'] }} {{ $car['days'] === 1 ? 'giorno' : 'giorni' }}</span><strong>{{ $money($car['total_cents']) }}</strong><small>{{ $car['prices_include_vat'] ? 'IVA inclusa' : 'Importo di listino, IVA da verificare' }}</small><small>{{ $money($car['total_cents'] / max(1, $car['days'])) }} al giorno in media</small><small>Cauzione separata: {{ $money($car['deposit_cents']) }}</small><small>@if($car['commission_bps'] === 0) Pagamento al ritiro @else {{ \App\Services\AmdRent\Commission::label($car['commission_bps']) }} online dopo la conferma, saldo al ritiro @endif</small><a class="amd-button" href="{{ route($routePrefix.'.show', ['pricelist' => $car['id']] + $filters) }}">Scegli questa auto</a></div>
+                    <div class="amd-car-price"><span>Totale per {{ $car['days'] }} {{ $car['days'] === 1 ? 'giorno' : 'giorni' }}</span><strong>{{ $money($car['total_cents']) }}</strong><small>{{ $car['prices_include_vat'] ? 'IVA inclusa' : 'Importo di listino, IVA da verificare' }}</small><small>{{ $money($car['total_cents'] / max(1, $car['days'])) }} al giorno in media</small><small>Cauzione separata: {{ $money($car['deposit_cents']) }}</small><small>@if(!empty($car['is_demo'])) Simulazione senza pagamenti @elseif($car['commission_bps'] === 0) Pagamento al ritiro @else {{ \App\Services\AmdRent\Commission::label($car['commission_bps']) }} online dopo la conferma, saldo al ritiro @endif</small><a class="amd-button" href="{{ route($routePrefix.'.show', ['pricelist' => $car['id']] + $filters) }}">{{ !empty($car['is_demo']) ? 'Esplora questa auto' : 'Scegli questa auto' }}</a></div>
                 </article>
             @empty
                 <div class="amd-empty">

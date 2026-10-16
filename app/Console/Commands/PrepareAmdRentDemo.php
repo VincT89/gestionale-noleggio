@@ -16,6 +16,7 @@ class PrepareAmdRentDemo extends Command
         {--demo-daily= : Euro/giorno dimostrativi solo per auto senza un listino attivo univoco}
         {--without-photos : Copia senza fotografie reali; restano le immagini di riferimento disponibili}
         {--available-photos : Copia solo le foto disponibili, segnalando quelle mancanti o non copiabili}
+        {--enable-demo-map : Configura la demo già creata per tutti gli indirizzi riconosciuti, senza prenotazioni reali}
         {--apply : Crea le copie dopo aver controllato l\'anteprima}
         {--confirm= : Impronta completa mostrata dall\'anteprima da applicare}';
 
@@ -39,6 +40,27 @@ class PrepareAmdRentDemo extends Command
             }
             if (!ctype_digit($id) || (int) $id < 1 || (string) (int) $id !== $id) {
                 throw new RuntimeException('Indicare l\'ID numerico del noleggiatore DEMO.');
+            }
+            if ($this->option('enable-demo-map')) {
+                $map = app(\App\Services\AmdRent\DemoMap::class);
+                $plan = $map->preview((int) $id);
+                $this->table(['Configurazione demo', 'Valore'], [
+                    ['Noleggiatore', $id.' - '.$plan['renter']['name']], ['Database', $plan['database']],
+                    ['Host', $plan['host'] ?? 'locale'], ['Luoghi demo', count($plan['deliveries'])],
+                    ['Copertura', 'Qualsiasi indirizzo riconosciuto dalla mappa'], ['Consegna e ritiro', '0 EUR, dimostrativi'],
+                    ['Prenotazioni', 'Disabilitate per le copie demo'],
+                ]);
+                if ($plan['already_configured']) {
+                    $this->info('Copertura demo già configurata. Nessuna modifica.');
+                } elseif (!$this->option('apply')) {
+                    $this->info('Solo anteprima: nessun dato o file modificato.');
+                    $this->line('Impronta: '.$plan['fingerprint']);
+                    $this->line('Ripetere gli stessi argomenti aggiungendo --apply --confirm='.$plan['fingerprint']);
+                } else {
+                    $count = $map->apply((int) $id, (string) $this->option('confirm'));
+                    $this->info('Copertura simulata configurata su '.$count.' luoghi demo. Nessuna auto duplicata.');
+                }
+                return self::SUCCESS;
             }
             $choices = [];
             foreach ($this->option('price') as $choice) {
@@ -87,7 +109,7 @@ class PrepareAmdRentDemo extends Command
                 $d['attributes']['custom_delivery_enabled'] ? 'Configurazione copiata' : 'Disabilitata',
             ], array_values($plan['deliveries'])));
             $this->warn('Le copie compariranno nei conteggi dell\'admin. Le auto originali e i loro impegni restano invariati.');
-            $this->warn('Proteggere il portale durante la dimostrazione: questa procedura non disabilita le prenotazioni.');
+            $this->warn('Le copie sono dimostrative: prenotazioni, richieste di consegna e pagamenti dal portale sono disabilitati.');
             foreach ($plan['warnings'] as $warning) {
                 $this->warn($warning);
             }
