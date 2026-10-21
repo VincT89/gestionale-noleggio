@@ -8,9 +8,10 @@
         return is_scalar($input) ? (string) $input : '';
     };
     $money = fn ($cents) => number_format($cents / 100, 2, ',', '.').' €';
-    $baseFilters = array_filter(\Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at', 'place_id', 'city', 'request_delivery', 'delivery_address', 'delivery_place', 'request_custom_return', 'return_address', 'return_place', 'exclude']), fn ($v) => $v !== null && $v !== '');
+    $baseFilters = array_filter(\Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at', 'place_id', 'city', 'pickup_group', 'request_delivery', 'delivery_address', 'delivery_place', 'request_custom_return', 'return_address', 'return_place', 'exclude']), fn ($v) => $v !== null && $v !== '');
     $customPickup = $value('request_delivery') === '1';
-    $destinationValue = $value('destination', $value('place_id') ?: ($value('city') ? 'city:'.$value('city') : ''));
+    $destinationValue = $value('destination', $value('pickup_group') ? 'group:'.$value('pickup_group') : ($value('place_id') ?: ($value('city') ? 'city:'.$value('city') : '')));
+    $groupLabel = \App\Domain\Rentals\PublicPickupDirectory::groupLabel($value('pickup_group'));
     $knownDestination = $destinations->contains(fn ($destination) => mb_strtolower($destination['value']) === mb_strtolower($destinationValue));
 @endphp
 @if($searched)
@@ -21,9 +22,9 @@
                 <div id="public-search-recap">
                     <div class="amd-trip-place">
                         <span>{{ $customPickup ? 'Ritiro al tuo indirizzo' : 'Luogo di ritiro' }}</span>
-                        <strong>{{ $customPickup ? $value('delivery_address') : ($selectedPlace?->label ?? $value('city')) }}</strong>
+                        <strong>{{ $customPickup ? $value('delivery_address') : ($groupLabel ?? $selectedPlace?->label ?? $value('city')) }}</strong>
                         @if($customPickup && $deliveryPoint)<small class="amd-trip-credit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a></small>@endif
-                        @if($customPickup)<small>Riconsegna: {{ !empty($filters['request_custom_return']) ? $filters['return_address'].' (da confermare)' : ($selectedPlace?->label ?? ($value('city') ?: 'da scegliere dopo l’auto')) }}</small>@endif
+                        @if($customPickup)<small>Riconsegna: {{ !empty($filters['request_custom_return']) ? $filters['return_address'].' (da confermare)' : ($groupLabel ?? $selectedPlace?->label ?? ($value('city') ?: 'da scegliere dopo l’auto')) }}</small>@endif
                     </div>
                     <div class="amd-trip-date"><span>Ritiro</span><strong><time datetime="{{ $filters['pickup_at'] }}">{{ \Carbon\CarbonImmutable::parse($filters['pickup_at'])->format('d/m/Y') }}</time></strong><small>Ore {{ \Carbon\CarbonImmutable::parse($filters['pickup_at'])->format('H:i') }}</small></div>
                     <div class="amd-trip-date"><span>Riconsegna</span><strong><time datetime="{{ $filters['return_at'] }}">{{ \Carbon\CarbonImmutable::parse($filters['return_at'])->format('d/m/Y') }}</time></strong><small>Ore {{ \Carbon\CarbonImmutable::parse($filters['return_at'])->format('H:i') }}</small></div>
@@ -105,7 +106,7 @@
                         </div>
                         <p class="amd-car-mileage">{{ $car['km_per_day'] === null ? 'Chilometraggio illimitato' : $car['km_per_day'].' km inclusi al giorno' }}</p>
                     </div>
-                    <div class="amd-car-price"><span>Totale per {{ $car['days'] }} {{ $car['days'] === 1 ? 'giorno' : 'giorni' }}</span><strong>{{ $money($car['total_cents']) }}</strong><small>{{ $car['prices_include_vat'] ? 'IVA inclusa' : 'Importo di listino, IVA da verificare' }}</small><small>{{ $money($car['total_cents'] / max(1, $car['days'])) }} al giorno in media</small><small>Cauzione separata: {{ $money($car['deposit_cents']) }}</small><small>@if(!empty($car['is_demo'])) Simulazione senza pagamenti @elseif($car['commission_bps'] === 0) Pagamento al ritiro @else {{ \App\Services\AmdRent\Commission::label($car['commission_bps']) }} online dopo la conferma, saldo al ritiro @endif</small><a class="amd-button" href="{{ route($routePrefix.'.show', ['pricelist' => $car['id']] + $filters) }}">{{ !empty($car['is_demo']) ? 'Esplora questa auto' : 'Scegli questa auto' }}</a></div>
+                    <div class="amd-car-price"><span>Totale per {{ $car['days'] }} {{ $car['days'] === 1 ? 'giorno' : 'giorni' }}</span><strong>{{ $money($car['total_cents']) }}</strong><small>{{ $car['prices_include_vat'] ? 'IVA inclusa' : 'Importo di listino, IVA da verificare' }}</small><small>{{ $money($car['total_cents'] / max(1, $car['days'])) }} al giorno in media</small><small>Cauzione separata: {{ $money($car['deposit_cents']) }}</small><small>@if(!empty($car['is_demo'])) Simulazione senza pagamenti @elseif($car['customer_deposit_bps'] === 0) Pagamento al ritiro @else {{ \App\Services\AmdRent\CustomerDeposit::label($car['customer_deposit_bps']) }} online dopo la conferma, saldo al ritiro @endif</small><a class="amd-button" href="{{ route($routePrefix.'.show', ['pricelist' => $car['id']] + $filters) }}">{{ !empty($car['is_demo']) ? 'Esplora questa auto' : 'Scegli questa auto' }}</a></div>
                 </article>
             @empty
                 <div class="amd-empty">

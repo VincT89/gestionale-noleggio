@@ -5,6 +5,7 @@
 <div class="amd-page-heading amd-photo-heading">
     <div>
     <h1>Prenotazione {{ mb_strtolower($booking->status_label) }}</h1>
+    @if($booking->status_label === 'Confermata')<p>Grazie per aver scelto AMD Rent. Qui trovi il servizio prenotato e i contatti del tuo noleggiatore.</p>@endif
     <p class="amd-booking-reference">Riferimento <strong>{{ $booking->reference }}</strong></p>
 </div>
     @include('public-cars.partials.context-photo', ['photoScene' => 'confirmation'])
@@ -17,8 +18,11 @@
             <p>La proposta di consegna resta nella tua richiesta. Puoi riaprirla e verificare se è ancora possibile prenotare.</p>
             <p><a class="amd-button amd-button-secondary" href="{{ $deliveryRequest->publicUrl() }}">Torna alla richiesta di consegna</a></p>
         @endif
-        <h2>Il tuo noleggiatore</h2>
-        <p><strong>{{ $car['organization'] }}</strong><br>{{ $car['location'] }} — {{ $car['city'] }}<br>{{ $car['address'] }}</p>
+        @if(in_array($booking->status_label, ['Confermata', 'Noleggio in corso', 'Noleggio terminato'], true))
+            @include('public-cars.partials.supplier-contacts')
+        @else
+            <h2>Il tuo noleggiatore</h2><p><strong>{{ $car['organization'] }}</strong></p>
+        @endif
         @if($booking->status_label === 'Confermata')
             <p>La prenotazione è registrata nel gestionale del noleggiatore e l’auto è riservata per il periodo indicato.</p>
             <p>Conserva questa pagina e il riferimento. Il saldo previsto si paga al ritiro; la cauzione è indicata separatamente nel riepilogo.</p>

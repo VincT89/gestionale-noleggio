@@ -22,8 +22,8 @@ class PublicCarSearchRequest extends FormRequest
         $this->merge(['budget' => is_string($this->budget) ? str_replace(',', '.', $this->budget) : $this->budget]);
         if ($this->routeIs('public-cars.index', 'public-cars.preview.index') && $this->has('destination')) {
             $destination = $this->input('destination');
-            // A new choice replaces both old filters, including when it is invalid or empty.
-            $this->merge(['place_id' => null, 'city' => null]);
+            /** A new destination replaces every previous place filter, including when the choice is invalid or empty. */
+            $this->merge(['place_id' => null, 'city' => null, 'pickup_group' => null]);
             if (is_string($destination)) {
                 $destination = trim($destination);
                 $this->merge(['destination' => $destination]);
@@ -32,6 +32,8 @@ class PublicCarSearchRequest extends FormRequest
                 if ($destination !== '') $this->merge(['request_custom_return' => 0]);
                 if (str_starts_with($destination, 'city:')) {
                     $this->merge(['city' => trim(substr($destination, 5))]);
+                } elseif (str_starts_with($destination, 'group:')) {
+                    $this->merge(['pickup_group' => substr($destination, 6)]);
                 } elseif (ctype_digit($destination)) {
                     $this->merge(['place_id' => $destination]);
                 }
@@ -53,6 +55,7 @@ class PublicCarSearchRequest extends FormRequest
             'pickup_at' => ['bail', $required ? 'required' : 'nullable', 'string', 'date_format:Y-m-d\TH:i', 'after_or_equal:'.now()->format('Y-m-d\TH:i')],
             'return_at' => ['bail', $required ? 'required' : 'nullable', 'string', 'date_format:Y-m-d\TH:i'],
             'city' => ['nullable', 'string', 'max:128'],
+            'pickup_group' => ['nullable', Rule::in(array_keys(\App\Domain\Rentals\PublicPickupDirectory::BARI_GROUPS))],
             'place_id' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
             'supplier' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
             'request_delivery' => ['nullable', 'boolean'],
@@ -75,7 +78,7 @@ class PublicCarSearchRequest extends FormRequest
         ];
 
         if ($this->routeIs('public-cars.index', 'public-cars.preview.index')) {
-            $rules['destination'] = ['sometimes', $this->boolean('request_delivery') ? 'nullable' : 'required', 'string', 'max:133', 'regex:/^(?:[1-9][0-9]{0,9}|city:\\S(?:[^\\r\\n]*\\S)?)$/uD'];
+            $rules['destination'] = ['sometimes', $this->boolean('request_delivery') ? 'nullable' : 'required', 'string', 'max:133', 'regex:/^(?:group:bari-(?:airport|port|station)|[1-9][0-9]{0,9}|city:\\S(?:[^\\r\\n]*\\S)?)$/uD'];
         }
 
         return $rules;
@@ -122,7 +125,8 @@ class PublicCarSearchRequest extends FormRequest
             'return_at.date_format' => 'Controlla data e ora della riconsegna.',
             'budget.*' => 'Inserisci un budget valido in euro, con al massimo due decimali.',
             'place_id.*' => $this->boolean('request_delivery') ? 'Scegli un luogo di riconsegna dall’elenco.' : 'Scegli un luogo di ritiro dall’elenco.',
-            'destination.*' => 'Scegli una città, un aeroporto, una stazione o una zona dall’elenco.',
+            'destination.*' => 'Scegli una città, un aeroporto, un porto, una stazione o una zona dall’elenco.',
+            'pickup_group.*' => 'Scegli uno dei gruppi di ritiro disponibili.',
             'supplier.*' => 'Controlla il noleggiatore selezionato.',
             'request_delivery.*' => 'Controlla la scelta del ritiro personalizzato.',
             'request_custom_return.*' => 'Controlla la scelta della riconsegna personalizzata.',

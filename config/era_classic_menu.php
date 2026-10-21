@@ -31,6 +31,7 @@ return [
             'section' => 'Noleggi',
             'items'   => [
                 ['label' => 'Contratti',     'route' => 'rentals.index',      'permission' => 'rentals.viewAny'],
+                ['label' => 'Luoghi serviti AMD Rent', 'route' => 'public-deliveries.index', 'permission' => 'vehicle_pricing.update'],
                 //['label' => 'Blocchi',       'route' => 'blocks.index',       'permission' => 'blocks.viewAny'],
             ],
         ],

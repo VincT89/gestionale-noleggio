@@ -7,6 +7,9 @@ use App\Domain\Rentals\{PublicVehiclePhoto, PublicVehicleSearch};
 use App\Models\{Location, PublicDeliveryLocation, Vehicle, VehiclePricelist};
 use App\Services\AmdRent\DemoFleet;
 use App\Services\AmdRent\DemoMap;
+use App\Services\AmdRent\{Commission, DeliveryQuotes, DemoPickupGroups};
+use App\Domain\Rentals\PublicPickupDirectory;
+use App\Models\PublicPickupPlace;
 use App\Domain\Rentals\{DeliveryCoverage, PublicBookingService};
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Schema\Blueprint;
@@ -552,6 +555,158 @@ class AmdRentDemoFleetTest extends PublicBookingTestCase
         $mixed = $this->snapshot();
         $this->artisan('amd-rent:demo-fleet', ['renter' => 4, '--enable-demo-map' => true])->assertFailed();
         $this->assertSame($mixed, $this->snapshot());
+    }
+
+    public function test_existing_demo_area_update_preserves_the_fleet_photos_and_original_data_and_is_idempotent(): void
+    {
+        $this->sourceFleet();
+        $this->prepare();
+        $map = app(DemoMap::class);
+        $map->apply(4, $map->preview(4)['fingerprint']);
+        $before = $this->snapshot();
+        $files = collect(Storage::disk('demo_photos')->allFiles())->mapWithKeys(fn ($path) =>
+            [$path => hash('sha256', Storage::disk('demo_photos')->get($path))])->all();
+        $groups = app(DemoPickupGroups::class);
+        $plan = $groups->preview(4);
+        $this->assertCount(3, $plan['areas']);
+        $this->assertFalse($plan['already_configured']);
+        $this->artisan('amd-rent:demo-fleet', ['renter' => ['DEMO', 'AMD', 'Rent'], '--update-demo-areas' => true])
+            ->expectsOutput('Solo anteprima: nessun dato o file modificato.')->assertSuccessful();
+        $this->artisan('amd-rent:demo-fleet', ['renter' => 4, '--update-demo-areas' => true, '--apply' => true])->assertFailed();
+        $this->assertSame($before, $this->snapshot());
+        $this->artisan('amd-rent:demo-fleet', ['renter' => 4, '--update-demo-areas' => true, '--apply' => true,
+            '--confirm' => $plan['fingerprint']])->expectsOutput('Aree demo aggiornate: 3. Auto, foto e listini conservati.')->assertSuccessful();
+        foreach ($before as $table => $rows) {
+            $added = in_array($table, ['public_pickup_places', 'public_delivery_locations'], true) ? 3 : 0;
+            $this->assertSame(count($rows) + $added, DB::table($table)->count(), $table);
+            foreach ($rows as $row) {
+                $this->assertSame($row, (array) DB::table($table)->where('id', $row['id'])->first(), $table);
+            }
+        }
+        $this->assertSame(array_keys($files), Storage::disk('demo_photos')->allFiles());
+        foreach ($files as $path => $hash) $this->assertSame($hash, hash('sha256', Storage::disk('demo_photos')->get($path)));
+        $this->assertTrue($map->preview(4)['already_configured']);
+        $this->assertTrue($groups->preview(4)['already_configured']);
+        $after = $this->snapshot();
+        $this->artisan('amd-rent:demo-fleet', ['renter' => 4, '--update-demo-areas' => true, '--apply' => true])
+            ->expectsOutput('Le tre aree di Bari sono già configurate per la demo. Nessuna modifica.')->assertSuccessful();
+        $this->assertSame($after, $this->snapshot());
+    }
+
+    public function test_updated_demo_searches_all_bari_groups_and_addresses_with_the_new_deposit_but_no_real_checkout(): void
+    {
+        $this->sourceFleet();
+        $result = $this->prepare();
+        $map = app(DemoMap::class);
+        $map->apply(4, $map->preview(4)['fingerprint']);
+        $groups = app(DemoPickupGroups::class);
+        $groups->apply(4, $groups->preview(4)['fingerprint']);
+        config(['amd_rent.payment_mode' => 'stripe']);
+        $commission = Commission::currentBps();
+        $before = $this->snapshot();
+        foreach (PublicPickupDirectory::BARI_GROUPS as $key => $group) {
+            $filters = $this->period(['pickup_group' => $key]);
+            $rows = $this->get(route('public-cars.index', $this->period(['destination' => 'group:'.$key])))
+                ->assertOk()->assertSee($group['name'])->viewData('results');
+            $this->assertEqualsCanonicalizing(array_values($result['vehicles']), $rows->pluck('vehicle_id')->all());
+            foreach ($rows as $car) {
+                $this->assertTrue($car['is_demo']);
+                $this->assertSame($key, PublicPickupDirectory::groupForPlace(PublicPickupPlace::findOrFail($car['place_id'])));
+                $this->assertSame(DemoPickupGroups::ADDRESS, $car['address']);
+                $this->assertSame(1500, $car['customer_deposit_bps']);
+                $this->assertSame($commission, $car['commission_bps']);
+                $this->assertSame((int) round($car['total_cents'] * .15), DeliveryQuotes::onlineDue($car));
+                $this->get(route('public-cars.show', ['pricelist' => $car['id']] + $filters))->assertOk()
+                    ->assertSee('Auto dimostrativa.')->assertDontSee('Prenota questa auto');
+                $this->get(route('public-cars.booking.create', ['pricelist' => $car['id']] + $filters))->assertRedirect();
+            }
+            $rows = app(PublicVehicleSearch::class)->search(VehiclePricelist::forPublicRental()->where('renter_org_id', 4),
+                $this->period(['pickup_group' => $key, 'request_delivery' => 1,
+                    'delivery_point' => ['lat' => 45.46, 'lng' => 9.19, 'label' => 'Indirizzo dimostrativo']]));
+            $this->assertEqualsCanonicalizing(array_values($result['vehicles']), $rows->pluck('vehicle_id')->all());
+            $this->assertTrue($rows->every(fn ($car) => $car['delivery_fee_cents'] === 0));
+        }
+        $this->assertSame($before, $this->snapshot());
+    }
+
+    public function test_demo_areas_reuse_configured_groups_and_only_reactivate_their_own_disabled_placeholder(): void
+    {
+        $this->sourceFleet();
+        $this->prepare();
+        $airport = PublicDeliveryLocation::where('organization_id', 4)->firstOrFail()->place;
+        $airport->update(['kind' => 'airport', 'city' => 'Bari', 'address_line' => 'Punto demo già configurato']);
+        $groups = app(DemoPickupGroups::class);
+        $plan = $groups->preview(4);
+        $this->assertSame('keep', $plan['areas'][0]['action']);
+        $this->assertSame($airport->id, $plan['areas'][0]['place']['id']);
+        $this->assertSame(2, $groups->apply(4, $plan['fingerprint']));
+        $port = PublicDeliveryLocation::where('organization_id', 4)->whereHas('place', fn ($q) => $q->where('kind', 'port'))->sole();
+        $port->update(['is_active' => false]);
+        $before = $this->snapshot();
+        $plan = $groups->preview(4);
+        $this->assertSame('enable', $plan['areas'][1]['action']);
+        $this->assertSame(1, $groups->apply(4, $plan['fingerprint']));
+        foreach ($before as $table => $rows) {
+            $this->assertSame(count($rows), DB::table($table)->count());
+            foreach ($rows as $row) {
+                if ($table === 'public_delivery_locations' && $row['id'] === $port->id) continue;
+                $this->assertSame($row, (array) DB::table($table)->where('id', $row['id'])->first());
+            }
+        }
+        $this->assertTrue($port->fresh()->is_active);
+        $this->assertFalse($port->fresh()->custom_delivery_enabled);
+    }
+
+    public function test_demo_area_updates_reject_other_renters_changed_previews_mixed_fleets_and_conflicting_options(): void
+    {
+        $this->sourceFleet();
+        $this->prepare();
+        $before = $this->snapshot();
+        $this->artisan('amd-rent:demo-fleet', ['renter' => 2, '--update-demo-areas' => true])->assertFailed();
+        foreach (['--enable-demo-map' => true, '--demo-daily' => '50', '--price' => ['1:1'],
+            '--without-photos' => true, '--available-photos' => true] as $option => $value) {
+            $this->artisan('amd-rent:demo-fleet', ['renter' => 4, '--update-demo-areas' => true, $option => $value])->assertFailed();
+        }
+        $this->assertSame($before, $this->snapshot());
+        $plan = app(DemoPickupGroups::class)->preview(4);
+        PublicDeliveryLocation::where('organization_id', 4)->firstOrFail()->place->update(['address_line' => 'Punto demo modificato']);
+        $changed = $this->snapshot();
+        $this->artisan('amd-rent:demo-fleet', ['renter' => 4, '--update-demo-areas' => true, '--apply' => true,
+            '--confirm' => $plan['fingerprint']])->assertFailed();
+        $this->assertSame($changed, $this->snapshot());
+        DB::table('vehicle_pricelists')->insert(['vehicle_id' => 1, 'renter_org_id' => 4, 'base_daily_cents' => 10000]);
+        $mixed = $this->snapshot();
+        $this->artisan('amd-rent:demo-fleet', ['renter' => 4, '--update-demo-areas' => true])->assertFailed();
+        $this->assertSame($mixed, $this->snapshot());
+    }
+
+    public function test_demo_area_update_rejects_modified_or_shared_place_collisions_without_reclassifying_them(): void
+    {
+        $this->sourceFleet();
+        $this->prepare();
+        $plan = app(DemoPickupGroups::class)->preview(4);
+        $place = PublicPickupPlace::create(array_replace($plan['areas'][0]['place'], ['kind' => 'area']));
+        $before = $this->snapshot();
+        $this->artisan('amd-rent:demo-fleet', ['renter' => 4, '--update-demo-areas' => true])->assertFailed();
+        $this->assertSame($before, $this->snapshot());
+        $place->update(['kind' => 'airport']);
+        PublicDeliveryLocation::create(['organization_id' => 2, 'location_id' => 2, 'is_active' => true,
+            'public_pickup_place_id' => $place->id]);
+        $before = $this->snapshot();
+        $this->artisan('amd-rent:demo-fleet', ['renter' => 4, '--update-demo-areas' => true])->assertFailed();
+        $this->assertSame($before, $this->snapshot());
+    }
+
+    public function test_partial_demo_area_update_is_rolled_back_on_an_insert_failure(): void
+    {
+        $this->sourceFleet();
+        $this->prepare();
+        $plan = app(DemoPickupGroups::class)->preview(4);
+        $before = $this->snapshot();
+        DB::unprepared("CREATE TRIGGER reject_demo_port BEFORE INSERT ON public_pickup_places WHEN NEW.kind = 'port' BEGIN SELECT RAISE(ABORT, 'Fixture insert failure'); END");
+        $this->artisan('amd-rent:demo-fleet', ['renter' => 4, '--update-demo-areas' => true, '--apply' => true,
+            '--confirm' => $plan['fingerprint']])->assertFailed();
+        $this->assertSame($before, $this->snapshot());
     }
 
     public function test_demo_search_is_labelled_and_cannot_create_bookings_or_payments(): void

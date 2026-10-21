@@ -24,13 +24,13 @@ class EraInterfaceTest extends PublicBookingTestCase
                 $html->assertSee('Pratiche e richieste')->assertDontSee('era-classic/app-6If3uo48.css');
             } else {
                 $html->assertSee('era-classic/app-6If3uo48.css')
-                    ->assertDontSee('Pratiche e richieste')->assertDontSee('Luoghi di consegna')
+                    ->assertDontSee('Pratiche e richieste')->assertSee('Luoghi serviti AMD Rent')
                     ->assertDontSee('Impostazioni AMD Rent')->assertSee('Stampa checklist vuota');
             }
         }
     }
 
-    public function test_all_new_management_routes_require_admin_even_with_extra_permissions(): void
+    public function test_new_management_routes_remain_admin_only_except_owned_delivery_settings(): void
     {
         $renter = $this->publisher(2, 'renter');
         DB::table('permissions')->insert(['id' => 70, 'name' => 'manage.renters']);
@@ -40,20 +40,23 @@ class EraInterfaceTest extends PublicBookingTestCase
             'customer_name' => 'Cliente dimostrativo', 'email' => 'rollout@example.test', 'phone' => '0000000000',
             'vehicle_request' => 'Auto dimostrativa', 'duration_months' => 12, 'annual_km' => 10000]);
         foreach (['amd-rent.index', 'amd-rent.settings', 'amd-rent.enquiries.index', 'amd-rent.enquiries.create',
-            'public-bookings.index', 'fleet-products.index', 'public-offers.index', 'public-deliveries.index', 'public-cars.preview.index'] as $name) {
+            'public-bookings.index', 'fleet-products.index', 'public-cars.preview.index'] as $name) {
             $this->get(route($name))->assertForbidden();
         }
         $this->get(route('amd-rent.enquiries.show', $case))->assertForbidden();
         $this->put(route('amd-rent.enquiries.update', $case), ['revision' => 1, 'status' => 'working'])->assertForbidden();
-        $this->post(route('public-deliveries.store'), [])->assertForbidden();
+        $this->get(route('public-offers.index'))->assertRedirect(route('public-deliveries.index'));
+        $this->get(route('public-deliveries.index'))->assertOk()->assertSee('data-era-interface="classic"', false)
+            ->assertDontSee('Pratiche e richieste')->assertDontSee('Impostazioni AMD Rent');
+        $this->post(route('public-deliveries.store'), [])->assertSessionHasErrors('organization_id');
         $this->post(route('fleet-products.store'), ['name' => 'Tipo non autorizzato'])->assertForbidden();
         $this->assertSame('new', $case->fresh()->status);
 
         foreach (Route::getRoutes() as $route) {
             $name = $route->getName() ?? '';
             if ((str_starts_with($name, 'amd-rent.') && $name !== 'amd-rent.stripe.webhook')
-                || str_starts_with($name, 'fleet-products.') || str_starts_with($name, 'public-deliveries.')
-                || str_starts_with($name, 'public-cars.preview.') || in_array($name, ['public-bookings.index', 'public-offers.index'])) {
+                || str_starts_with($name, 'fleet-products.')
+                || str_starts_with($name, 'public-cars.preview.') || $name === 'public-bookings.index') {
                 $this->assertContains(RequireModernEra::class, $route->gatherMiddleware(), $name);
             }
         }

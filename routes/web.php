@@ -79,11 +79,13 @@ Route::middleware([
             ->whereNumber('product')->whereNumber('vehicle')->name('detach');
     });
 
-    Route::middleware([\App\Http\Middleware\RequireModernEra::class, 'can:vehicle_pricing.update'])->group(function () {
+    Route::middleware('can:vehicle_pricing.update')->group(function () {
         Route::get('/catalogo-pubblico', fn () => redirect()->route('public-deliveries.index'))->name('public-offers.index');
         Route::get('/catalogo-pubblico/luoghi', [PublicDeliveryLocationController::class, 'index'])->name('public-deliveries.index');
         Route::post('/catalogo-pubblico/luoghi', [PublicDeliveryLocationController::class, 'store'])->name('public-deliveries.store');
         Route::put('/catalogo-pubblico/luoghi/{delivery}', [PublicDeliveryLocationController::class, 'update'])->whereNumber('delivery')->name('public-deliveries.update');
+    });
+    Route::middleware([\App\Http\Middleware\RequireModernEra::class, 'can:vehicle_pricing.update'])->group(function () {
         Route::get('/catalogo-pubblico/anteprima', [PublicCarSearchController::class, 'preview'])->name('public-cars.preview.index');
         Route::post('/catalogo-pubblico/anteprima/ritiro-mappa/cerca', [\App\Http\Controllers\PublicPickupMapController::class, 'search'])->middleware('throttle:20,1')->name('public-cars.preview.map.search');
         Route::post('/catalogo-pubblico/anteprima/ritiro-mappa/indirizzo', [\App\Http\Controllers\PublicPickupMapController::class, 'address'])->middleware('throttle:20,1')->name('public-cars.preview.map.address');

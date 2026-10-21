@@ -16,7 +16,7 @@ class PublicBookingService
     {
         $fields = ['id', 'vehicle_id', 'supplier_id', 'title', 'organization', 'location', 'city', 'address', 'description', 'total_cents',
             'days', 'deposit_cents', 'km_per_day', 'extra_km_cents', 'prices_include_vat', 'place_id', 'pickup_location_id',
-            'custom_delivery_enabled', 'delivery_request_id', 'delivery_fee_cents', 'commission_bps', 'delivery_commission_bps', 'delivery_address', 'delivery_revision', 'return_address'];
+            'custom_delivery_enabled', 'delivery_request_id', 'delivery_fee_cents', 'commission_bps', 'customer_deposit_bps', 'delivery_commission_bps', 'delivery_address', 'delivery_revision', 'return_address'];
         $values = array_intersect_key($car, array_flip($fields));
         // Invalidate checkouts issued before inclusive delivery pricing and the single commission.
         $values['pricing_version'] = 'segments-inclusive-v1';
@@ -113,7 +113,8 @@ class PublicBookingService
                 'payment_status' => $stripe ? 'pending' : 'pickup', 'online_due_cents' => $onlineDue,
                 'payment_expires_at' => $stripe ? now()->addMinutes(35) : null,
                 'delivery_fee_cents' => $car['delivery_fee_cents'] ?? 0, 'delivery_commission_bps' => $car['delivery_commission_bps'] ?? null,
-                'quote_snapshot' => $car + ['pricelist_id' => $pricelist->id], 'accepted_at' => now(),
+                'quote_snapshot' => $car + ['pricelist_id' => $pricelist->id,
+                    'supplier_contacts' => \App\Services\AmdRent\SupplierContacts::forOrganization($pricelist->renter)], 'accepted_at' => now(),
             ]);
             if ($deliveryRequest) $deliveryRequest->update(['public_booking_id' => $booking->id, 'status' => 'converted', 'revision' => $deliveryRequest->revision + 1]);
             return $booking;

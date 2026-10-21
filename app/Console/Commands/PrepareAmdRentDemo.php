@@ -17,7 +17,8 @@ class PrepareAmdRentDemo extends Command
         {--without-photos : Copia senza fotografie reali; restano le immagini di riferimento disponibili}
         {--available-photos : Copia solo le foto disponibili, segnalando quelle mancanti o non copiabili}
         {--enable-demo-map : Configura la demo già creata per tutti gli indirizzi riconosciuti, senza prenotazioni reali}
-        {--apply : Crea le copie dopo aver controllato l\'anteprima}
+        {--update-demo-areas : Completa la demo esistente con Aeroporto, Porto e Stazione di Bari, senza ricopiare la flotta}
+        {--apply : Applica la creazione o l\'aggiornamento dopo aver controllato l\'anteprima}
         {--confirm= : Impronta completa mostrata dall\'anteprima da applicare}';
 
     protected $description = 'Prepara una copia dimostrativa della flotta attiva, con listini e luoghi. Senza --apply non scrive nulla.';
@@ -40,6 +41,13 @@ class PrepareAmdRentDemo extends Command
             }
             if (!ctype_digit($id) || (int) $id < 1 || (string) (int) $id !== $id) {
                 throw new RuntimeException('Indicare l\'ID numerico del noleggiatore DEMO.');
+            }
+            if ($this->option('update-demo-areas')) {
+                if ($this->option('enable-demo-map') || $this->option('price') || $this->option('demo-daily') !== null
+                    || $this->option('without-photos') || $this->option('available-photos')) {
+                    throw new RuntimeException('Usare --update-demo-areas da solo: auto, foto, listini e copertura esistente sono conservati.');
+                }
+                return $this->updateAreas((int) $id);
             }
             if ($this->option('enable-demo-map')) {
                 $map = app(\App\Services\AmdRent\DemoMap::class);
@@ -138,5 +146,32 @@ class PrepareAmdRentDemo extends Command
         }
 
         return self::FAILURE;
+    }
+
+    private function updateAreas(int $renter): int
+    {
+        $groups = app(\App\Services\AmdRent\DemoPickupGroups::class);
+        $plan = $groups->preview($renter);
+        $this->table(['Aggiornamento demo', 'Valore'], [
+            ['Noleggiatore', $renter.' - '.$plan['renter']['name']], ['Database', $plan['database']],
+            ['Host', $plan['host'] ?? 'locale'], ['Auto, foto e listini', 'Conservati, senza nuove copie'],
+            ['Ricerca per indirizzo', $plan['map_enabled'] ? 'Copertura simulata già abilitata, conservata' : 'Configurazione esistente conservata'],
+            ['Prenotazioni', 'Disabilitate per le copie demo'],
+        ]);
+        $actions = ['keep' => 'Già coperta', 'create' => 'Aggiungere punto dimostrativo', 'enable' => 'Riattivare punto dimostrativo'];
+        $this->table(['Area', 'Azione', 'Punto di incontro'], array_map(fn ($area) => [
+            $area['label'], $actions[$area['action']], $area['place']['address_line'],
+        ], $plan['areas']));
+        if ($plan['already_configured']) {
+            $this->info('Le tre aree di Bari sono già configurate per la demo. Nessuna modifica.');
+        } elseif (!$this->option('apply')) {
+            $this->info('Solo anteprima: nessun dato o file modificato.');
+            $this->line('Impronta: '.$plan['fingerprint']);
+            $this->line('Ripetere gli stessi argomenti aggiungendo --apply --confirm='.$plan['fingerprint']);
+        } else {
+            $count = $groups->apply($renter, (string) $this->option('confirm'));
+            $this->info('Aree demo aggiornate: '.$count.'. Auto, foto e listini conservati.');
+        }
+        return self::SUCCESS;
     }
 }

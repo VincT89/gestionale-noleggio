@@ -9,7 +9,7 @@
     <div class="amd-search-primary">
         <div class="amd-field amd-place-field"><label for="pickup-place" data-search-place-label>{{ $customPickup ? 'Luogo di riconsegna (facoltativo)' : 'Luogo di ritiro' }}</label>
             <select id="pickup-place" name="destination" data-place-select aria-describedby="place-help">
-                <option value="">Cerca città, aeroporto, stazione o zona</option>
+                <option value="">Cerca città, aeroporto, porto, stazione o zona</option>
                 @foreach($destinations as $destination)<option value="{{ $destination['value'] }}" @selected(mb_strtolower($destinationValue) === mb_strtolower($destination['value']))>{{ $destination['label'] }}</option>@endforeach
                 @if(!$knownDestination && $selectedPlace && $destinationValue === (string) $selectedPlace->id)<option value="{{ $selectedPlace->id }}" selected>Punto di ritiro{{ $selectedPlace->city ? ' — '.$selectedPlace->city : ' selezionato' }}</option>@endif
             </select>
@@ -28,6 +28,6 @@
     </div>
     <div class="amd-search-foot">
         <p class="amd-search-note">Date e orari italiani.</p>
-        @unless($searched)<p class="amd-search-note">@if(\App\Services\AmdRent\Commission::currentBps() === 0)<strong>Prenoti e paghi al ritiro.</strong>@else<strong>Prenoti con il {{ \App\Services\AmdRent\Commission::label() }} online.</strong> Saldo al ritiro.@endif</p>@endunless
+        @unless($searched)<p class="amd-search-note">@if(\App\Services\AmdRent\CustomerDeposit::currentBps() === 0)<strong>Prenoti e paghi al ritiro.</strong>@else<strong>Prenoti con il {{ \App\Services\AmdRent\CustomerDeposit::label() }} online.</strong> Saldo al ritiro.@endif</p>@endunless
     </div>
 </form>

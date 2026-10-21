@@ -27,14 +27,14 @@
     <p>Controlla separatamente il luogo di ritiro e quello di riconsegna nel riepilogo. Date e orari sono riferiti all’Italia.</p>
     <h2 id="prezzi-e-condizioni">Importi e condizioni prima di prenotare</h2>
     <p>Ogni scheda riporta il totale del noleggio, IVA inclusa, la cauzione separata e il chilometraggio incluso. Se previsti, trovi anche il costo dei chilometri extra e le condizioni indicate dal noleggiatore.</p>
-    @if(\App\Services\AmdRent\Commission::currentBps() === 0)
+    @if(\App\Services\AmdRent\CustomerDeposit::currentBps() === 0)
     <h2 id="conferma-e-ritiro">Prenoti e paghi al ritiro</h2>
     <p>Inserisci i recapiti e controlla il riepilogo. Per la consegna personalizzata attendi la conferma del noleggiatore prima di prenotare. Non sono previsti addebiti online.</p>
     <p>Conserva il riferimento e scarica il PDF della prenotazione. Il noleggiatore verifica i documenti del conducente e completa il contratto prima della consegna. Paghi il totale al ritiro; la cauzione rimane separata.</p>
     @else
-    <h2 id="conferma-e-ritiro">Il {{ \App\Services\AmdRent\Commission::label() }} online, il resto al ritiro</h2>
+    <h2 id="conferma-e-ritiro">Il {{ \App\Services\AmdRent\CustomerDeposit::label() }} online, il resto al ritiro</h2>
     <p>Prenoti senza creare un account: inserisci i recapiti e controlla il riepilogo. Verifichiamo nuovamente prezzo e disponibilità prima del pagamento online, gestito da Stripe. Il pagamento riuscito conferma la prenotazione.</p>
-    <p>Conserva il riferimento e scarica il PDF della prenotazione. Versi ad AMD Rent il {{ \App\Services\AmdRent\Commission::label() }} del totale online e paghi il saldo al noleggiatore al ritiro; il noleggiatore verifica i documenti del conducente e completa il contratto prima della consegna.</p>
+    <p>Conserva il riferimento e scarica il PDF della prenotazione. Versi ad AMD Rent il {{ \App\Services\AmdRent\CustomerDeposit::label() }} del totale online e paghi il saldo al noleggiatore al ritiro; il noleggiatore verifica i documenti del conducente e completa il contratto prima della consegna.</p>
     @endif
     <h2 id="consegna-personalizzata">Consegna e ritiro dove ti servono</h2>
     <p>Il prezzo comprende noleggio, consegna e ritiro: trovi un unico totale e la tariffa media giornaliera. I giorni sono periodi di 24 ore; una frazione aggiuntiva conta come un giorno. La cauzione resta separata.</p>

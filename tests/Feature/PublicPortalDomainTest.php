@@ -48,12 +48,13 @@ class PublicPortalDomainTest extends PublicBookingTestCase
     public function test_management_auth_api_and_preview_routes_are_blocked_on_public_domain(): void
     {
         foreach (['/login', '/register', '/dashboard', '/user/profile', '/organization-blocked',
-            '/prenotazioni-sito', '/catalogo-pubblico', '/catalogo-pubblico/anteprima',
+            '/prenotazioni-sito', '/catalogo-pubblico', '/catalogo-pubblico/luoghi', '/catalogo-pubblico/anteprima',
             '/catalogo-pubblico/anteprima/1/prenota', '/api/user'] as $path) {
             $this->get(self::PUBLIC_URL.$path)->assertNotFound();
         }
         $this->post(self::PUBLIC_URL.'/login', [])->assertNotFound();
         $this->post(self::PUBLIC_URL.'/livewire/update', [])->assertNotFound();
+        $this->post(self::PUBLIC_URL.'/catalogo-pubblico/luoghi', [])->assertNotFound();
 
         $this->actingAs($this->publisher());
         $this->get(self::PUBLIC_URL.'/dashboard')->assertNotFound();

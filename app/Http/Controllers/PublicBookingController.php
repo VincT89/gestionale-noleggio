@@ -32,7 +32,7 @@ class PublicBookingController extends Controller
         abort_unless((clone $scope)->exists(), 404);
         $browseFilters = $request->validated();
         $period = array_filter($request->safe()->only(['pickup_at', 'return_at', 'place_id']), fn ($value) => $value !== null);
-        $filters = $period + $request->safe()->only(['city', 'request_delivery', 'delivery_address', 'delivery_place', 'request_custom_return', 'return_address', 'return_place']);
+        $filters = $period + $request->safe()->only(['city', 'pickup_group', 'request_delivery', 'delivery_address', 'delivery_place', 'request_custom_return', 'return_address', 'return_place']);
         $customReturn = !empty($filters['request_custom_return']);
         // Both requested points must belong to the same configured service area.
         $car = $search->search($scope, $customReturn ? Arr::except($filters, ['place_id']) : $filters)->first();
@@ -41,7 +41,7 @@ class PublicBookingController extends Controller
             return redirect()->route($prefix.'.show', ['pricelist' => $pricelist] + $browseFilters)
                 ->withErrors(['booking' => 'Auto dimostrativa: puoi esplorare prezzi e disponibilità, senza effettuare prenotazioni.']);
         }
-        if (!empty($filters['request_delivery']) && !$customReturn && empty($period['place_id'])) {
+        if (!empty($filters['request_delivery']) && !$customReturn && empty($period['place_id']) && empty($filters['pickup_group'])) {
             return redirect()->route($prefix.'.show', ['pricelist' => $pricelist] + $browseFilters)
                 ->withErrors(['place_id' => 'Scegli dove riconsegnare l’auto prima di continuare.']);
         }
@@ -52,7 +52,7 @@ class PublicBookingController extends Controller
         }
 
         // Resolve the actual service point without narrowing the original search links.
-        if ($customReturn || !empty($filters['city'])) $filters['place_id'] = $period['place_id'] = $car['place_id'];
+        if ($customReturn || !empty($filters['city']) || !empty($filters['pickup_group'])) $filters['place_id'] = $period['place_id'] = $car['place_id'];
         if ($customReturn) {
             $car['return_address'] = $filters['return_address'];
             $car['return_destination'] = app(\App\Services\Geocoding\PlaceSelection::class)

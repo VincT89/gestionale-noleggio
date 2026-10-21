@@ -157,9 +157,9 @@ class PublicCarSearchTest extends PublicCarsTestCase
         $this->offer();
         $result = app(PublicVehicleSearch::class)->search(\App\Models\VehiclePricelist::forPublicRental(), $this->period())->first();
         $this->assertSame([
-            'id','vehicle_id','title','year','segment','seats','transmission','fuel','organization','location','city','address',
+            'id','is_demo','vehicle_id','title','year','segment','seats','transmission','fuel','organization','location','city','address',
             'description','has_photo','photo_is_reference','total_cents','days','deposit_cents','km_per_day','extra_km_cents','prices_include_vat',
-            'place_id','pickup_location_id','supplier_id','custom_delivery_enabled','delivery_area','product_id','product_name','commission_bps',
+            'place_id','pickup_location_id','supplier_id','custom_delivery_enabled','delivery_area','product_id','product_name','commission_bps','customer_deposit_bps',
         ], array_keys($result));
     }
 

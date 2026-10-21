@@ -44,7 +44,7 @@
             <div class="amd-footer-about">
                 <a class="amd-footer-brand" href="{{ route($routePrefix.'.index') }}">AMD Rent</a>
                 <p>Il tuo viaggio, la tua auto.<br>Scegli il luogo, confronta le condizioni e parti con le idee chiare.</p>
-                <p class="amd-footer-payment">@if(\App\Services\AmdRent\Commission::currentBps() === 0) Noleggio auto: pagamento al ritiro. @else Noleggio auto: {{ \App\Services\AmdRent\Commission::label() }} online, saldo al ritiro. @endif</p>
+                <p class="amd-footer-payment">@if(\App\Services\AmdRent\CustomerDeposit::currentBps() === 0) Noleggio auto: pagamento al ritiro. @else Noleggio auto: {{ \App\Services\AmdRent\CustomerDeposit::label() }} online, saldo al ritiro. @endif</p>
             </div>
             <nav class="amd-footer-column" aria-label="Esplora AMD Rent">
                 <h2>Esplora</h2>

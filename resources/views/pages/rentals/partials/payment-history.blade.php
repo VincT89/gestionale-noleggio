@@ -11,7 +11,7 @@
 <section aria-labelledby="payment-history-title" class="min-w-0 rounded-lg border border-gray-200 bg-white p-3 text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100">
     <h2 id="payment-history-title" class="font-semibold">Storico pagamenti</h2>
     @if($rental->booking_channel === 'amd_rent')
-        <p class="mt-2 text-sm">Prenotazione AMD Rent. Quota già incassata dalla piattaforma: <strong>{{ $money($rental->admin_fee_collected_amount) }}</strong>. I pagamenti Stripe sono riconciliati automaticamente.</p>
+        <p class="mt-2 text-sm">Prenotazione AMD Rent. Commissione già incassata dalla piattaforma: <strong>{{ $money($rental->admin_fee_collected_amount) }}</strong>. I pagamenti Stripe sono riconciliati automaticamente.</p>
     @endif
     @error('payment')
         <p role="alert" class="mt-2 text-sm text-red-700 dark:text-red-300">{{ $message }}</p>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Rentals\PublicPickupDirectory;
 use App\Models\{Location, Organization, PublicDeliveryLocation, PublicPickupPlace};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{DB, Gate};
@@ -14,7 +15,7 @@ class PublicDeliveryLocationController extends Controller
     private function organizations(Request $request)
     {
         Gate::authorize('vehicle_pricing.update');
-        \App\Support\AmdRentAccess::check($request->user());
+        abort_unless($request->user()->is_active && $request->user()->organization?->is_active, 403);
         return Organization::where('is_active', true)->when(!$request->user()->hasRole('admin'),
             fn ($q) => $q->whereKey($request->user()->organization_id));
     }
@@ -34,19 +35,25 @@ class PublicDeliveryLocationController extends Controller
     public function store(Request $request)
     {
         $organizations = $this->organizations($request);
+        $request->validate(['pickup_group' => ['nullable', Rule::in(array_keys(PublicPickupDirectory::BARI_GROUPS))]]);
+        $group = $request->input('pickup_group');
+        /** Selecting a named area explicitly sets its city and type for a new meeting point. */
+        if ($group && !$request->filled('place_id')) {
+            $request->merge(['city' => 'Bari', 'country_code' => 'IT', 'kind' => PublicPickupDirectory::BARI_GROUPS[$group]['kind']]);
+        }
         $data = $request->validate([
             'organization_id' => ['required', 'integer'],
             'place_id' => ['bail', 'nullable', 'integer', 'exists:public_pickup_places,id'],
             'name' => [Rule::excludeIf($request->filled('place_id')), 'required_without:place_id', 'string', 'max:191'],
             'city' => ['required_without:place_id', 'nullable', 'string', 'max:128'],
             'kind' => ['required_without:place_id', 'nullable', Rule::in(array_keys(PublicPickupPlace::KINDS))],
-            'address_line' => ['nullable', 'string', 'max:191'],
+            'address_line' => [Rule::requiredIf($group && !$request->filled('place_id')), 'nullable', 'string', 'max:191'],
             'country_code' => ['required_without:place_id', 'nullable', 'string', 'regex:/^[A-Z]{2}$/'],
             'confirm_delivery' => ['accepted'],
         ], ['confirm_delivery.accepted' => 'Conferma che puoi consegnare e ritirare le auto in questo luogo alle condizioni delle offerte.',
             'name.required_without' => 'Indica il nome del nuovo luogo.', 'city.required_without' => 'Indica la città del nuovo luogo.']);
         $organization = $organizations->findOrFail($data['organization_id']);
-        DB::transaction(function () use ($data, $organization) {
+        DB::transaction(function () use ($data, $organization, $group) {
             // Share the organization lock used when reserving a vehicle.
             Organization::whereKey($organization->id)->lockForUpdate()->firstOrFail();
             if (!empty($data['place_id'])) {
@@ -55,6 +62,13 @@ class PublicDeliveryLocationController extends Controller
                 $fields = array_intersect_key($data, array_flip(['name', 'city', 'kind', 'address_line', 'country_code']));
                 $fields = array_map(fn ($value) => is_string($value) ? preg_replace('/\s+/u', ' ', trim($value)) : $value, $fields);
                 $place = PublicPickupPlace::firstOrCreate(['identity_key' => PublicPickupPlace::identity($fields)], $fields);
+            }
+            /** A renter can activate their service, but cannot reclassify a shared place used by other suppliers. */
+            if ($group && PublicPickupDirectory::groupForPlace($place) !== $group) {
+                throw ValidationException::withMessages(['place_id' => 'Il punto non appartiene all’area scelta. Se la classificazione del luogo esistente è errata, chiedi all’amministratore di verificarla.']);
+            }
+            if ($group && trim((string) $place->address_line) === '') {
+                throw ValidationException::withMessages(['place_id' => 'Il punto selezionato non ha un indirizzo o punto d’incontro preciso. Aggiungi un punto completo prima di attivare l’area.']);
             }
             $delivery = PublicDeliveryLocation::where('organization_id', $organization->id)->where('public_pickup_place_id', $place->id)->first();
             if ($delivery) {
@@ -66,7 +80,7 @@ class PublicDeliveryLocationController extends Controller
             PublicDeliveryLocation::create(['organization_id' => $organization->id, 'public_pickup_place_id' => $place->id,
                 'location_id' => $location->id, 'is_active' => true]);
         });
-        return redirect()->route('public-deliveries.index')->with('status', 'Luogo di consegna attivato. Le auto compariranno soltanto se disponibili per il periodo cercato.');
+        return redirect()->route('public-deliveries.index')->with('status', ($group ? PublicPickupDirectory::groupLabel($group).': punto di ritiro attivato.' : 'Luogo di consegna attivato.').' Le auto compariranno soltanto se disponibili per il periodo cercato.');
     }
 
     public function update(Request $request, int $delivery)
@@ -75,6 +89,7 @@ class PublicDeliveryLocationController extends Controller
         $model = PublicDeliveryLocation::whereIn('organization_id', $organizations->select('id'))->findOrFail($delivery);
         $data = $request->validate([
             'is_active' => ['required', 'boolean'], 'custom_delivery_enabled' => ['sometimes', 'boolean'],
+            'place_kind' => ['sometimes', 'required', Rule::in(array_keys(PublicPickupPlace::KINDS))],
             'delivery_area' => ['nullable', 'required_if:custom_delivery_enabled,1', 'string', 'max:500'],
             'delivery_origin_location_id' => ['nullable', 'required_with:delivery_radius_km', 'integer', 'min:1'],
             'delivery_radius_km' => ['nullable', 'required_with:delivery_origin_location_id', 'numeric', 'min:0.01', 'max:999999.99', 'decimal:0,2'],
@@ -84,6 +99,7 @@ class PublicDeliveryLocationController extends Controller
         ], ['delivery_origin_location_id.*' => 'Scegli la sede da cui parti per la consegna.',
             'delivery_radius_km.*' => 'Indica il raggio di consegna in chilometri, maggiore di zero e con al massimo due decimali.',
             'custom_delivery_fee.*' => 'Indica il prezzo complessivo di consegna e ritiro, IVA inclusa. Inserisci 0 solo se il servizio è gratuito.']);
+        if (array_key_exists('place_kind', $data)) abort_unless($request->user()->hasRole('admin'), 403);
         $origin = empty($data['delivery_origin_location_id']) ? null
             : Location::where('organization_id', $model->organization_id)->findOrFail($data['delivery_origin_location_id']);
         $context = 'origin:'.$model->id.':'.$origin?->id;
@@ -112,6 +128,8 @@ class PublicDeliveryLocationController extends Controller
         }
         DB::transaction(function () use ($model, $data, $origin, $point) {
             Organization::whereKey($model->organization_id)->lockForUpdate()->firstOrFail();
+            /** A shared public place can be reclassified only by an administrator, preserving its identity and address. */
+            if (array_key_exists('place_kind', $data)) $model->place()->firstOrFail()->update(['kind' => $data['place_kind']]);
             if ($point && $origin) {
                 Location::where('organization_id', $model->organization_id)->whereKey($origin->id)->lockForUpdate()->firstOrFail()
                     ->update(['lat' => $point['lat'], 'lng' => $point['lng']]);
@@ -124,8 +142,10 @@ class PublicDeliveryLocationController extends Controller
             }
             if ($coverage) $model->update($coverage);
         });
-        return redirect()->route('public-deliveries.index')->with('status', array_key_exists('custom_delivery_enabled', $data)
+        return redirect()->route('public-deliveries.index')->with('status', array_key_exists('place_kind', $data)
+            ? 'Classificazione del luogo aggiornata.'
+            : (array_key_exists('custom_delivery_enabled', $data)
             ? 'Servizio di consegna aggiornato.'
-            : ($model->is_active ? 'Luogo riattivato.' : 'Luogo disattivato per le nuove prenotazioni. Le prenotazioni già confermate restano valide.'));
+            : ($model->is_active ? 'Luogo riattivato.' : 'Luogo disattivato per le nuove prenotazioni. Le prenotazioni già confermate restano valide.')));
     }
 }

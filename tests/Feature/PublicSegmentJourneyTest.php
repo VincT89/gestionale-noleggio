@@ -294,7 +294,7 @@ class PublicSegmentJourneyTest extends PublicBookingTestCase
             ->assertSee('330,00 €');
         $car = $page->viewData('car');
         $this->assertSame(33000, $car['total_cents']);
-        $this->assertSame(6600, DeliveryQuotes::onlineDue($car));
+        $this->assertSame(0, DeliveryQuotes::onlineDue($car));
         $this->assertSame(2000, $car['commission_bps']);
         $newPage = $this->get(route('public-cars.booking.create', ['pricelist' => 1] + $this->trip(true)))->assertOk();
         $this->assertSame(2550, $newPage->viewData('car')['commission_bps']);
@@ -311,7 +311,7 @@ class PublicSegmentJourneyTest extends PublicBookingTestCase
         $this->post(route('public-cars.booking.store', 1), $this->form($this->trip(true)))->assertStatus(303);
         $case = AmdRentEnquiry::sole();
         $context = $case->booking_context;
-        unset($context['car']['commission_bps']);
+        unset($context['car']['commission_bps'], $context['car']['customer_deposit_bps']);
         $case->update(['booking_context' => $context, 'status' => 'quoted', 'quote_expires_at' => now()->addDay()]);
         DB::table('amd_rent_settings')->insert(['id' => 1, 'commission_bps' => 3500, 'delivery_commission_bps' => 1000]);
         $page = $this->post(URL::signedRoute('public-enquiries.accept', ['reference' => $case->reference]), ['accept_quote' => 1])->assertOk();

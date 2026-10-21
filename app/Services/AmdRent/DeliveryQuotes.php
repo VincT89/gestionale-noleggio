@@ -35,10 +35,17 @@ class DeliveryQuotes
             unset($result['commission_bps']);
             $result['delivery_commission_bps'] = (int) $bps;
         }
+        /** Existing delivery proposals retain the payment terms shown when they were requested. */
+        if (isset($context['car']['customer_deposit_bps'])) {
+            $result['customer_deposit_bps'] = (int) $context['car']['customer_deposit_bps'];
+        } else {
+            unset($result['customer_deposit_bps']);
+        }
         return $result;
     }
     public static function onlineDue(array $car): int
     {
+        if (isset($car['customer_deposit_bps'])) return intdiv($car['total_cents'] * $car['customer_deposit_bps'] + 5000, 10000);
         if (isset($car['commission_bps'])) return intdiv($car['total_cents'] * $car['commission_bps'] + 5000, 10000);
         $base = $car['rental_total_cents'] ?? $car['total_cents'];
         return intdiv($base * 2000 + 5000, 10000)

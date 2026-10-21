@@ -64,7 +64,7 @@ class AdminFeeResolver
             $totalRate = $booking->quote_snapshot['commission_bps'] ?? null;
             return ['percent' => $totalRate === null ? 20.0 : $totalRate / 100, 'extra_percent' => $extraPercent,
                 'commissionable_total' => round(($booking->total_cents - ($totalRate === null ? $booking->delivery_fee_cents : 0)) / 100 + $extras, 2),
-                'amount' => round(max(0, $booking->online_paid_cents - $booking->refunded_cents) / 100 + $extras * (float) $extraPercent / 100, 2)];
+                'amount' => round(\App\Services\AmdRent\Commission::earnedCents($booking) / 100 + $extras * (float) $extraPercent / 100, 2)];
         }
         $date = $this->normalizeDate($at ?? ($rental->actual_return_at ?: now()));
 

@@ -64,7 +64,7 @@
 </div>
 @if($canChoosePickup)
     @php
-        $pickupMapFilters = \Illuminate\Support\Arr::except($browseFilters, ['place_id', 'city', 'destination', 'delivery_place', 'delivery_address', 'request_custom_return', 'return_address', 'return_place', 'page']);
+        $pickupMapFilters = \Illuminate\Support\Arr::except($browseFilters, ['place_id', 'city', 'pickup_group', 'destination', 'delivery_place', 'delivery_address', 'request_custom_return', 'return_address', 'return_place', 'page']);
         $pickupMapFilters['request_delivery'] = 1;
         if (empty($pickupMapFilters['segment']) && !empty($car['segment'])) $pickupMapFilters['segment'] = $car['segment'];
         $pickupMapAddress = $inputValue('delivery_address') ?: $car['city'];

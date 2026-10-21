@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PublicPickupPlace extends Model
 {
-    public const KINDS = ['airport' => 'Aeroporto', 'station' => 'Stazione', 'city' => 'Città', 'area' => 'Zona', 'location' => 'Punto di ritiro'];
+    public const KINDS = ['airport' => 'Aeroporto', 'port' => 'Porto', 'station' => 'Stazione', 'city' => 'Città', 'area' => 'Zona', 'location' => 'Punto di ritiro'];
 
     protected $fillable = ['name', 'city', 'kind', 'address_line', 'country_code', 'identity_key'];
 

@@ -13,7 +13,7 @@
             </div>
             <div class="amd-pickup-panel" id="pickup-point">
                 <h3>Scendi. Ritira. Parti.</h3>
-                <p>Cerca tra gli aeroporti, le stazioni e i punti serviti. Confronta le auto disponibili nelle tue date e scegli quella per te.</p>
+                <p>Cerca tra gli aeroporti, i porti, le stazioni e i punti serviti. Confronta le auto disponibili nelle tue date e scegli quella per te.</p>
                 <a class="amd-button" href="#car-search" data-search-standard>Scegli il punto di ritiro</a>
             </div>
             <div class="amd-pickup-panel" id="pickup-address">
@@ -50,7 +50,7 @@
     <div class="amd-section-inner amd-answers-layout">
         <div><h2 id="answers-heading">Parti con<br>le idee chiare.</h2><p>Le risposte utili, prima di scegliere.</p><a class="amd-text-link" href="{{ route('public-site.how-it-works') }}">Come funziona la prenotazione</a></div>
         <div class="amd-home-faq">
-            <details><summary>Quanto pago per prenotare?</summary><div><p>@if(\App\Services\AmdRent\Commission::currentBps() === 0) Per il noleggio breve paghi al ritiro, senza addebiti online. Per la consegna personalizzata attendi prima la conferma del noleggiatore. La cauzione è separata. @else Per il noleggio breve versi il {{ \App\Services\AmdRent\Commission::label() }} online con Stripe. Il saldo si paga al ritiro. La prenotazione viene confermata dopo la verifica del pagamento; la cauzione è separata. @endif</p></div></details>
+            <details><summary>Quanto pago per prenotare?</summary><div><p>@if(\App\Services\AmdRent\CustomerDeposit::currentBps() === 0) Per il noleggio breve paghi al ritiro, senza addebiti online. Per la consegna personalizzata attendi prima la conferma del noleggiatore. La cauzione è separata. @else Per il noleggio breve versi il {{ \App\Services\AmdRent\CustomerDeposit::label() }} online con Stripe. Il saldo si paga al ritiro. La prenotazione viene confermata dopo la verifica del pagamento; la cauzione è separata. @endif</p></div></details>
             <details><summary>Posso ricevere l’auto in hotel?</summary><div><p>Sì, dove il servizio è offerto. Cerca l’hotel o un indirizzo, scegli l’auto e invia la richiesta. Aspetta la conferma della disponibilità prima di pagare.</p></div></details>
             <details><summary>Posso riconsegnarla in un altro luogo?</summary><div><p>Con il ritiro personalizzato puoi scegliere un punto servito oppure richiedere un altro luogo, come un aeroporto o un hotel. Consegna e ritiro sono inclusi nel prezzo. Il noleggiatore confermerà auto e appuntamenti prima del pagamento.</p></div></details>
             <details><summary>Il prezzo comprende tutto?</summary><div><p>Il totale del noleggio è per l’intero periodo e include l’IVA. Cauzione, chilometri inclusi ed eventuali costi per chilometri extra sono indicati nella proposta. Per il ritiro personalizzato, consegna e ritiro sono inclusi nel totale.</p></div></details>

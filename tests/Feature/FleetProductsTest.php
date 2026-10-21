@@ -57,7 +57,7 @@ class FleetProductsTest extends PublicCarsTestCase
         $this->put(route('fleet-products.update', $product), ['name' => 'Iniettato'])->assertForbidden();
         $this->post(route('fleet-products.attach', $product), ['vehicle_ids' => [1]])->assertForbidden();
         $this->delete(route('fleet-products.detach', [$product, 1]))->assertForbidden();
-        $this->get(route('public-deliveries.index'))->assertForbidden()->assertDontSee('Segmenti della flotta');
+        $this->get(route('public-deliveries.index'))->assertOk()->assertDontSee('Segmenti della flotta');
         $this->assertDatabaseCount('vehicle_products', 1);
         $this->assertNull(Vehicle::findOrFail(1)->vehicle_product_id);
     }

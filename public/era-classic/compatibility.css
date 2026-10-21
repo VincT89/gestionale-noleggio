@@ -14,6 +14,53 @@
     overflow-y: auto;
 }
 
+/** Keep the new service settings readable inside the existing renter interface. */
+[data-era-interface="classic"] .era-delivery-settings {
+    color: #f3f4f6;
+    min-width: 0;
+}
+[data-era-interface="classic"] .era-delivery-settings .app-surface {
+    background: #1f2937;
+    border-color: #4b5563;
+}
+[data-era-interface="classic"] .era-delivery-settings .app-muted {
+    color: #d1d5db;
+}
+[data-era-interface="classic"] .era-delivery-settings .app-field {
+    width: 100%;
+    min-width: 0;
+    background: #374151;
+    color: #f9fafb;
+    border: 1px solid #6b7280;
+    border-radius: .375rem;
+    padding: .625rem .75rem;
+}
+[data-era-interface="classic"] .era-delivery-settings .amr-form {
+    display: grid;
+    gap: .75rem;
+    padding: 1rem 0;
+}
+[data-era-interface="classic"] .era-delivery-settings .amr-disclosure {
+    padding: 1rem 0;
+}
+[data-era-interface="classic"] .era-delivery-settings .amr-check {
+    display: flex;
+    align-items: start;
+    gap: .75rem;
+}
+[data-era-interface="classic"] .era-delivery-settings .amr-button {
+    justify-self: start;
+    padding: .75rem 1rem;
+    border: 1px solid #9ca3af;
+    border-radius: .375rem;
+    color: #f9fafb;
+    background: #4338ca;
+}
+[data-era-interface="classic"] .era-delivery-settings :is(a, button, input, select, textarea, summary):focus-visible {
+    outline: 2px solid #93c5fd;
+    outline-offset: 3px;
+}
+
 @media (max-width: 767px) {
     .era-sidebar-shell {
         position: fixed;

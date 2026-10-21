@@ -38,7 +38,7 @@ class PublicAutomaticCatalogTest extends PublicBookingTestCase
         PublicDeliveryLocation::create(['organization_id' => 2, 'public_pickup_place_id' => $a->public_pickup_place_id, 'location_id' => 2, 'is_active' => true]);
         $this->get(route('public-cars.index'))->assertOk()
             ->assertViewHas('places', fn ($places) => $places->pluck('id')->sort()->values()->all() === [$a->public_pickup_place_id, $b->public_pickup_place_id])
-            ->assertViewHas('destinations', fn ($destinations) => $destinations->pluck('value')->all() === ['city:Bari'])
+            ->assertViewHas('destinations', fn ($destinations) => $destinations->pluck('value')->all() === ['group:bari-airport', 'group:bari-port', 'group:bari-station', 'city:Bari'])
             ->assertSee('Bari — Tutti i punti di ritiro')->assertDontSee($a->place->name)->assertDontSee($b->place->name)
             ->assertSee('id="pickup-place" name="destination"', false)->assertDontSee('offerte pubblicate');
         $this->get(route('public-cars.index', $this->period(['place_id' => $a->public_pickup_place_id])))->assertOk()

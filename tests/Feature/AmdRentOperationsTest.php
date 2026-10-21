@@ -63,17 +63,126 @@ class AmdRentOperationsTest extends PublicBookingTestCase
     private function quoteData(): array { return ['supplier' => 'Società dimostrativa', 'vehicle' => 'Auto di prova', 'months' => 36, 'annual_km' => 15000,
         'monthly' => '300.00', 'upfront' => '0', 'vat' => 'included', 'valid_until' => '2026-10-01', 'conditions' => 'Condizioni dimostrative per collaudo.']; }
 
-    public function test_checkout_charges_only_twenty_percent_and_holds_car_without_recording_payment(): void
+    public function test_checkout_charges_fifteen_percent_and_holds_car_without_recording_payment(): void
     {
         $booking = $this->book();
-        $this->assertSame(6000, $booking->online_due_cents);
+        $this->assertSame(4500, $booking->online_due_cents);
         $this->assertSame(30000, $booking->total_cents);
         $this->assertSame(0, $booking->online_paid_cents);
         $this->assertSame('pending', $booking->payment_status);
         $this->assertDatabaseCount('rental_charges', 0);
         $this->assertCount(0, app(PublicVehicleSearch::class)->search(VehiclePricelist::forPublicRental(), $this->period()));
         $this->get($booking->confirmationUrl())->assertOk()->assertSee('In attesa', false);
-        Http::assertSent(fn ($request) => $request['line_items'][0]['price_data']['unit_amount'] === 6000 && $request->hasHeader('Idempotency-Key', 'amd-rent-checkout-'.$booking->reference));
+        Http::assertSent(fn ($request) => $request['line_items'][0]['price_data']['unit_amount'] === 4500 && $request->hasHeader('Idempotency-Key', 'amd-rent-checkout-'.$booking->reference));
+    }
+
+    public function test_deposit_rounding_and_old_payment_terms_are_independent_of_current_commission(): void
+    {
+        $this->assertSame(1500, DeliveryQuotes::onlineDue(['total_cents' => 10001, 'customer_deposit_bps' => 1500, 'commission_bps' => 3000]));
+        $this->assertSame(1501, DeliveryQuotes::onlineDue(['total_cents' => 10004, 'customer_deposit_bps' => 1500, 'commission_bps' => 0]));
+        $this->assertSame(6000, DeliveryQuotes::onlineDue(['total_cents' => 30000, 'commission_bps' => 2000]));
+        $this->assertSame(6600, DeliveryQuotes::onlineDue(['total_cents' => 33000, 'rental_total_cents' => 30000, 'delivery_fee_cents' => 3000, 'delivery_commission_bps' => 2000]));
+        $booking = $this->book();
+        DB::table('amd_rent_settings')->updateOrInsert(['id' => 1], ['commission_bps' => 3000]);
+        $booking->refresh();
+        $this->assertSame(4500, $booking->online_due_cents);
+        $this->assertSame(2000, $booking->quote_snapshot['commission_bps']);
+        $this->assertSame(1500, $booking->quote_snapshot['customer_deposit_bps']);
+        $this->webhook('checkout.session.completed', $this->stripeSession($booking, ['payment_status' => 'paid', 'status' => 'complete']))->assertOk();
+        $this->assertEquals(60, app(\App\Domain\Fees\AdminFeeResolver::class)->calculateForRental($booking->rental)['amount']);
+    }
+
+    public function test_old_booking_keeps_its_twenty_percent_payment_and_receipt(): void
+    {
+        $booking = $this->book();
+        $snapshot = $booking->quote_snapshot;
+        unset($snapshot['customer_deposit_bps']);
+        $booking->update(['quote_snapshot' => $snapshot, 'online_due_cents' => 6000]);
+        $this->webhook('checkout.session.completed', $this->stripeSession($booking, ['payment_status' => 'paid', 'status' => 'complete']))->assertOk();
+        $booking->refresh();
+        $this->assertSame(6000, $booking->online_paid_cents);
+        $this->assertSame(24000, $booking->pickup_due_cents);
+        $this->assertSame(6000, \App\Services\AmdRent\Commission::earnedCents($booking));
+        $this->get($booking->confirmationUrl())->assertOk()->assertSee('60,00')->assertSee('240,00');
+    }
+
+    public function test_commission_below_the_customer_deposit_does_not_count_all_cash_as_commission(): void
+    {
+        DB::table('amd_rent_settings')->updateOrInsert(['id' => 1], ['commission_bps' => 1000]);
+        $booking = $this->book();
+        $this->assertSame(4500, $booking->online_due_cents);
+        $this->webhook('checkout.session.completed', $this->stripeSession($booking, ['payment_status' => 'paid', 'status' => 'complete']))->assertOk();
+        $this->assertSame(4500, $booking->fresh()->online_paid_cents);
+        $this->assertEquals(30, $booking->rental->fresh()->admin_fee_collected_amount);
+        $this->assertEquals(30, app(\App\Domain\Fees\AdminFeeResolver::class)->calculateForRental($booking->rental)['amount']);
+    }
+
+    public function test_deposit_refunds_do_not_change_the_agreed_commission_or_double_record_cash(): void
+    {
+        $booking = $this->book();
+        $this->webhook('checkout.session.completed', $this->stripeSession($booking, ['payment_status' => 'paid', 'status' => 'complete']))->assertOk();
+        $charge = ['id' => 'ch_deposit', 'payment_intent' => 'pi_test_'.$booking->id, 'amount' => 4500,
+            'amount_refunded' => 1000, 'livemode' => false, 'currency' => 'eur'];
+        $this->webhook('charge.refunded', $charge)->assertOk();
+        $this->webhook('charge.refunded', $charge)->assertOk();
+        $this->assertSame(26500, $booking->fresh()->pickup_due_cents);
+        $this->assertEquals(60, app(\App\Domain\Fees\AdminFeeResolver::class)->calculateForRental($booking->rental)['amount']);
+        $this->assertEquals(35, $booking->rental->fresh()->admin_fee_collected_amount);
+        $this->assertDatabaseCount('rental_charges', 2);
+        $this->webhook('charge.refunded', array_replace($charge, ['amount_refunded' => 4500]))->assertOk();
+        $this->assertEquals(0, app(\App\Domain\Fees\AdminFeeResolver::class)->calculateForRental($booking->rental)['amount']);
+        $this->assertEquals(0, $booking->rental->fresh()->admin_fee_collected_amount);
+    }
+
+    public function test_thank_you_shows_only_booked_supplier_company_contacts_after_confirmed_payment(): void
+    {
+        Schema::table('organizations', function (Blueprint $table) {
+            foreach (['legal_name', 'phone', 'email', 'address_line', 'city', 'province', 'postal_code', 'country_code', 'cargos_password'] as $field) $table->string($field)->nullable();
+        });
+        DB::table('organizations')->where('id', 1)->update([
+            'name' => 'Noleggiatore dimostrativo', 'legal_name' => 'Società di prova',
+            'phone' => '+39 080 000 0000', 'email' => 'contatti@example.test',
+            'address_line' => 'Indirizzo aziendale dimostrativo', 'city' => 'Bari', 'country_code' => 'IT',
+            'cargos_password' => 'PRIVATE-CREDENTIAL-DO-NOT-SHOW',
+        ]);
+        DB::table('organizations')->where('id', 2)->update(['email' => 'other-supplier@example.test']);
+        $booking = $this->book();
+        $pendingPage = $this->get($booking->confirmationUrl())->assertOk()->assertDontSee('Grazie per aver scelto')
+            ->assertDontSee('contatti@example.test');
+        $this->webhook('checkout.session.completed', $this->stripeSession($booking, ['payment_status' => 'paid', 'status' => 'complete']))->assertOk();
+        $page = $this->get($booking->confirmationUrl())->assertOk()->assertSee('Grazie per aver scelto AMD Rent')
+            ->assertSee('Noleggiatore dimostrativo')->assertSee('Società di prova')->assertSee('contatti@example.test')
+            ->assertSee('tel:+390800000000', false)->assertSee('mailto:contatti%40example.test', false)
+            ->assertSee('Indirizzo aziendale dimostrativo')->assertSee('45,00')->assertSee('255,00')
+            ->assertDontSee('other-supplier@example.test')->assertDontSee('PRIVATE-CREDENTIAL-DO-NOT-SHOW');
+        $this->assertArrayNotHasKey('cargos_password', $booking->fresh()->quote_snapshot['supplier_contacts']);
+        $this->get(route('public-bookings.confirmation', $booking->reference))->assertForbidden();
+        $this->get($booking->confirmationUrl().'&organization_id=2')->assertForbidden();
+        if ($target = getenv('ADM_ERA_QA_RENDER_DIR')) {
+            $root = realpath(storage_path('framework/testing'));
+            $resolved = realpath($target);
+            $this->assertSame($root, dirname($resolved));
+            $this->assertStringStartsWith('booking-ui-', basename($resolved));
+            file_put_contents($resolved.'/confirmation.html', $page->getContent());
+            file_put_contents($resolved.'/pending.html', $pendingPage->getContent());
+            $this->offer(2);
+            $placeFields = ['name' => 'Punto di incontro dimostrativo', 'city' => 'Bari', 'country_code' => 'IT', 'kind' => 'airport'];
+            $place = \App\Models\PublicPickupPlace::create($placeFields + ['identity_key' => \App\Models\PublicPickupPlace::identity($placeFields)]);
+            PublicDeliveryLocation::create(['organization_id' => 1, 'location_id' => 1, 'public_pickup_place_id' => $place->id, 'is_active' => true]);
+            file_put_contents($resolved.'/home.html', $this->get(route('public-cars.index'))->assertOk()->getContent());
+            file_put_contents($resolved.'/results.html', $this->get(route('public-cars.index', $this->period(['destination' => 'group:bari-airport'])))->assertOk()->getContent());
+        }
+        DB::table('organizations')->where('id', 1)->update(['email' => 'updated@example.test']);
+        $this->get($booking->confirmationUrl())->assertOk()->assertSee('contatti@example.test')->assertDontSee('updated@example.test');
+        $snapshot = $booking->fresh()->quote_snapshot;
+        unset($snapshot['supplier_contacts']);
+        $booking->update(['quote_snapshot' => $snapshot]);
+        $this->get($booking->confirmationUrl())->assertOk()->assertSee('updated@example.test')->assertDontSee('PRIVATE-CREDENTIAL-DO-NOT-SHOW');
+        DB::table('organizations')->where('id', 1)->update([
+            'phone' => '<script>alert(1)</script>', 'email' => 'javascript:alert(1)',
+        ]);
+        $this->get($booking->confirmationUrl())->assertOk()->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;', false)
+            ->assertDontSee('<script>alert(1)</script>', false)->assertDontSee('href="javascript:', false);
     }
     public function test_rejected_checkout_creation_releases_car_but_ambiguous_failure_keeps_it_reserved(): void
     {
@@ -103,7 +212,7 @@ class AmdRentOperationsTest extends PublicBookingTestCase
         $this->assertSame('paid', $booking->fresh()->payment_status);
         $this->assertSame('reserved', $booking->rental->fresh()->status);
         $this->assertDatabaseCount('rental_charges', 1);
-        $this->assertSame('60.00', RentalCharge::first()->amount);
+        $this->assertSame('45.00', RentalCharge::first()->amount);
         $this->assertFalse(RentalCharge::first()->is_commissionable);
         $fee = app(\App\Domain\Fees\AdminFeeResolver::class)->calculateForRental($booking->rental);
         $this->assertEquals(60, $fee['amount']);
@@ -138,10 +247,10 @@ class AmdRentOperationsTest extends PublicBookingTestCase
     {
         $booking = $this->book();
         $this->webhook('checkout.session.completed', $this->stripeSession($booking, ['payment_status' => 'paid', 'status' => 'complete']))->assertOk();
-        $charge = ['id' => 'ch_fixture', 'object' => 'charge', 'payment_intent' => 'pi_test_'.$booking->id, 'amount' => 6000, 'amount_refunded' => 1000, 'livemode' => false, 'currency' => 'eur'];
+        $charge = ['id' => 'ch_fixture', 'object' => 'charge', 'payment_intent' => 'pi_test_'.$booking->id, 'amount' => 4500, 'amount_refunded' => 1000, 'livemode' => false, 'currency' => 'eur'];
         $this->webhook('charge.refunded', $charge)->assertOk(); $this->webhook('charge.refunded', $charge)->assertOk();
         $this->assertDatabaseCount('rental_charges', 2);
-        $this->assertEquals(50, RentalCharge::sum('amount'));
+        $this->assertEquals(35, RentalCharge::sum('amount'));
         $this->assertSame(1000, $booking->fresh()->refunded_cents);
         $this->assertSame('review', $booking->fresh()->payment_status);
     }
@@ -188,12 +297,12 @@ class AmdRentOperationsTest extends PublicBookingTestCase
         $session = $this->stripeSession($booking, ['payment_status' => 'paid', 'status' => 'complete']);
         Http::fake(['https://api.stripe.com/v1/checkout/sessions/'.$session['id'] => Http::response($session)]);
         $charge = ['id' => 'ch_early', 'object' => 'charge', 'metadata' => ['booking_reference' => $booking->reference],
-            'payment_intent' => $session['payment_intent'], 'amount' => 6000, 'amount_refunded' => 6000, 'livemode' => false, 'currency' => 'eur'];
+            'payment_intent' => $session['payment_intent'], 'amount' => 4500, 'amount_refunded' => 4500, 'livemode' => false, 'currency' => 'eur'];
         $this->webhook('charge.refunded', $charge)->assertOk();
         $this->webhook('checkout.session.completed', $session)->assertOk();
         $this->webhook('charge.refunded', $charge)->assertOk();
         $this->assertSame('review', $booking->fresh()->payment_status);
-        $this->assertSame(6000, $booking->fresh()->refunded_cents);
+        $this->assertSame(4500, $booking->fresh()->refunded_cents);
         $this->assertDatabaseCount('rental_charges', 2);
         $this->assertEquals(0, RentalCharge::sum('amount'));
     }
@@ -203,7 +312,7 @@ class AmdRentOperationsTest extends PublicBookingTestCase
         $this->webhook('checkout.session.expired', $this->stripeSession($booking, ['status' => 'expired']))->assertOk();
         $this->webhook('checkout.session.completed', $this->stripeSession($booking, ['payment_status' => 'paid', 'status' => 'complete']))->assertOk();
         $this->webhook('charge.refunded', ['id' => 'ch_late', 'object' => 'charge', 'payment_intent' => 'pi_test_'.$booking->id,
-            'amount' => 6000, 'amount_refunded' => 6000, 'livemode' => false, 'currency' => 'eur'])->assertOk();
+            'amount' => 4500, 'amount_refunded' => 4500, 'livemode' => false, 'currency' => 'eur'])->assertOk();
         $this->assertDatabaseCount('rental_charges', 0);
         $this->assertSame('cancelled', $booking->rental->fresh()->status);
         $this->assertEquals(0, $booking->rental->fresh()->admin_fee_collected_amount);
@@ -224,7 +333,7 @@ class AmdRentOperationsTest extends PublicBookingTestCase
             'payment_method' => 'cash', 'payment_recorded' => true, 'payment_recorded_at' => now()]);
         $fee = app(\App\Domain\Fees\AdminFeeResolver::class)->calculateForRental($rental);
         $this->assertEquals(65, $fee['amount']);
-        $this->assertEquals(60, $rental->admin_fee_collected_amount);
+        $this->assertEquals(45, $rental->admin_fee_collected_amount);
     }
     public function test_missing_stripe_configuration_does_not_create_a_reservation(): void
     {
@@ -237,29 +346,29 @@ class AmdRentOperationsTest extends PublicBookingTestCase
         $booking = $this->book();
         $this->webhook('checkout.session.completed', $this->stripeSession($booking, ['payment_status' => 'paid', 'status' => 'complete']))->assertOk();
         $this->webhook('charge.refunded', ['id' => 'ch_review', 'payment_intent' => 'pi_test_'.$booking->id,
-            'amount' => 6000, 'amount_refunded' => 1000, 'livemode' => false, 'currency' => 'eur'])->assertOk();
+            'amount' => 4500, 'amount_refunded' => 1000, 'livemode' => false, 'currency' => 'eur'])->assertOk();
         $data = ['action' => 'keep', 'verified_in_stripe' => 1, 'refund_snapshot' => 1000, 'note' => 'Verificato rimborso parziale e saldo concordato con cliente dimostrativo.'];
         $this->actingAs($this->publisher(2, 'renter'))->put(route('amd-rent.bookings.review', $booking), $data)->assertForbidden();
         $this->flushSession(); $this->actingAs($this->publisher());
         $this->put(route('amd-rent.bookings.review', $booking), array_replace($data, ['refund_snapshot' => 0]))->assertStatus(409);
         $this->put(route('amd-rent.bookings.review', $booking), $data)->assertRedirect()->assertSessionHasNoErrors();
         $booking->refresh();
-        $this->assertSame('paid', $booking->payment_status); $this->assertSame(25000, $booking->pickup_due_cents);
+        $this->assertSame('paid', $booking->payment_status); $this->assertSame(26500, $booking->pickup_due_cents);
         $this->assertCount(1, $booking->payment_review_history);
-        $this->get($booking->confirmationUrl())->assertOk()->assertSee('250,00')->assertDontSee($data['note']);
+        $this->get($booking->confirmationUrl())->assertOk()->assertSee('265,00')->assertDontSee($data['note']);
         $this->assertDatabaseCount('rental_charges', 2);
     }
     public function test_cancellation_after_refund_requires_full_refund_and_releases_reserved_car(): void
     {
         $booking = $this->book();
         $this->webhook('checkout.session.completed', $this->stripeSession($booking, ['payment_status' => 'paid', 'status' => 'complete']))->assertOk();
-        $charge = ['id' => 'ch_cancel', 'payment_intent' => 'pi_test_'.$booking->id, 'amount' => 6000, 'amount_refunded' => 1000, 'livemode' => false, 'currency' => 'eur'];
+        $charge = ['id' => 'ch_cancel', 'payment_intent' => 'pi_test_'.$booking->id, 'amount' => 4500, 'amount_refunded' => 1000, 'livemode' => false, 'currency' => 'eur'];
         $this->webhook('charge.refunded', $charge)->assertOk();
         $this->actingAs($this->publisher());
         $data = ['action' => 'cancel', 'verified_in_stripe' => 1, 'refund_snapshot' => 1000, 'note' => 'Cliente dimostrativo ha richiesto annullamento dopo rimborso.'];
         $this->put(route('amd-rent.bookings.review', $booking), $data)->assertSessionHasErrors('payment');
-        $this->webhook('charge.refunded', array_replace($charge, ['amount_refunded' => 6000]))->assertOk();
-        $this->put(route('amd-rent.bookings.review', $booking), array_replace($data, ['refund_snapshot' => 6000]))->assertRedirect()->assertSessionHasNoErrors();
+        $this->webhook('charge.refunded', array_replace($charge, ['amount_refunded' => 4500]))->assertOk();
+        $this->put(route('amd-rent.bookings.review', $booking), array_replace($data, ['refund_snapshot' => 4500]))->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('refunded', $booking->fresh()->payment_status);
         $this->assertSame('cancelled', $booking->rental->fresh()->status);
         $this->assertSame(0, $booking->fresh()->pickup_due_cents);
@@ -368,10 +477,10 @@ class AmdRentOperationsTest extends PublicBookingTestCase
         $this->put(route('amd-rent.settings.save'), ['commission_percent' => 30])->assertRedirect()->assertSessionHasNoErrors();
         $page = $this->post(URL::signedRoute('public-enquiries.accept', ['reference' => $case->reference]), ['accept_quote' => 1])->assertOk();
         $this->assertSame(33000, $page->viewData('car')['total_cents']);
-        $this->assertSame(6600, DeliveryQuotes::onlineDue($page->viewData('car')));
+        $this->assertSame(4950, DeliveryQuotes::onlineDue($page->viewData('car')));
         $this->post(route('public-cars.booking.store', 1), array_replace($form, $page->viewData('filters'), ['request_delivery' => 0, 'checkout_token' => $page->viewData('checkoutToken')]))->assertStatus(303);
         $booking = PublicBooking::firstOrFail();
-        $this->assertSame(33000, $booking->total_cents); $this->assertSame(6600, $booking->online_due_cents);
+        $this->assertSame(33000, $booking->total_cents); $this->assertSame(4950, $booking->online_due_cents);
         $this->assertSame($booking->id, (int) $case->fresh()->public_booking_id);
         $this->get(route('amd-rent.enquiries.show', $case))->assertOk()
             ->assertSee('Totale prenotato dal cliente')->assertSee('330,00 €');
@@ -381,25 +490,23 @@ class AmdRentOperationsTest extends PublicBookingTestCase
         $this->assertEquals(330, $fee['commissionable_total']);
         $this->assertEquals(66, $fee['amount']);
     }
-    public function test_zero_commission_uses_pickup_payment_without_stripe_or_legacy_base_fee(): void
+    public function test_zero_commission_does_not_remove_the_customers_fifteen_percent_deposit(): void
     {
         DB::table('amd_rent_settings')->insert(['id' => 1, 'commission_bps' => 0]);
-        config(['amd_rent.stripe_secret' => null, 'amd_rent.stripe_webhook_secret' => null]);
         $this->offer();
-        $this->get(route('public-cars.index'))->assertOk()->assertSee('Prenoti e paghi al ritiro.')->assertDontSee('0% online');
-        $this->get(route('public-site.how-it-works'))->assertOk()->assertSee('Non sono previsti addebiti online.')->assertDontSee('0% online');
-        $this->get(route('public-cars.index', $this->period()))->assertOk()->assertSee('Pagamento al ritiro')->assertDontSee('0% online');
-        $this->get(route('public-cars.show', ['pricelist' => 1] + $this->period()))->assertOk()->assertSee('Nessun addebito online.');
+        $this->get(route('public-cars.index'))->assertOk()->assertSee('Prenoti con il 15% online.')->assertDontSee('0% online');
+        $this->get(route('public-site.how-it-works'))->assertOk()->assertSee('15% online')->assertDontSee('0% online');
         $this->post(route('public-cars.booking.store', 1), $this->form())->assertStatus(303);
         $booking = PublicBooking::sole();
-        $this->assertSame('pay_at_pickup', $booking->payment_method);
-        $this->assertSame('pickup', $booking->payment_status);
-        $this->assertSame(0, $booking->online_due_cents);
+        $this->assertSame('stripe', $booking->payment_method);
+        $this->assertSame('pending', $booking->payment_status);
+        $this->assertSame(4500, $booking->online_due_cents);
         $this->assertSame('amd_rent', $booking->rental->booking_channel);
+        $this->webhook('checkout.session.completed', $this->stripeSession($booking, ['payment_status' => 'paid', 'status' => 'complete']))->assertOk();
         $fee = app(\App\Domain\Fees\AdminFeeResolver::class)->calculateForRental($booking->rental);
         $this->assertEquals(0, $fee['percent']);
         $this->assertEquals(0, $fee['amount']);
-        Http::assertNothingSent();
+        $this->assertEquals(0, $booking->rental->fresh()->admin_fee_collected_amount);
     }
     public function test_commissions_remain_editable_by_admin_after_signed_case_and_stale_updates_fail(): void
     {

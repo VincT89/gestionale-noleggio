@@ -50,7 +50,7 @@ document.querySelectorAll('[data-place-select]').forEach(select => {
     const input = document.createElement('input');
     input.type = 'text';
     input.id = `${select.id}-search`;
-    input.placeholder = 'Città, aeroporto, stazione o zona';
+    input.placeholder = 'Città, aeroporto, porto, stazione o zona';
     input.autocomplete = 'off';
     input.required = select.required;
     input.setAttribute('role', 'combobox');

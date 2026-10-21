@@ -94,7 +94,7 @@ class PublicCarSearchController extends Controller
     {
         $scope = $this->scope($request, $preview);
         $filters = \Illuminate\Support\Arr::except($request->validated(), ['destination', 'supplier']);
-        if (!empty($filters['request_custom_return'])) unset($filters['place_id'], $filters['city']);
+        if (!empty($filters['request_custom_return'])) unset($filters['place_id'], $filters['city'], $filters['pickup_group']);
         $searched = !empty($filters['pickup_at']) && !empty($filters['return_at']);
         $deliveryPoint = !empty($filters['delivery_place'])
             ? app(PlaceSelection::class)->resolve($filters['delivery_place'], $filters['delivery_address']) : null;

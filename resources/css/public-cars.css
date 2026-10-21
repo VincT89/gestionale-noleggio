@@ -309,6 +309,8 @@ small { font-size: 13px; line-height: 1.5; }
     .amd-footer-inner { padding: 24px 20px; align-items: flex-start; flex-direction: column; gap: 12px; }
 }
 
+.amd-supplier-contacts { overflow-wrap: anywhere; }
+.amd-supplier-contacts .amd-quote-lines dd { min-width: 0; }
 @media (max-width: 360px) {
     .amd-header-inner, .amd-main, .amd-search-band-inner, .amd-search-band--results .amd-search-band-inner, .amd-footer-inner { padding-left: 16px; padding-right: 16px; }
     .amd-search, .amd-car, .amd-detail-info, .amd-quote, .amd-booking-form { padding: 16px; }

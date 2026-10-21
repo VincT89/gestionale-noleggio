@@ -91,9 +91,11 @@ class BookingPayments
                     RentalCharge::create(['rental_id' => $rental->id, 'kind' => RentalCharge::KIND_ACCONTO,
                         'amount' => number_format($booking->online_due_cents / 100, 2, '.', ''), 'is_commissionable' => false,
                         'payment_method' => 'other', 'payment_reference' => 'stripe:'.$session['id'],
-                        'request_key' => \Ramsey\Uuid\Uuid::uuid5(\Ramsey\Uuid\Uuid::NAMESPACE_URL, 'stripe:'.$session['id'])->toString(), 'description' => 'Quota online incassata da AMD Rent tramite Stripe. Commissione già assolta.',
+                        'request_key' => \Ramsey\Uuid\Uuid::uuid5(\Ramsey\Uuid\Uuid::NAMESPACE_URL, 'stripe:'.$session['id'])->toString(), 'description' => 'Acconto cliente incassato da AMD Rent tramite Stripe. Commissione contabilizzata separatamente.',
                         'payment_recorded' => true, 'payment_recorded_at' => now(), 'created_by' => null]);
-                    $rental->forceFill(['admin_fee_collected_amount' => number_format($booking->online_due_cents / 100, 2, '.', '')])->save();
+                    $paidBooking = clone $booking;
+                    $paidBooking->online_paid_cents = $booking->online_due_cents;
+                    $rental->forceFill(['admin_fee_collected_amount' => number_format(Commission::collectedCents($paidBooking) / 100, 2, '.', '')])->save();
                     $status = 'paid';
                 } else {
                     // Never resurrect a cancelled rental or allocate a car again after releasing it.
@@ -152,7 +154,7 @@ class BookingPayments
                 'is_commissionable' => false, 'payment_method' => 'other', 'payment_reference' => 'stripe-refund:'.$charge['id'],
                 'request_key' => \Ramsey\Uuid\Uuid::uuid5(\Ramsey\Uuid\Uuid::NAMESPACE_URL, 'stripe-refund:'.$charge['id'].':'.$refunded)->toString(), 'description' => 'Rimborso Stripe AMD Rent.', 'payment_recorded' => true, 'payment_recorded_at' => now()]);
             $booking->update(['refunded_cents' => $refunded, 'payment_status' => 'review']);
-            $rental->forceFill(['admin_fee_collected_amount' => number_format($recorded ? ($booking->online_paid_cents - $refunded) / 100 : 0, 2, '.', '')])->save();
+            $rental->forceFill(['admin_fee_collected_amount' => number_format($recorded ? Commission::collectedCents($booking) / 100 : 0, 2, '.', '')])->save();
             if ($rental->closed_at) {
                 $fee = app(\App\Domain\Fees\AdminFeeResolver::class)->calculateForRental($rental);
                 $rental->forceFill(['admin_fee_amount' => $fee['amount']])->save();

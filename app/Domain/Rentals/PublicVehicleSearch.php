@@ -89,6 +89,7 @@ class PublicVehicleSearch
             }
             $result = $this->present($pricelist, $quote, $deliveries->get($pricelist->renter_org_id));
             $result['commission_bps'] = $commissionBps;
+            $result['customer_deposit_bps'] = \App\Services\AmdRent\CustomerDeposit::currentBps();
             if ($point) {
                 $result += ['delivery_destination' => $point, 'delivery_distance_km' => $delivery->distance_km,
                     'delivery_origin_name' => $delivery->origin->name,
@@ -106,11 +107,13 @@ class PublicVehicleSearch
     public function deliveryOptions(array $filters, ?array $point = null, ?array $returnPoint = null): Collection
     {
         if (!empty($filters['request_delivery']) && !empty($filters['request_custom_return'])) {
-            unset($filters['place_id'], $filters['city']);
+            unset($filters['place_id'], $filters['city'], $filters['pickup_group']);
         }
         $deliveries = PublicDeliveryLocation::available()->with(['place', 'location', 'origin', 'organization'])
             ->when(!empty($filters['request_delivery']), fn ($q) => $q->where('custom_delivery_enabled', true))
             ->when(!empty($filters['place_id']), fn ($q) => $q->where('public_pickup_place_id', $filters['place_id']))
+            ->when(!empty($filters['pickup_group']), fn ($q) => $q->whereHas('place',
+                fn ($place) => PublicPickupDirectory::constrainGroup($place, $filters['pickup_group'])))
             ->when(empty($filters['place_id']) && !empty($filters['city']), fn ($q) => $q
                 ->whereHas('place', fn ($place) => $place->whereRaw('LOWER(TRIM(city)) = ?', [mb_strtolower(trim($filters['city']))])))
             ->orderBy('id')->get();
