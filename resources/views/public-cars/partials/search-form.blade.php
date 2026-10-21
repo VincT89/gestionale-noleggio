@@ -8,12 +8,14 @@
     @unless($searched)<div class="amd-search-intro"><h2>La tua prossima partenza</h2></div>@endunless
     <div class="amd-search-primary">
         <div class="amd-field amd-place-field"><label for="pickup-place" data-search-place-label>{{ $customPickup ? 'Luogo di riconsegna (facoltativo)' : 'Luogo di ritiro' }}</label>
+            <div class="amd-place-control">
             <select id="pickup-place" name="destination" data-place-select aria-describedby="place-help">
-                <option value="">Cerca città, aeroporto, porto, stazione o zona</option>
+                <option value="">Scegli un’area di Bari</option>
                 @foreach($destinations as $destination)<option value="{{ $destination['value'] }}" @selected(mb_strtolower($destinationValue) === mb_strtolower($destination['value']))>{{ $destination['label'] }}</option>@endforeach
                 @if(!$knownDestination && $selectedPlace && $destinationValue === (string) $selectedPlace->id)<option value="{{ $selectedPlace->id }}" selected>Punto di ritiro{{ $selectedPlace->city ? ' — '.$selectedPlace->city : ' selezionato' }}</option>@endif
             </select>
-            <small id="place-help">{{ $customPickup ? 'Puoi scegliere ora oppure dopo aver trovato l’auto.' : 'Scegli un punto di ritiro o richiedi la consegna al tuo indirizzo.' }}</small>
+            </div>
+            <small id="place-help">{{ $customPickup ? 'Puoi scegliere ora oppure dopo aver trovato l’auto.' : 'Scegli un’area di Bari oppure cerca per indirizzo.' }}</small>
             <label class="amd-search-delivery-choice" for="search-request-delivery"><input id="search-request-delivery" type="checkbox" name="request_delivery" value="1" data-search-delivery @checked($customPickup)><span>Voglio ritirare l’auto ad un indirizzo personalizzato</span></label>
             <div class="amd-field amd-search-delivery-address" data-search-delivery-field>
                 <label for="search-delivery-address">Indirizzo, hotel o B&B</label>

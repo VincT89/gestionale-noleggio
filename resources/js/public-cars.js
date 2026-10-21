@@ -50,7 +50,7 @@ document.querySelectorAll('[data-place-select]').forEach(select => {
     const input = document.createElement('input');
     input.type = 'text';
     input.id = `${select.id}-search`;
-    input.placeholder = 'Città, aeroporto, porto, stazione o zona';
+    input.placeholder = select.options[0].textContent.trim();
     input.autocomplete = 'off';
     input.required = select.required;
     input.setAttribute('role', 'combobox');
@@ -80,13 +80,13 @@ document.querySelectorAll('[data-place-select]').forEach(select => {
         input.removeAttribute('aria-activedescendant');
         active = -1;
     };
-    const highlight = index => {
+    const highlight = (index, scroll = false) => {
         active = index;
         [...list.querySelectorAll('[role="option"]')].forEach((item, i) => {
             item.setAttribute('aria-selected', String(i === index));
             if (i === index) {
                 input.setAttribute('aria-activedescendant', item.id);
-                item.scrollIntoView({ block: 'nearest' });
+                if (scroll) item.scrollIntoView({ block: 'nearest' });
             }
         });
     };
@@ -122,10 +122,11 @@ document.querySelectorAll('[data-place-select]').forEach(select => {
             const message = document.createElement('li');
             message.className = 'amd-place-none';
             message.setAttribute('role', 'presentation');
-            message.textContent = 'Nessun luogo trovato. Prova con il nome della città o un altro punto di ritiro.';
+            message.textContent = 'Per altri luoghi scegli il ritiro a un indirizzo personalizzato.';
             list.append(message);
         }
         list.hidden = false;
+        list.scrollTop = 0;
         input.setAttribute('aria-expanded', 'true');
     };
     input.addEventListener('focus', show);
@@ -140,7 +141,7 @@ document.querySelectorAll('[data-place-select]').forEach(select => {
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
             event.preventDefault();
             if (list.hidden) show();
-            if (matches.length) highlight((active + (event.key === 'ArrowDown' ? 1 : -1) + matches.length) % matches.length);
+            if (matches.length) highlight((active + (event.key === 'ArrowDown' ? 1 : -1) + matches.length) % matches.length, true);
         } else if (event.key === 'Enter' && !list.hidden && active >= 0) {
             event.preventDefault();
             choose(matches[active]);
@@ -167,7 +168,7 @@ if (searchDelivery) {
         placeLabel.textContent = searchDelivery.checked ? 'Luogo di riconsegna (facoltativo)' : 'Luogo di ritiro';
         placeHelp.textContent = searchDelivery.checked
             ? 'Puoi scegliere ora oppure dopo aver trovato l’auto.'
-            : 'Scegli un luogo dall’elenco.';
+            : 'Scegli un’area di Bari oppure cerca per indirizzo.';
     };
     searchDelivery.addEventListener('change', updateSearchDelivery);
     window.addEventListener('pageshow', updateSearchDelivery);

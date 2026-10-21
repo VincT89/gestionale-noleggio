@@ -34,33 +34,12 @@ class PublicPickupDirectory
         $query->whereRaw('LOWER(TRIM(city)) = ?', ['bari'])->where('country_code', 'IT')->where('kind', $kind ?? '__invalid__');
     }
 
-    /** Public destinations are cities and configured landmarks, not renters' office names. */
-    public function destinations(Collection $places): Collection
+    /** The public selector offers only the three Bari groups; other places use the address search. */
+    public function destinations(): Collection
     {
-        $destinations = collect(self::BARI_GROUPS)->map(fn ($group, $key) => [
+        return collect(self::BARI_GROUPS)->map(fn ($group, $key) => [
             'value' => 'group:'.$key, 'name' => $group['name'], 'city' => 'Bari', 'kind' => $group['kind'],
             'label' => $group['name'], 'filters' => ['pickup_group' => $key],
         ])->values();
-        foreach ($places->groupBy(fn ($place) => mb_strtolower(trim($place->city ?? ''))) as $cityPlaces) {
-            $city = trim($cityPlaces->first()->city ?? '');
-            if ($city !== '') {
-                $destinations->push([
-                    'value' => 'city:'.$city, 'name' => $city, 'city' => $city, 'kind' => 'city',
-                    'label' => $city.' — Tutti i punti di ritiro', 'filters' => ['city' => $city],
-                ]);
-            }
-            foreach ($cityPlaces as $place) {
-                // Legacy locations can contain a business name. Do not infer a landmark from it.
-                if (!in_array($place->kind, ['airport', 'port', 'station', 'area'], true)) continue;
-                if (mb_strtolower($city) === 'bari' && $place->country_code === 'IT'
-                    && in_array($place->kind, ['airport', 'port', 'station'], true)) continue;
-                $destinations->push([
-                    'value' => (string) $place->id, 'name' => $place->name, 'city' => $city, 'kind' => $place->kind,
-                    'label' => $place->label, 'filters' => ['place_id' => $place->id],
-                ]);
-            }
-        }
-
-        return $destinations->values();
     }
 }

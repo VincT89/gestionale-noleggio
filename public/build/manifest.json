@@ -9,12 +9,12 @@
     "isEntry": true
   },
   "resources/css/public-cars.css": {
-    "file": "assets/public-cars-DY1__gyf.css",
+    "file": "assets/public-cars-BBmKfX_P.css",
     "src": "resources/css/public-cars.css",
     "isEntry": true
   },
   "resources/css/public-interface.css": {
-    "file": "assets/public-interface-CSfAjBZ3.css",
+    "file": "assets/public-interface-DZ2qUxho.css",
     "src": "resources/css/public-interface.css",
     "isEntry": true
   },
@@ -28,7 +28,7 @@
     ]
   },
   "resources/js/public-cars.js": {
-    "file": "assets/public-cars-BOzGM_UM.js",
+    "file": "assets/public-cars-B8TN7PQu.js",
     "name": "public-cars",
     "src": "resources/js/public-cars.js",
     "isEntry": true,

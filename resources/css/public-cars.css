@@ -101,8 +101,9 @@ small { font-size: 13px; line-height: 1.5; }
 .amd-field small.amd-field-error { color: #a11212; }
 
 .amd-place-field { position: relative; }
+.amd-place-control { position: relative; }
 .amd-place-select-native[hidden] { display: none; }
-.amd-place-options { position: absolute; z-index: 12; top: 84px; left: 0; min-width: 100%; width: 430px; max-width: calc(100vw - 80px); background: #fff; color: #253e55; box-shadow: 0 8px 24px #193e6626; border: 1px solid #9bafc3; border-radius: 6px; max-height: 300px; overflow-y: auto; padding: 4px; margin: 0; list-style: none; }
+.amd-place-options { position: absolute; z-index: 12; top: calc(100% + 4px); left: 0; width: 100%; background: #fff; color: #253e55; box-shadow: 0 8px 24px #193e6626; border: 1px solid #9bafc3; border-radius: 6px; max-height: 300px; overflow-y: auto; overscroll-behavior: contain; padding: 4px; margin: 0; list-style: none; }
 .amd-place-options[hidden] { display: none; }
 .amd-place-options [role=option] { padding: 12px; line-height: 1.5; font-size: 14px; cursor: pointer; border-radius: 3px; overflow-wrap: anywhere; }
 .amd-place-options [aria-selected=true] { background: #eaf1f8; color: var(--amd-blue); }

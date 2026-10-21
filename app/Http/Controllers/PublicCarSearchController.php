@@ -117,7 +117,7 @@ class PublicCarSearchController extends Controller
             fn ($q) => $q->where('organization_id', $request->user()->organization_id));
         $places = PublicPickupPlace::whereIn('id', $deliveries->select('public_pickup_place_id'))
             ->orderBy('city')->orderBy('name')->get();
-        $destinations = app(PublicPickupDirectory::class)->destinations($places);
+        $destinations = app(PublicPickupDirectory::class)->destinations();
         $matching = $searched && !$deliveryLookupNeeded ? $search->search($scope, \Illuminate\Support\Arr::except($filters, ['supplier'])) : collect();
         $results = $search->cheapestPerProduct($matching, $filters['sort'] ?? 'price_asc');
         $perPage = (int) config('public_cars.per_page');

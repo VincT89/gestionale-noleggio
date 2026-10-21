@@ -1,7 +1,8 @@
 /* The public palette stays within AMD blue, white and charcoal. */
 :root { --amd-canvas: #fff; --amd-charcoal: #172330; --amd-surface: #f4f4f4; --amd-primary: #2454cf; --amd-primary-hover: #193fa3; --amd-panel-blue: #194a94; }
 /* The photograph and working search form share one scroll stage. */
-.amd-home-hero { background: var(--amd-blue); padding: 36px 32px 40px; }
+/** Keep the search menu above the following section's independent stacking context. */
+.amd-home-hero { position: relative; z-index: 1; background: var(--amd-blue); padding: 36px 32px 40px; }
 .amd-home-hero-layout { max-width: 1280px; margin: auto; }
 .amd-home-intro { display: flex; justify-content: space-between; align-items: flex-end; gap: 40px; margin: 0 24px 32px; }
 .amd-home-intro h1 { margin: 0; font-size: clamp(48px, 5.2vw, 76px); font-weight: 650; letter-spacing: -.065em; line-height: .99; color: #fff; }

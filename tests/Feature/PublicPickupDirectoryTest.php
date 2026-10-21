@@ -18,22 +18,25 @@ class PublicPickupDirectoryTest extends PublicBookingTestCase
         return $place;
     }
 
-    public function test_home_and_selector_show_cities_and_landmarks_without_business_names(): void
+    public function test_home_selector_only_lists_the_three_bari_groups_without_legacy_cities_or_business_names(): void
     {
         $a = PublicDeliveryLocation::forLocation(Location::findOrFail(1));
         $b = PublicDeliveryLocation::forLocation(Location::findOrFail(2));
         $b->place->update(['city' => ' BARI ']);
         $airport = $this->landmark(1, 'Aeroporto dimostrativo');
         $station = $this->landmark(2, 'Stazione dimostrativa', 'station');
-        $area = $this->landmark(2, 'Zona dimostrativa', 'area');
+        $area = $this->landmark(2, 'Zona dimostrativa', 'area', 'ADELFIA');
+        $this->landmark(2, 'Aeroporto dimostrativo fuori Bari', 'airport', 'BRINDISI');
 
         $page = $this->get(route('public-cars.index'))->assertOk()
             ->assertDontSee($a->place->name)->assertDontSee($b->place->name)
-            ->assertDontSee($airport->name)->assertDontSee($station->name)->assertSee($area->name)
+            ->assertDontSee($airport->name)->assertDontSee($station->name)->assertDontSee($area->name)
             ->assertSee('Bari Aeroporto')->assertSee('Bari Porto')->assertSee('Bari Stazione')
-            ->assertSee('BARI — Tutti i punti di ritiro')
-            ->assertViewHas('destinations', fn ($items) => $items->count() === 5 && $items->where('kind', 'city')->count() === 1);
+            ->assertDontSee('ADELFIA')->assertDontSee('BRINDISI')->assertDontSee('Tutti i punti di ritiro')
+            ->assertViewHas('destinations', fn ($items) => $items->pluck('value')->all() === ['group:bari-airport', 'group:bari-port', 'group:bari-station']);
         $this->assertStringContainsString('name="destination"', $page->getContent());
+        $page->assertSee('id="search-request-delivery"', false)->assertSee('id="search-delivery-address"', false);
+        $this->assertSame('ADELFIA', $area->fresh()->city);
         $this->assertSame(' BARI ', $b->place->fresh()->city);
         $this->assertDatabaseCount('vehicles', 0);
     }
@@ -91,7 +94,7 @@ class PublicPickupDirectoryTest extends PublicBookingTestCase
         $this->actingAs($this->publisher(2, 'renter'))->get(route('public-cars.preview.index'))->assertForbidden();
         $this->flushSession(); $this->actingAs($this->publisher());
         $this->get(route('public-cars.preview.index'))->assertOk()
-            ->assertViewHas('destinations', fn ($items) => $items->pluck('value')->all() === ['group:bari-airport', 'group:bari-port', 'group:bari-station', 'city:Bari', 'city:Roma'])
+            ->assertViewHas('destinations', fn ($items) => $items->pluck('value')->all() === ['group:bari-airport', 'group:bari-port', 'group:bari-station'])
             ->assertDontSee('Città disattivata')->assertDontSee($own->place->name);
     }
 
