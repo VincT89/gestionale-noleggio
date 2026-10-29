@@ -706,8 +706,8 @@
     @if($isBlankEmergencyContract)
         <div class="box avoid-break">
             <h2>Danni del veicolo</h2>
-            {!! $writeBlock(null, '44px') !!}
-            {!! $writeBlock(null, '44px') !!}
+            {!! $writeBlock(null, '64px') !!}
+            {!! $writeBlock(null, '64px') !!}
         </div>
     @endif
 
