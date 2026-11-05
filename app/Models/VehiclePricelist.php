@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\{Builder, Model};
 
 class VehiclePricelist extends Model
 {
@@ -41,6 +41,16 @@ class VehiclePricelist extends Model
         'published_at' => 'datetime',
         'second_driver_daily_cents' => 'integer',
     ];
+
+    /** Public prices come directly from the active rental pricelists. */
+    public function scopeForPublicRental(Builder $query): Builder
+    {
+        return $query->where('status', 'active')->where('active_flag', true)
+            ->where('currency', 'EUR')->where('base_daily_cents', '>=', 0)
+            ->whereHas('vehicle', fn (Builder $vehicle) => $vehicle->where('is_active', true)
+                ->whereHas('adminOrganization', fn (Builder $owner) => $owner->where('is_active', true)))
+            ->whereHas('renter', fn (Builder $renter) => $renter->where('is_active', true));
+    }
 
     public function vehicle() { return $this->belongsTo(Vehicle::class); }
     public function renter()  { return $this->belongsTo(Organization::class, 'renter_org_id'); }

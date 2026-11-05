@@ -34,6 +34,11 @@ export default {
 
         // cancelled - bordeaux
         'bg-rose-200', 'border-rose-400', 'text-rose-950',
+
+        // Stati veicolo e scadenze composti nelle viste Blade.
+        {
+            pattern: /^(bg-(sky|green|amber|rose)-100|text-(sky|green|amber|rose)-(700|800))$/,
+        },
     ],
 
     theme: {
@@ -47,8 +52,9 @@ export default {
     // ✅ DaisyUI attivato (manteniamo gli altri plugin invariati)
     plugins: [forms, typography, daisyui],
 
-    // Opzionale: lasciamo i temi di default per evitare side-effects
+    // I componenti usano soltanto le due varianti presenti nel gestionale.
     daisyui: {
-        themes: true,
+        themes: ['light', 'dark'],
+        logs: false,
     },
 };

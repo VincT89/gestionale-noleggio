@@ -77,11 +77,16 @@ class AuthServiceProvider extends ServiceProvider
          *
          * Usiamo Spatie\Permission: hasRole('admin') è immediato e cache-friendly.
          */
-        Gate::before(function ($user, string $ability = null) {
+        Gate::before(function ($user, string $ability = null, array $arguments = []) {
             // Evita errori quando $user è null (ospite)
             if (!$user) {
                 return null;
             }
+
+            $subject = $arguments[0] ?? null;
+            if ($subject instanceof Rental && $subject->booking_channel === 'amd_rent'
+                && !in_array($ability, ['view', 'viewAny'])
+                && \App\Models\PublicBooking::where('rental_id', $subject->id)->whereIn('payment_status', ['pending', 'review'])->exists()) return false;
 
             return $user->hasRole('admin') ? true : null;
         });

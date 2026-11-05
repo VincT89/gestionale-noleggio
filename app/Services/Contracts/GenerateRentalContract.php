@@ -610,7 +610,7 @@ class GenerateRentalContract
                 'pickup_at'       => optional($rental->planned_pickup_at)->timezone('Europe/Rome')?->format('d/m/Y H:i'),
                 'return_at'       => optional($rental->planned_return_at)->timezone('Europe/Rome')?->format('d/m/Y H:i'),
                 'pickup_location' => $pickup?->name,
-                'return_location' => $return?->name,
+                'return_location' => $return?->name ?? $rental->returnLocationLabel(),
                 'number_label'    => $rental->display_number_label,
             ],
 

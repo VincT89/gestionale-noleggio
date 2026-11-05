@@ -1,0 +1,56 @@
+@extends('layouts.public-cars')
+@section('title', 'Richiesta '.$case->reference)
+@section('content')
+@if($customerArea ?? false)@include('public-account.navigation')@endif
+@if(session('status'))<div class="amd-account-notice" role="status">{{ session('status') }}</div>@endif
+@php $money = fn ($cents) => number_format($cents / 100, 2, ',', '.').' €'; $customReturn = !empty($case->booking_context['return_address']); @endphp
+<div class="amd-page-heading amd-photo-heading">
+    <div><h1>{{ $case->type === 'delivery' ? ($customReturn ? 'La tua richiesta di ritiro e riconsegna' : 'La tua richiesta di consegna') : 'La tua richiesta di lungo termine' }}</h1><p>Riferimento <strong>{{ $case->reference }}</strong> · {{ $case->status_label }}</p></div>
+    @include('public-cars.partials.context-photo', ['photoScene' => $case->type === 'delivery' ? 'delivery-request' : 'long-term-request'])
+</div>
+<section class="amd-detail-info amd-enquiry-summary"><h2>{{ $case->vehicle_request }}</h2><p>Conserva il collegamento a questa pagina per ritrovare la richiesta. Per assistenza, indica il riferimento {{ $case->reference }}.</p>
+@if($errors->any())<div class="amd-errors" role="alert"><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+@if($case->type === 'delivery')<p>Consegna richiesta: <strong>{{ $case->delivery_address }}</strong>.</p>
+<dl class="amd-quote-lines" aria-label="Date del noleggio">
+    @foreach(['pickup_at' => 'Ritiro', 'return_at' => 'Riconsegna'] as $dateField => $dateLabel)
+        @if(!empty($case->booking_context['period'][$dateField]))<div><dt>{{ $dateLabel }}</dt><dd>{{ \Carbon\CarbonImmutable::parse($case->booking_context['period'][$dateField])->format('d/m/Y H:i') }}</dd></div>@endif
+    @endforeach
+</dl>
+@if($customReturn)<p>Riconsegna richiesta: <strong>{{ $case->booking_context['return_address'] }}</strong>.</p>
+@else<p>Riconsegna presso {{ $case->booking_context['car']['location'] }} — {{ $case->booking_context['car']['city'] }}.</p>@endif
+@include('public-cars.partials.selected-map-point', ['point' => $case->booking_context['delivery_destination'] ?? null])
+@include('public-cars.partials.selected-map-point', ['point' => $case->booking_context['return_destination'] ?? null, 'pointType' => 'return'])
+@if($case->public_booking_id)<p><a class="amd-button" href="{{ $case->booking->confirmationUrl() }}">Apri la prenotazione</a></p>
+@if(app(\App\Services\AmdRent\DeliveryBookingRecovery::class)->canReopen($case))
+<p>Il pagamento della prenotazione precedente non è stato avviato oppure è scaduto. Puoi riaprire questa richiesta conservando la proposta di consegna e la sua scadenza. Prezzo e disponibilità saranno ricontrollati prima di un nuovo pagamento.</p>
+<form method="post" action="{{ \Illuminate\Support\Facades\URL::signedRoute('public-enquiries.reopen', ['reference' => $case->reference]) }}">
+    @csrf
+    <input type="hidden" name="booking_id" value="{{ $case->public_booking_id }}">
+    <input type="hidden" name="revision" value="{{ $case->revision }}">
+    <button type="submit" class="amd-button amd-button-secondary">Riapri richiesta</button>
+</form>
+@endif
+@elseif($case->status === 'quoted' && $case->quote_expires_at?->isFuture())
+@php $proposedTotal = ($case->booking_context['car']['rental_total_cents'] ?? $case->booking_context['car']['total_cents']) + $case->delivery_fee_cents; @endphp
+<h3>La tua proposta: {{ $money($proposedTotal) }}</h3>
+<p>{{ $money($proposedTotal / max(1, $case->booking_context['car']['days'])) }} al giorno in media. Consegna, ritiro e IVA inclusi. Cauzione separata.</p>
+<p>Proposta valida fino al {{ $case->quote_expires_at->format('d/m/Y H:i') }}. Prezzo e disponibilità saranno ricontrollati nel riepilogo prima del pagamento.</p>
+<form method="post" action="{{ \Illuminate\Support\Facades\URL::signedRoute('public-enquiries.accept', ['reference' => $case->reference]) }}">@csrf
+<label class="amd-booking-accept"><input type="checkbox" name="accept_quote" value="1" required><span>Ho verificato auto, luoghi, date e importo della proposta.</span></label>
+<button class="amd-button">Controlla il totale e prosegui</button></form>
+<p><a href="{{ \Illuminate\Support\Facades\URL::signedRoute('public-enquiries.alternatives', ['reference' => $case->reference]) }}">Cerca un’altra auto dello stesso tipo</a></p>
+@elseif($case->status === 'quoted' || $case->status === 'lost')
+<h3>{{ $case->status === 'lost' ? 'Questa proposta non è disponibile' : 'La proposta è scaduta' }}</h3>
+<p>Puoi scegliere un’altra auto mantenendo date e luoghi. Nessuna nuova richiesta sarà inviata senza la tua conferma.</p>
+<a class="amd-button" href="{{ \Illuminate\Support\Facades\URL::signedRoute('public-enquiries.alternatives', ['reference' => $case->reference]) }}">Trova un’altra auto</a>
+@else
+<h3>In attesa di conferma</h3>
+<p>Il noleggiatore sta verificando l’auto e gli appuntamenti richiesti. Non è ancora stata riservata un’auto e non è stato richiesto alcun pagamento.</p>
+<p>Totale richiesto: <strong>{{ $money($case->booking_context['car']['total_cents']) }}</strong>, consegna e ritiro inclusi. Cauzione separata.</p>
+@endif
+@else<p>{{ $case->duration_months }} mesi · {{ number_format($case->annual_km, 0, ',', '.') }} km/anno.</p><p>La pratica sarà seguita da AMD Rent o dal noleggiatore assegnato. Il contratto si conclude di persona, dopo la verifica della proposta e dei documenti.</p>
+@if(in_array($case->status, ['quoted', 'accepted', 'signed']))@foreach($case->quotes as $quote)<article class="amd-long-term-quote"><h3>{{ $quote->supplier }} · {{ $quote->vehicle }}</h3><p><strong>{{ $money($quote->monthly_cents) }}/mese</strong> · Anticipo {{ $money($quote->upfront_cents) }} · {{ $quote->vat === 'included' ? 'IVA inclusa' : 'IVA esclusa' }}</p><p>{{ $quote->months }} mesi · {{ number_format($quote->annual_km, 0, ',', '.') }} km/anno · Valido fino al {{ $quote->valid_until->format('d/m/Y') }}</p><p class="amd-description">{{ $quote->conditions }}</p></article>@endforeach @endif
+@endif<p><a href="{{ route('public-site.support') }}">Informazioni e assistenza</a></p></section>
+@if($customerArea ?? false)@include('public-account.documents')@endif
+@include('public-account.invitation')
+@endsection

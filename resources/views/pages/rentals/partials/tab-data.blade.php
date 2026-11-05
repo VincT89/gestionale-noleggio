@@ -176,7 +176,7 @@
 
                 <div>
                     <dt class="opacity-70">Sede riconsegna</dt>
-                    <dd class="font-medium">{{ optional($rental->returnLocation)->name ?? '—' }}</dd>
+                    <dd class="font-medium">{{ $rental->returnLocationLabel() ?? '—' }}</dd>
                 </div>
 
                 @php

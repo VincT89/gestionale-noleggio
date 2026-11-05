@@ -469,24 +469,36 @@ class CreateWizard extends Component
     /** Salva/aggiorna la bozza (sempre status=draft) */
     public function saveDraft(): void
     {
-        DB::transaction(function () {
-            $vehicleId = $this->rentalData['vehicle_id'] ?? null;
-            if ($vehicleId) {
-                Vehicle::whereKey($vehicleId)->lockForUpdate()->firstOrFail();
-            }
-            if ($this->rentalId) {
-                $existing = Rental::whereKey($this->rentalId)->lockForUpdate()->firstOrFail();
-                $this->authorize('update', $existing);
-                if (!in_array($existing->status, ['draft', 'reserved'], true) || $existing->extensions()->exists()) {
-                    throw ValidationException::withMessages([
-                        'rentalData.planned_return_at' => 'Questo contratto non è più modificabile dal nuovo noleggio. Usa la scheda contratto e la funzione Proroga noleggio.',
-                    ]);
+        $vehicleIds = [$this->rentalData['vehicle_id'] ?? null];
+        if ($this->rentalId) $vehicleIds[] = Rental::whereKey($this->rentalId)->value('vehicle_id');
+        $originalId = $this->rentalId;
+        try {
+            app(\App\Domain\Rentals\ReservationTransaction::class)->run(
+                (int) auth()->user()->organization_id, $vehicleIds, function () use ($originalId) {
+                    $this->rentalId = $originalId;
+                    $vehicleId = $this->rentalData['vehicle_id'] ?? null;
+                    if ($vehicleId) {
+                        Vehicle::whereKey($vehicleId)->lockForUpdate()->firstOrFail();
+                    }
+                    if ($this->rentalId) {
+                        $existing = Rental::whereKey($this->rentalId)->lockForUpdate()->firstOrFail();
+                        $this->authorize('update', $existing);
+                        if (!in_array($existing->status, ['draft', 'reserved'], true) || $existing->extensions()->exists()) {
+                            throw ValidationException::withMessages([
+                                'rentalData.planned_return_at' => 'Questo contratto non è più modificabile dal nuovo noleggio. Usa la scheda contratto e la funzione Proroga noleggio.',
+                            ]);
+                        }
+                    } else {
+                        $this->authorize('create', Rental::class);
+                    }
+                    $this->assertVehicleAvailability();
+                    $this->persistDraft();
                 }
-            } else {
-                $this->authorize('create', Rental::class);
-            }
-            $this->persistDraft();
-        }, 3);
+            );
+        } catch (\Throwable $exception) {
+            $this->rentalId = $originalId;
+            throw $exception;
+        }
     }
 
     private function persistDraft(): void
@@ -1178,7 +1190,7 @@ class CreateWizard extends Component
                 $q->whereRaw('COALESCE(actual_pickup_at, planned_pickup_at) < ?', [$end])
                     ->whereRaw('COALESCE(actual_return_at, planned_return_at) > ?', [$start]);
             })
-            ->exists();
+            ->lockForUpdate()->first(['id']);
 
         if ($exists) {
             $this->dispatch('toast', type: 'error', message: 'Il veicolo è già prenotato per le date selezionate.');

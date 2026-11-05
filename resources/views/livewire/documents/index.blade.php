@@ -11,14 +11,14 @@
     </div>
 
     {{-- Toolbar filtri --}}
-    <div class="rounded-lg border bg-white p-3">
+    <div class="rounded-lg border app-surface p-3">
         <div class="grid grid-cols-12 gap-3">
             <div class="grid grid-cols-12 gap-3 col-span-12">
                 {{-- Ricerca con cancella veloce --}}
-                <div class="col-span-3">
-                    <label class="block text-xs text-gray-500">Ricerca</label>
+                <div class="col-span-12 sm:col-span-6 lg:col-span-3">
+                    <label for="documents-search" class="block text-xs app-muted">Ricerca</label>
                     <div class="relative mt-1">
-                        <input x-ref="search" type="text" class="w-full rounded border-gray-300 pr-8"
+                        <input id="documents-search" x-ref="search" type="text" class="w-full rounded border-gray-300 pr-8 app-field"
                             placeholder="Targa, VIN, numero..."
                             wire:model.live.debounce.400ms="search">
                         <button type="button"
@@ -31,9 +31,9 @@
                     </div>
                 </div>
 
-                <div class="col-span-2">
-                    <label class="block text-xs text-gray-500">Tipo</label>
-                    <select class="mt-1 w-full rounded border-gray-300" wire:model.live="type">
+                <div class="col-span-12 sm:col-span-6 lg:col-span-2">
+                    <label for="documents-type" class="block text-xs app-muted">Tipo</label>
+                    <select id="documents-type" class="mt-1 w-full rounded border-gray-300 app-field" wire:model.live="type">
                         <option value="">Tutti</option>
                         @foreach($docLabels as $k => $lbl)
                             <option value="{{ $k }}">{{ $lbl }}</option>
@@ -41,9 +41,9 @@
                     </select>
                 </div>
 
-                <div class="col-span-2">
-                    <label class="block text-xs text-gray-500">Stato</label>
-                    <select class="mt-1 w-full rounded border-gray-300" wire:model.live="state">
+                <div class="col-span-12 sm:col-span-6 lg:col-span-2">
+                    <label for="documents-state" class="block text-xs app-muted">Stato</label>
+                    <select id="documents-state" class="mt-1 w-full rounded border-gray-300 app-field" wire:model.live="state">
                         <option value="">Tutti</option>
                         <option value="expired">Scaduti</option>
                         <option value="soon30">≤ 30 giorni</option>
@@ -54,9 +54,9 @@
                 </div>
 
                 @if($canManage)
-                    <div class="col-span-2">
-                        <label class="block text-xs text-gray-500">Organizzazione</label>
-                        <select class="mt-1 w-full rounded border-gray-300" wire:model.live="orgId">
+                    <div class="col-span-12 sm:col-span-6 lg:col-span-2">
+                        <label for="documents-orgId" class="block text-xs app-muted">Organizzazione</label>
+                        <select id="documents-orgId" class="mt-1 w-full rounded border-gray-300 app-field" wire:model.live="orgId">
                             <option value="">Tutte</option>
                             @foreach($orgs as $o)
                                 <option value="{{ $o->id }}">{{ $o->name }}</option>
@@ -65,9 +65,9 @@
                     </div>
                 @endif
 
-                <div class="col-span-2">
-                    <label class="block text-xs text-gray-500">Sede</label>
-                    <select class="mt-1 w-full rounded border-gray-300" wire:model.live="locId">
+                <div class="col-span-12 sm:col-span-6 lg:col-span-2">
+                    <label for="documents-locId" class="block text-xs app-muted">Sede</label>
+                    <select id="documents-locId" class="mt-1 w-full rounded border-gray-300 app-field" wire:model.live="locId">
                         <option value="">Tutte</option>
                         @foreach($locs as $l)
                             <option value="{{ $l->id }}">{{ $l->name }}</option>
@@ -75,47 +75,47 @@
                     </select>
                 </div>
                 
-                <div class="col-span-1">
-                    <label class="block text-xs text-gray-500">ID veicolo</label>
-                    <input type="number" class="mt-1 w-full rounded border-gray-300" wire:model.live="vehicleId" min="1">
+                <div class="col-span-12 sm:col-span-6 lg:col-span-1">
+                    <label for="documents-vehicleId" class="block text-xs app-muted">ID veicolo</label>
+                    <input id="documents-vehicleId" type="number" class="mt-1 w-full rounded border-gray-300 app-field" wire:model.live="vehicleId" min="1">
                 </div>
             </div>
 
-            <div class="col-span-2">
-                <label class="block text-xs text-gray-500">Scadenza dal</label>
-                <input type="date" class="mt-1 w-full rounded border-gray-300" wire:model.live="from">
+            <div class="col-span-12 sm:col-span-6 lg:col-span-2">
+                <label for="documents-from" class="block text-xs app-muted">Scadenza dal</label>
+                <input id="documents-from" type="date" class="mt-1 w-full rounded border-gray-300 app-field" wire:model.live="from">
             </div>
-            <div class="col-span-2">
-                <label class="block text-xs text-gray-500">al</label>
-                <input type="date" class="mt-1 w-full rounded border-gray-300" wire:model.live="to">
+            <div class="col-span-12 sm:col-span-6 lg:col-span-2">
+                <label for="documents-to" class="block text-xs app-muted">al</label>
+                <input id="documents-to" type="date" class="mt-1 w-full rounded border-gray-300 app-field" wire:model.live="to">
             </div>
 
-            <div class="col-span-2">
-                <label class="block text-xs text-gray-500">Ordina per</label>
+            <div class="col-span-12 sm:col-span-6 lg:col-span-2">
+                <label for="documents-sort" class="block text-xs app-muted">Ordina per</label>
                 <div class="mt-1 flex gap-2">
-                    <select class="w-full rounded border-gray-300" wire:model.live="sort">
+                    <select id="documents-sort" class="w-full rounded border-gray-300 app-field" wire:model.live="sort">
                         <option value="expiry_date">Scadenza</option>
                         <option value="vehicle.plate">Targa</option>
                         <option value="type">Tipo</option>
                         <option value="number">Numero</option>
                     </select>
-                    <select class="w-24 rounded border-gray-300" wire:model.live="dir">
+                    <select class="w-24 rounded border-gray-300 app-field" wire:model.live="dir" aria-label="Direzione ordinamento">
                         <option value="asc">Asc</option>
                         <option value="desc">Desc</option>
                     </select>
                 </div>
             </div>
 
-            <div class="col-span-2">
-                <label class="block text-xs text-gray-500">Righe/pagina</label>
-                <select class="mt-1 w-full rounded border-gray-300" wire:model.live="perPage">
+            <div class="col-span-12 sm:col-span-6 lg:col-span-2">
+                <label for="documents-perPage" class="block text-xs app-muted">Righe/pagina</label>
+                <select id="documents-perPage" class="mt-1 w-full rounded border-gray-300 app-field" wire:model.live="perPage">
                     <option value="25">25</option>
                     <option value="50">50</option>
                     <option value="100">100</option>
                 </select>
             </div>
 
-            <div class="col-span-2 flex items-end gap-3">
+            <div class="col-span-12 lg:col-span-4 flex flex-wrap items-end gap-3">
                 <label class="inline-flex items-center gap-2 text-sm">
                     <input type="checkbox" class="rounded border-gray-300" wire:model.live="showArchived" @if($canManage === false && $canUpdate === true) disabled @endif>
                     <span>Mostra archiviati</span>
@@ -134,12 +134,12 @@
     </div>
 
     {{-- Azioni bulk --}}
-    <div class="flex items-center gap-2">
-        <span class="text-sm text-gray-600">Selezionati: {{ count($selected) }}</span>
+    <div class="flex flex-wrap items-center gap-2">
+        <span class="text-sm app-muted">Selezionati: {{ count($selected) }}</span>
             @if($canUpdate)
-            <div class="flex items-center gap-2">
-                <input type="date" class="rounded border-gray-300" wire:model.live="bulkRenewDate">
-                <button type="button" class="rounded bg-amber-600 px-3 py-1.5 text-white hover:bg-amber-700"
+            <div class="flex flex-wrap items-center gap-2">
+                <input type="date" aria-label="Nuova scadenza per i documenti selezionati" class="max-w-full rounded border-gray-300 app-field" wire:model.live="bulkRenewDate">
+                <button type="button" class="rounded bg-amber-700 px-3 py-1.5 text-white hover:bg-amber-700"
                         wire:click="bulkRenew">
                     Rinnova selezionati
                 </button>
@@ -148,9 +148,9 @@
     </div>
 
     {{-- Tabella --}}
-    <div class="overflow-auto rounded-lg border bg-white">
+    <div class="overflow-auto rounded-lg border app-surface">
         <table class="min-w-full text-sm">
-            <thead class="bg-gray-50">
+            <thead class="app-surface-subtle">
             <tr>
                 <th class="px-3 py-2">
                     @php
@@ -159,7 +159,7 @@
                     @endphp
                     <input type="checkbox"
                            class="rounded border-gray-300"
-                           wire:click="toggleSelectPage($event.target.checked)"
+                           aria-label="Seleziona tutti i documenti della pagina" wire:click="toggleSelectPage($event.target.checked)"
                            @if($allOnPageSelected) checked @endif>
                 </th>
                 <th class="px-3 py-2 text-left">Targa</th>
@@ -180,18 +180,18 @@
                     $cls  = is_null($days) ? '' : ($days <= 7 ? 'bg-rose-100 text-rose-700' : ($days <= 60 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'));
                     $isArchived = $v && method_exists($v, 'trashed') && $v->trashed();
                 @endphp
-                <tr class="hover:bg-gray-50 {{ $isArchived ? 'opacity-60' : '' }}" wire:key="doc-{{ $doc->id }}">
+                <tr class="hover:bg-gray-50 {{ $isArchived ? 'opacity-60' : '' }} dark:hover:bg-gray-700" wire:key="doc-{{ $doc->id }}">
                     <td class="px-3 py-2">
                         <input type="checkbox" class="rounded border-gray-300"
-                               value="{{ $doc->id }}" wire:model.live="selected"
+                               value="{{ $doc->id }}" wire:model.live="selected" aria-label="Seleziona documento {{ $doc->id }} del veicolo {{ $v?->plate }}"
                                @if($isArchived) disabled @endif>
                     </td>
                     <td class="px-3 py-2">
-                        <a href="{{ route('vehicles.show', $v->id) }}" class="text-indigo-700 hover:underline">
+                        <a href="{{ route('vehicles.show', $v->id) }}" class="text-indigo-700 hover:underline dark:text-indigo-300">
                             {{ $v->plate }}
                         </a>
                     </td>
-                    <td class="px-3 py-2 text-gray-600">{{ $v->make }} {{ $v->model }}</td>
+                    <td class="px-3 py-2 app-muted">{{ $v->make }} {{ $v->model }}</td>
                     <td class="px-3 py-2">{{ $docLabels[$doc->type] ?? strtoupper($doc->type) }}</td>
                     <td class="px-3 py-2">{{ $doc->number ?? '—' }}</td>
                     <td class="px-3 py-2">{{ $exp?->format('d/m/Y') ?? '—' }}</td>
@@ -226,7 +226,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="8" class="px-3 py-6 text-center text-gray-500">Nessun documento trovato.</td>
+                    <td colspan="8" class="px-3 py-6 text-center app-muted">Nessun documento trovato.</td>
                 </tr>
             @endforelse
             </tbody>
@@ -241,7 +241,7 @@
     @if($drawerOpen)
         <div class="fixed inset-0 z-[70]">
             <div class="fixed inset-0 bg-black/40" wire:click="closeDrawer"></div>
-            <div class="fixed right-0 top-0 h-dvh w-full max-w-2xl bg-white shadow-2xl">
+            <div class="fixed right-0 top-0 h-dvh w-full max-w-2xl overflow-y-auto app-surface shadow-2xl">
                 <div class="flex items-center justify-between border-b px-4 py-3">
                     <div class="text-lg font-semibold">
                         {{ $editingId ? 'Modifica documento' : 'Nuovo documento' }}
@@ -256,36 +256,36 @@
                         </div>
                     @endif
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs text-gray-500">Veicolo</label>
-                            <input type="number" class="mt-1 w-full rounded border-gray-300"
+                            <label for="documents-form-vehicle_id" class="block text-xs app-muted">Veicolo</label>
+                            <input id="documents-form-vehicle_id" type="number" class="mt-1 w-full rounded border-gray-300 app-field"
                                    wire:model.live="form.vehicle_id"
                                    disabled>
-                            @error('form.vehicle_id') <div class="mt-1 text-xs text-rose-600">{{ $message }}</div> @enderror
+                            @error('form.vehicle_id') <div class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div> @enderror
                         </div>
 
                         <div>
-                            <label class="block text-xs text-gray-500">Tipo</label>
-                            <select class="mt-1 w-full rounded border-gray-300" wire:model.live="form.type">
+                            <label for="documents-form-type" class="block text-xs app-muted">Tipo</label>
+                            <select id="documents-form-type" class="mt-1 w-full rounded border-gray-300 app-field" wire:model.live="form.type">
                                 <option value="">Seleziona…</option>
                                 @foreach($docLabels as $k => $lbl)
                                     <option value="{{ $k }}">{{ $lbl }}</option>
                                 @endforeach
                             </select>
-                            @error('form.type') <div class="mt-1 text-xs text-rose-600">{{ $message }}</div> @enderror
+                            @error('form.type') <div class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div> @enderror
                         </div>
 
                         <div>
-                            <label class="block text-xs text-gray-500">Numero</label>
-                            <input type="text" class="mt-1 w-full rounded border-gray-300" wire:model.live="form.number" maxlength="100">
-                            @error('form.number') <div class="mt-1 text-xs text-rose-600">{{ $message }}</div> @enderror
+                            <label for="documents-form-number" class="block text-xs app-muted">Numero</label>
+                            <input id="documents-form-number" type="text" class="mt-1 w-full rounded border-gray-300 app-field" wire:model.live="form.number" maxlength="100">
+                            @error('form.number') <div class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div> @enderror
                         </div>
 
                         <div>
-                            <label class="block text-xs text-gray-500">Scadenza</label>
-                            <input type="date" class="mt-1 w-full rounded border-gray-300" wire:model.live="form.expiry_date">
-                            @error('form.expiry_date') <div class="mt-1 text-xs text-rose-600">{{ $message }}</div> @enderror
+                            <label for="documents-form-expiry_date" class="block text-xs app-muted">Scadenza</label>
+                            <input id="documents-form-expiry_date" type="date" class="mt-1 w-full rounded border-gray-300 app-field" wire:model.live="form.expiry_date">
+                            @error('form.expiry_date') <div class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div> @enderror
                         </div>
                     </div>
 

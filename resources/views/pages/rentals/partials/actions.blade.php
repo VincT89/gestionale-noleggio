@@ -237,6 +237,10 @@
 </div>
 
 {{-- Modale pagamento --}}
+@php
+    $paymentRules = app(\App\Services\Rentals\RentalPaymentService::class);
+    $commissionablePaymentKinds = array_values(array_filter(\App\Models\RentalCharge::COMMISSIONABLE_KINDS, fn ($kind) => $paymentRules->isCommissionable($rental, $kind)));
+@endphp
 <div
     x-data="paymentModal(
         '{{ route('rentals.record_payment', $rental) }}',
@@ -252,7 +256,9 @@
             kinds: [
                 {val:'base',              label:'Quota base / saldo'},
                 {val:'distance_overage',  label:'Km extra'},
+                @if($rental->booking_channel !== 'amd_rent')
                 {val:'base+distance_overage', label:'Quota base + Km extra'},
+                @endif
                 {val:'damage',            label:'Danni'},
                 {val:'surcharge',         label:'Sovrapprezzo'},
                 {val:'fine',              label:'Multe'},
@@ -266,7 +272,7 @@
 >
     <template x-teleport="body">
         <div x-show="open" x-transition.opacity class="fixed inset-0 z-[95] flex items-center justify-center bg-black/50 px-4"
-             role="dialog" aria-modal="true" aria-labelledby="payment-modal-title" @keydown.escape.prevent.stop="close()">
+             role="dialog" aria-modal="true" aria-labelledby="payment-modal-title" x-trap.inert.noscroll="open" @keydown.escape.prevent.stop="close()">
             <div class="absolute inset-0" @click="close()"></div>
 
             <div x-show="open" x-transition.scale
@@ -275,7 +281,7 @@
               <!-- Header -->
               <div class="px-6 pt-6 pb-3 sticky top-0 bg-base-100/95 backdrop-blur supports-[backdrop-filter]:bg-base-100/80">
                 <h2 id="payment-modal-title" class="text-lg font-semibold">Registra Pagamento</h2>
-                <button type="button" class="absolute right-2 top-2 btn btn-ghost btn-xs" @click="close()">✕</button>
+                <button type="button" class="absolute right-2 top-2 btn btn-ghost btn-xs" @click="close()" aria-label="Chiudi finestra pagamenti">Chiudi</button>
               </div>
 
               <!-- Body (scrollable) -->
@@ -297,7 +303,7 @@
                         Per un saldo o un versamento aggiuntivo del noleggio scegli Quota base / saldo.
                     </p>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-300" x-show="kind"
-                        x-text="@js($rental->assignment_id !== null) && @js(\App\Models\RentalCharge::COMMISSIONABLE_KINDS).includes(kind)
+                        x-text="@js($commissionablePaymentKinds).includes(kind)
                             ? 'Questo pagamento entra nella base delle commissioni.'
                             : 'Questo pagamento è escluso dalla base delle commissioni.'"></p>
                   </div>

@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="p-6">
+    <div class="p-0 sm:p-6">
         <x-slot name="header">
             <div class="flex flex-wrap items-center justify-between">
                 <h2 class="font-semibold text-xl text-white dark:text-gray-200 leading-tight">

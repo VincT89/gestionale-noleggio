@@ -36,6 +36,7 @@ return [
     */
 
     'guards' => [
+        'public_customer' => ['driver' => 'session', 'provider' => 'public_customers'],
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
@@ -60,6 +61,7 @@ return [
     */
 
     'providers' => [
+        'public_customers' => ['driver' => 'eloquent', 'model' => App\Models\PublicCustomer::class],
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', App\Models\User::class),
@@ -91,6 +93,7 @@ return [
     */
 
     'passwords' => [
+        'public_customers' => ['provider' => 'public_customers', 'table' => 'public_customer_password_reset_tokens', 'expire' => 60, 'throttle' => 60],
         'users' => [
             'provider' => 'users',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),

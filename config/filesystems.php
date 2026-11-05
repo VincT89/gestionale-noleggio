@@ -29,6 +29,10 @@ return [
     */
 
     'disks' => [
+        'amd_rent_private' => [
+            'driver' => 'local', 'root' => storage_path('app/amd-rent-private'),
+            'serve' => false, 'visibility' => 'private', 'throw' => true,
+        ],
 
         'local' => [
             'driver' => 'local',
@@ -43,6 +47,13 @@ return [
             'root' => storage_path('app/public'),
             'url' => env('APP_URL').'/storage',
             'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
+        'car_models' => [
+            'driver' => 'local',
+            'root' => public_path('images/car-models'),
             'throw' => false,
             'report' => false,
         ],

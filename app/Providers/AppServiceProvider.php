@@ -22,6 +22,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \Illuminate\Support\Facades\View::creator('*', fn (\Illuminate\View\View $view) => \App\Support\EraInterface::present($view));
+
+        \Illuminate\Support\Facades\RateLimiter::for('public-bookings', fn (\Illuminate\Http\Request $request) =>
+            \Illuminate\Cache\RateLimiting\Limit::perMinute(5)->by($request->ip()));
         /**
          * Aggancia l'observer sul modello Media di Spatie.
          * In questo modo intercettiamo create/delete di media associati a RentalDamage.

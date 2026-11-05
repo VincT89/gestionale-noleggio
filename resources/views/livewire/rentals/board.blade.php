@@ -1,7 +1,7 @@
 <div class="space-y-6">
     @php
         // class helper per input "morbidi"
-        $input = 'block rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm
+        $input = 'app-field block rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm
                 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400
                 dark:bg-gray-800 dark:border-gray-700';
         $btnIndigo = 'inline-flex items-center px-3 py-1.5 bg-indigo-600 rounded-md
@@ -12,18 +12,18 @@
     @endphp
     {{-- Toolbar: Nuova bozza + ricerca + toggle vista --}}
     <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-2">
+        <div class="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
             <a href="{{ route('rentals.create') }}" class="inline-flex items-center px-3 py-1.5 bg-indigo-600 rounded-md
                            text-xs font-semibold text-white uppercase hover:bg-indigo-500
                            focus:outline-none focus:ring-2 focus:ring-indigo-300 transition">
                 + Nuova bozza
             </a>
 
-            <div class="relative">
+            <div class="relative w-full sm:w-auto">
                 <input type="text" wire:model.live.debounce.400ms="q"
-                       placeholder="Cerca per id, cliente o targa…"
-                       class="{{ $input }} w-72 pr-8" />
-                <div class="absolute right-2 top-1/2 -translate-y-1/2 opacity-60">🔎</div>
+                       aria-label="Cerca noleggi per numero contratto, cliente o targa"
+                       placeholder="Numero contratto, cliente o targa…"
+                       class="{{ $input }} w-full sm:w-72" />
             </div>
         </div>
 
@@ -65,9 +65,9 @@
         <div class="card shadow rounded-lg">
             {{-- Tabella --}}
             <div class="overflow-x-auto p-3">
-                <table class="table-auto min-w-full text-sm divide-y divide-gray-200 dark:divide-gray-700">
+                <table class="table-auto min-w-full text-sm divide-y divide-gray-200 dark:divide-gray-700 [&_th]:px-3 [&_th]:py-3 [&_td]:px-3 [&_td]:py-3">
                     <thead class="bg-gray-300 dark:bg-gray-700">
-                        <tr class="text-xs uppercase text-gray-500">
+                        <tr class="text-xs uppercase text-gray-700 dark:text-gray-200">
                             <th class="w-40">Riferimento</th>
                             <th>Cliente</th>
                             <th>Veicolo</th>
@@ -97,7 +97,7 @@
 
                             $hasContract     = $r->getMedia('contract')->isNotEmpty();
                             $hasSignedRental = $r->getMedia('signatures')->isNotEmpty();
-                            $hasSignedPU     = $pickup ? $pickup->getMedia('signatures')->isNotEmpty() : false;
+                            $hasSignedPU     = $pickup && ($pickup->getMedia('signatures')->isNotEmpty() || $pickup->getMedia('checklist_pickup_signed')->isNotEmpty());
 
                             $photosPU = $pickup ? $pickup->getMedia('photos')->count() : 0;
                             $photosRT = $return ? $return->getMedia('photos')->count() : 0;
@@ -115,21 +115,21 @@
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
                                                 {{ $hasContract ? 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300'
                                                                 : 'bg-gray-100 text-gray-700 ring-1 ring-gray-300' }}">
-                                        📄 <span>Contratto</span>
+                                        <span>{{ $hasContract ? 'Contratto presente' : 'Contratto mancante' }}</span>
                                     </span>
 
                                     {{-- Contratto firmato (Rental) --}}
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
                                                 {{ $hasSignedRental ? 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300'
                                                                     : 'bg-gray-100 text-gray-700 ring-1 ring-gray-300' }}">
-                                        ✍️ <span>Firmato</span>
+                                        <span>{{ $hasSignedRental ? 'Contratto firmato' : 'Contratto non firmato' }}</span>
                                     </span>
 
                                     {{-- Firma su Checklist pickup --}}
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
                                                 {{ $hasSignedPU ? 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300'
                                                                 : 'bg-gray-100 text-gray-700 ring-1 ring-gray-300' }}">
-                                        🧾 <span>Firma pickup</span>
+                                        <span>{{ $hasSignedPU ? 'Pickup firmato' : 'Pickup non firmato' }}</span>
                                     </span>
 
                                     {{-- Foto pickup --}}
@@ -200,7 +200,7 @@
         @php
             $cols = $state ? [$state] : ['draft','reserved','in_use','checked_in','closed'];
         @endphp
-        <div class="grid grid-cols-1 lg:grid-cols-{{ count($cols) }} gap-4">
+        <div class="grid grid-cols-1 {{ count($cols) === 1 ? 'lg:grid-cols-1' : 'lg:grid-cols-5' }} gap-4">
             @foreach($cols as $col)
                 <div class="card shadow bg-base-100">
                     <div class="card-title px-4 pt-4">
@@ -214,7 +214,7 @@
 
                                 $hasContract     = $r->getMedia('contract')->isNotEmpty();
                                 $hasSignedRental = $r->getMedia('signatures')->isNotEmpty();
-                                $hasSignedPU     = $pickup ? $pickup->getMedia('signatures')->isNotEmpty() : false;
+                                $hasSignedPU     = $pickup && ($pickup->getMedia('signatures')->isNotEmpty() || $pickup->getMedia('checklist_pickup_signed')->isNotEmpty());
 
                                 $photosPU = $pickup ? $pickup->getMedia('photos')->count() : 0;
                                 $photosRT = $return ? $return->getMedia('photos')->count() : 0;
@@ -249,17 +249,17 @@
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
                                                 {{ $hasContract ? 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300'
                                                                 : 'bg-gray-100 text-gray-700 ring-1 ring-gray-300' }}">
-                                        📄 <span>Contratto</span>
+                                        <span>{{ $hasContract ? 'Contratto presente' : 'Contratto mancante' }}</span>
                                     </span>
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
                                                 {{ $hasSignedRental ? 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300'
                                                                     : 'bg-gray-100 text-gray-700 ring-1 ring-gray-300' }}">
-                                        ✍️ <span>Firmato</span>
+                                        <span>{{ $hasSignedRental ? 'Contratto firmato' : 'Contratto non firmato' }}</span>
                                     </span>
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
                                                 {{ $hasSignedPU ? 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300'
                                                                 : 'bg-gray-100 text-gray-700 ring-1 ring-gray-300' }}">
-                                        🧾 <span>Firma pickup</span>
+                                        <span>{{ $hasSignedPU ? 'Pickup firmato' : 'Pickup non firmato' }}</span>
                                     </span>
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
                                                 {{ $photosPU>0 ? 'bg-sky-100 text-sky-900 ring-1 ring-sky-300'

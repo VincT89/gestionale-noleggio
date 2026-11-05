@@ -24,7 +24,7 @@ class RentalsBoard extends Component
     #[Url(as: 'state', except: 'draft')]
     public ?string $state = 'draft';
 
-    /** Ricerca libera (id o cliente) */
+    /** Ricerca libera (numero contratto, id, cliente o targa) */
     public string $q = '';
 
     /**
@@ -148,7 +148,8 @@ class RentalsBoard extends Component
      * Applica la ricerca libera ai noleggi.
      *
      * Campi ricercati:
-     * - id del noleggio
+     * - numero del contratto visualizzato, anche con prefisso #
+     * - id interno del noleggio
      * - nome cliente
      * - targa veicolo
      *
@@ -167,9 +168,12 @@ class RentalsBoard extends Component
             return $q;
         }
 
-        return $q->where(function (Builder $sub) use ($term) {
-            // Ricerca per ID noleggio.
-            $sub->where('id', 'like', "%{$term}%")
+        $numberTerm = preg_match('/^#\s*(\d+)$/', $term, $matches) ? $matches[1] : $term;
+
+        return $q->where(function (Builder $sub) use ($term, $numberTerm) {
+            // Il numero mostrato usa number_id, con id come fallback per i dati precedenti.
+            $sub->where('rentals.id', 'like', "%{$term}%")
+                ->orWhereRaw('COALESCE(rentals.number_id, rentals.id) LIKE ?', ["%{$numberTerm}%"])
 
                 // Ricerca per nome cliente collegato al noleggio.
                 ->orWhereExists(function ($customerQuery) use ($term) {

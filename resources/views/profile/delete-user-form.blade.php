@@ -31,7 +31,7 @@
                 il tuo account.
 
                 <div class="mt-4" x-data="{}" x-on:confirming-delete-user.window="setTimeout(() => $refs.password.focus(), 250)">
-                    <x-input type="password"
+                    <x-input id="delete-user-password" type="password" aria-label="Password per confermare l’eliminazione"
                              class="mt-1 block w-3/4"
                              autocomplete="current-password"
                              placeholder="Password"

@@ -1,0 +1,139 @@
+<?php
+
+namespace App\Http\Requests;
+
+use Carbon\CarbonImmutable;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use App\Models\Vehicle;
+use App\Services\Geocoding\PlaceSelection;
+
+class PublicCarSearchRequest extends FormRequest
+{
+    public function authorize(): bool { return true; }
+
+    protected function getRedirectUrl(): string
+    {
+        return route($this->routeIs('public-cars.preview*') ? 'public-cars.preview.index' : 'public-cars.index');
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge(['budget' => is_string($this->budget) ? str_replace(',', '.', $this->budget) : $this->budget]);
+        if ($this->routeIs('public-cars.index', 'public-cars.preview.index') && $this->has('destination')) {
+            $destination = $this->input('destination');
+            /** A new destination replaces every previous place filter, including when the choice is invalid or empty. */
+            $this->merge(['place_id' => null, 'city' => null, 'pickup_group' => null]);
+            if (is_string($destination)) {
+                $destination = trim($destination);
+                $this->merge(['destination' => $destination]);
+                // Selecting an existing return point replaces the earlier free
+                // address carried back from the car detail page.
+                if ($destination !== '') $this->merge(['request_custom_return' => 0]);
+                if (str_starts_with($destination, 'city:')) {
+                    $this->merge(['city' => trim(substr($destination, 5))]);
+                } elseif (str_starts_with($destination, 'group:')) {
+                    $this->merge(['pickup_group' => substr($destination, 6)]);
+                } elseif (ctype_digit($destination)) {
+                    $this->merge(['place_id' => $destination]);
+                }
+            }
+        }
+        if (is_string($this->input('city'))) $this->merge(['city' => trim($this->input('city'))]);
+        // Normalize optional identifiers so the encrypted checkout matches HTTP form values exactly.
+        foreach (['place_id', 'supplier'] as $field) {
+            $value = $this->input($field);
+            if (is_scalar($value) && preg_match('/^[1-9][0-9]{0,9}$/', (string) $value)) $this->merge([$field => (int) $value]);
+        }
+    }
+
+    public function rules(): array
+    {
+        $required = $this->filled('pickup_at') || $this->filled('return_at') || $this->route('pricelist');
+
+        $rules = [
+            'pickup_at' => ['bail', $required ? 'required' : 'nullable', 'string', 'date_format:Y-m-d\TH:i', 'after_or_equal:'.now()->format('Y-m-d\TH:i')],
+            'return_at' => ['bail', $required ? 'required' : 'nullable', 'string', 'date_format:Y-m-d\TH:i'],
+            'city' => ['nullable', 'string', 'max:128'],
+            'pickup_group' => ['nullable', Rule::in(array_keys(\App\Domain\Rentals\PublicPickupDirectory::BARI_GROUPS))],
+            'place_id' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
+            'supplier' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
+            'request_delivery' => ['nullable', 'boolean'],
+            'request_custom_return' => ['exclude_unless:request_delivery,1', 'nullable', 'boolean'],
+            'return_address' => ['exclude_unless:request_delivery,1', 'exclude_unless:request_custom_return,1', 'required', 'string', 'min:8', 'max:500'],
+            'return_place' => ['exclude_unless:request_delivery,1', 'exclude_unless:request_custom_return,1', 'required', 'uuid'],
+            'delivery_address' => ['exclude_unless:request_delivery,1', 'required', 'string', 'min:3', 'max:500'],
+            'delivery_place' => ['exclude_unless:request_delivery,1', 'nullable', 'uuid',
+                Rule::requiredIf($this->boolean('request_delivery') && $this->isMethod('GET')
+                    && !$this->routeIs('public-cars.index', 'public-cars.preview.index'))],
+            'budget' => ['nullable', 'numeric', 'min:0', 'max:1000000', 'regex:/^\d+(\.\d{1,2})?$/'],
+            'seats' => ['nullable', 'integer', 'min:1', 'max:20'],
+            'transmission' => ['nullable', Rule::in(array_keys(Vehicle::TRANSMISSION_LABELS_IT))],
+            'fuel_type' => ['nullable', Rule::in(array_keys(Vehicle::FUEL_TYPE_LABELS_IT))],
+            'segment' => ['nullable', 'string', 'max:120'],
+            'exclude' => ['nullable', 'string', 'max:1000', 'regex:/^[1-9][0-9]*(?:,[1-9][0-9]*)*$/D'],
+            'q' => ['nullable', 'string', 'max:100'],
+            'sort' => ['nullable', Rule::in(['price_asc', 'price_desc'])],
+            'page' => ['nullable', 'integer', 'min:1', 'max:100000'],
+        ];
+
+        if ($this->routeIs('public-cars.index', 'public-cars.preview.index')) {
+            $rules['destination'] = ['sometimes', $this->boolean('request_delivery') ? 'nullable' : 'required', 'string', 'max:133', 'regex:/^(?:group:bari-(?:airport|port|station)|[1-9][0-9]{0,9}|city:\\S(?:[^\\r\\n]*\\S)?)$/uD'];
+        }
+
+        return $rules;
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            if ($this->boolean('request_delivery') && $this->boolean('request_custom_return')
+                && !$validator->errors()->hasAny(['return_place', 'return_address'])
+                && !app(PlaceSelection::class)->resolve($this->input('return_place'), $this->input('return_address'), 'public-return')) {
+                $validator->errors()->add('return_place', 'Il punto di riconsegna è scaduto o è cambiato. Sceglilo e confermalo nuovamente sulla mappa.');
+            }
+            if ($this->boolean('request_delivery') && $this->filled('delivery_place')
+                && !$validator->errors()->hasAny(['delivery_place', 'delivery_address'])
+                && !app(PlaceSelection::class)->resolve($this->input('delivery_place'), $this->input('delivery_address'))) {
+                $validator->errors()->add('delivery_place', 'La selezione del luogo è scaduta o è cambiata. Cerca e conferma nuovamente l’indirizzo.');
+            }
+            if ($validator->errors()->has('pickup_at') || $validator->errors()->has('return_at')
+                || !$this->filled('pickup_at') || !$this->filled('return_at')) {
+                return;
+            }
+            $start = CarbonImmutable::parse($this->pickup_at, config('app.timezone'));
+            $end = CarbonImmutable::parse($this->return_at, config('app.timezone'));
+            if ($end <= $start) {
+                $validator->errors()->add('return_at', 'La riconsegna deve essere successiva al ritiro.');
+                return;
+            }
+            if ($end > $start->addDays(config('public_cars.max_rental_days'))) {
+                $validator->errors()->add('return_at', 'Per periodi superiori a '.config('public_cars.max_rental_days').' giorni, contattaci per un preventivo.');
+            }
+        });
+    }
+
+    public function messages(): array
+    {
+        return [
+            'pickup_at.required' => 'Indica data e ora del ritiro.',
+            'pickup_at.string' => 'Controlla data e ora del ritiro.',
+            'pickup_at.date_format' => 'Controlla data e ora del ritiro.',
+            'pickup_at.after_or_equal' => 'Il ritiro deve essere nel futuro.',
+            'return_at.required' => 'Indica data e ora della riconsegna.',
+            'return_at.string' => 'Controlla data e ora della riconsegna.',
+            'return_at.date_format' => 'Controlla data e ora della riconsegna.',
+            'budget.*' => 'Inserisci un budget valido in euro, con al massimo due decimali.',
+            'place_id.*' => $this->boolean('request_delivery') ? 'Scegli un luogo di riconsegna dall’elenco.' : 'Scegli un luogo di ritiro dall’elenco.',
+            'destination.*' => 'Scegli una città, un aeroporto, un porto, una stazione o una zona dall’elenco.',
+            'pickup_group.*' => 'Scegli uno dei gruppi di ritiro disponibili.',
+            'supplier.*' => 'Controlla il noleggiatore selezionato.',
+            'request_delivery.*' => 'Controlla la scelta del ritiro personalizzato.',
+            'request_custom_return.*' => 'Controlla la scelta della riconsegna personalizzata.',
+            'return_address.*' => 'Indica il luogo di riconsegna con il comune, da 8 a 500 caratteri: aeroporto, hotel o indirizzo completo.',
+            'return_place.*' => 'Scegli e conferma il punto preciso di riconsegna sulla mappa.',
+            'delivery_address.*' => 'Indica un indirizzo, hotel o B&B, possibilmente con il comune, da 3 a 500 caratteri.',
+            'delivery_place.*' => 'Cerca e conferma il luogo di ritiro prima di scegliere l’auto.',
+        ];
+    }
+}

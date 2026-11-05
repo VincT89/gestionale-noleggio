@@ -104,20 +104,20 @@
                         {{-- Nuova Password cargos --}}
                         <div>
                             <label class="block text-xs text-gray-600 dark:text-gray-300 mb-1">Nuova password Cargos</label>
-                            <input type="password"
+                            <x-password-input id="organization-cargos-password" aria-label="Nuova password Cargos"
                                    wire:model.defer="state.cargos_password"
                                    class="w-full px-3 py-2 rounded-md border bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100"
-                                   autocomplete="off">
+                                   autocomplete="off" />
                             @error('state.cargos_password') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
                         </div>
 
                         {{-- Nuovo PUK cargos --}}
                         <div>
                             <label class="block text-xs text-gray-600 dark:text-gray-300 mb-1">Nuovo PUK Cargos</label>
-                            <input type="password"
+                            <x-password-input id="organization-cargos-puk" aria-label="Nuovo PUK Cargos"
                                    wire:model.defer="state.cargos_puk"
                                    class="w-full px-3 py-2 rounded-md border bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100"
-                                   autocomplete="off">
+                                   autocomplete="off" />
                             @error('state.cargos_puk') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
                         </div>
 
@@ -128,10 +128,10 @@
                             </label>
 
                             <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
-                                <input type="password"
+                                <x-password-input id="organization-cargos-confirm-password" aria-label="Conferma password amministratore"
                                        wire:model.defer="confirmPassword"
                                        class="flex-1 px-3 py-2 rounded-md border bg-gray-50 dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100"
-                                       autocomplete="current-password">
+                                       autocomplete="current-password" />
 
                                 <div class="flex flex-wrap gap-2">
                                     <button type="button"

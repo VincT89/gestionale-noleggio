@@ -9,7 +9,7 @@
         </div>
     </x-slot>
 
-    <div class="p-6">
+    <div class="p-0 sm:p-6">
         <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800">
             {{-- Dashboard KPI + Table/Kanban --}}
             <livewire:rentals.rentals-board />

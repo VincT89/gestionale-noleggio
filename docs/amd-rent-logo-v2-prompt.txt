@@ -1,0 +1,12 @@
+Use case: text-localization.
+Edit the attached EXISTING AMD Mobility logo, not a new logo design.
+The user's instruction is: make it the same as the existing logo, only replace Mobility with Rent.
+
+Use the clean attached original as the source of truth. Preserve the EXACT distinctive A symbol with its curved sweeping lower stroke, preserve the original MD letter shapes and their weight, preserve the italic tagline and its style. Replace the single word "Mobility" with "Rent", using the source's original typography and matching its stroke weight: do not make the new word extra bold.
+The complete main mark must read AMD Rent, with the A represented by the existing symbol and "MD Rent" on the original text baseline.
+Keep the tagline EXACTLY: "Muoversi in Sicurezza!".
+Maintain the original proportions and relative alignment of symbol, lettering and tagline. No redesign or modernization.
+
+For placement on the white website header, render the existing white logo shapes as flat navy blue RGB(24,59,100), hex #183b64, on a perfectly solid PURE WHITE #FFFFFF background. This is the existing brand's navy-on-white color version.
+The background must be uniformly white. NO checkerboard, NO transparency grid, NO stripes, NO gray texture, NO gradients anywhere, NO shadow. Do not simulate transparency. Solid pure white.
+Keep the complete logo uncropped and use modest white margins around it. One finished logo only, no mockups, no extra elements.

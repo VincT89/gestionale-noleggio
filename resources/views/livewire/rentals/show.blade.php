@@ -1,5 +1,5 @@
 {{-- resources/views/livewire/rentals/show.blade.php --}}
-<div class="grid min-w-0 lg:grid-cols-12 gap-6">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 min-w-0">
     {{-- Colonna principale --}}
     <div class="min-w-0 lg:col-span-9 space-y-6">
         {{-- HEADER + TABS (sticky) — drop-in replacement --}}
@@ -73,7 +73,7 @@
             {{-- Header: titolo + meta compatti e coerenti con il resto del gestionale --}}
             <div class="flex items-center justify-between gap-3 flex-wrap">
                 <div>
-                    <h1 class="text-xl md:text-2xl font-semibold flex items-center gap-2">
+                    <h1 class="text-xl md:text-2xl font-semibold flex flex-wrap items-center gap-2">
                         Noleggio {{ $rental->reference ?? $rental->display_number_label }}
                         <span class="badge {{ $statusBadgeClass }}">{{ $statusLabel }}</span>
                     </h1>
@@ -92,7 +92,7 @@
             </div>
 
             {{-- Tabs lifted: più leggibili e coerenti con DaisyUI. --}}
-            <div class="mt-3 flex flex-wrap gap-1 tabs tabs-lifted no-scrollbar">
+            <div class="mt-3 flex flex-wrap gap-2" aria-label="Sezioni del noleggio">
                 @foreach($tabs as $key => $label)
                     @php
                         // Micro-badge per dare feedback “a colpo d’occhio” su contenuti rilevanti delle singole tab.
@@ -105,7 +105,7 @@
                     @endphp
 
                     <button
-                        class="rounded px-2 py-1 ring-1 ring-slate-300 tab {{ $tab === $key ? 'bg-slate-800 text-white' : 'bg-white text-slate-700' }} mr-2"
+                        class="rounded px-2 py-1 ring-1 ring-slate-300 tab {{ $tab === $key ? 'bg-slate-800 text-white' : 'bg-white text-slate-700' }}"
                         wire:click="switch('{{ $key }}')"
                         aria-current="{{ $tab === $key ? 'page' : 'false' }}"
                     >
@@ -189,7 +189,8 @@
                     accept="application/pdf,image/*"
                 >
                     {{-- SLOT: selezione tipo documento → salvato come collection_name in media --}}
-                    <select name="collection"
+                    <label for="rental-document-type" class="block text-sm font-medium text-gray-700">Tipo di documento</label>
+                    <select id="rental-document-type" name="collection"
                             class="mt-1 w-full rounded-md border-gray-300 shadow-sm appearance-none pr-8 focus:border-indigo-500 focus:ring-indigo-500">
                         <option value="documents">Documenti vari (precontrattuali)</option>
                         <option value="id_card">Documento identità</option>

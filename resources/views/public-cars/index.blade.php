@@ -1,0 +1,130 @@
+@extends('layouts.public-cars')
+@section('title', 'Cerca e prenota un’auto')
+@section('main-class', 'amd-search-page')
+@section('content')
+@php
+    $value = function ($name, $default = '') use ($filters) {
+        $input = old($name, $filters[$name] ?? $default);
+        return is_scalar($input) ? (string) $input : '';
+    };
+    $money = fn ($cents) => number_format($cents / 100, 2, ',', '.').' €';
+    $baseFilters = array_filter(\Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at', 'place_id', 'city', 'pickup_group', 'request_delivery', 'delivery_address', 'delivery_place', 'request_custom_return', 'return_address', 'return_place', 'exclude']), fn ($v) => $v !== null && $v !== '');
+    $customPickup = $value('request_delivery') === '1';
+    $destinationValue = $value('destination', $value('pickup_group') ? 'group:'.$value('pickup_group') : ($value('place_id') ?: ($value('city') ? 'city:'.$value('city') : '')));
+    $groupLabel = \App\Domain\Rentals\PublicPickupDirectory::groupLabel($value('pickup_group'));
+    $knownDestination = $destinations->contains(fn ($destination) => mb_strtolower($destination['value']) === mb_strtolower($destinationValue));
+@endphp
+@if($searched)
+<section class="amd-search-band amd-search-band--results" aria-labelledby="search-title">
+    <div class="amd-search-band-inner">
+        <div class="amd-page-heading"><h1 id="search-title">La tua ricerca</h1></div>
+            <div class="amd-search-recap" data-search-recap hidden>
+                <div id="public-search-recap">
+                    <div class="amd-trip-place">
+                        <span>{{ $customPickup ? 'Ritiro al tuo indirizzo' : 'Luogo di ritiro' }}</span>
+                        <strong>{{ $customPickup ? $value('delivery_address') : ($groupLabel ?? $selectedPlace?->label ?? $value('city')) }}</strong>
+                        @if($customPickup && $deliveryPoint)<small class="amd-trip-credit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a></small>@endif
+                        @if($customPickup)<small>Riconsegna: {{ !empty($filters['request_custom_return']) ? $filters['return_address'].' (da confermare)' : ($groupLabel ?? $selectedPlace?->label ?? ($value('city') ?: 'da scegliere dopo l’auto')) }}</small>@endif
+                    </div>
+                    <div class="amd-trip-date"><span>Ritiro</span><strong><time datetime="{{ $filters['pickup_at'] }}">{{ \Carbon\CarbonImmutable::parse($filters['pickup_at'])->format('d/m/Y') }}</time></strong><small>Ore {{ \Carbon\CarbonImmutable::parse($filters['pickup_at'])->format('H:i') }}</small></div>
+                    <div class="amd-trip-date"><span>Riconsegna</span><strong><time datetime="{{ $filters['return_at'] }}">{{ \Carbon\CarbonImmutable::parse($filters['return_at'])->format('d/m/Y') }}</time></strong><small>Ore {{ \Carbon\CarbonImmutable::parse($filters['return_at'])->format('H:i') }}</small></div>
+                </div>
+                <button class="amd-button amd-button-secondary" type="button" data-search-toggle aria-controls="car-search" aria-expanded="true">Modifica ricerca</button>
+            </div>
+
+        @include('public-cars.partials.search-form')
+    </div>
+</section>
+@else
+<section class="amd-home-hero" aria-labelledby="search-title">
+    <div class="amd-home-hero-layout">
+        <div class="amd-home-intro">
+            <h1 id="search-title">Il viaggio è tuo.<br><span>Parti come vuoi.</span></h1>
+            <div class="amd-home-intro-copy"><p>Dall’aeroporto al tuo hotel.<br> Trova l’auto, scegli la tua partenza.</p><a class="amd-home-search-link" href="#car-search">Trova la tua auto</a></div>
+        </div>
+        <div class="amd-scene-track" data-scene-track>
+            <div class="amd-scene-sticky">
+                @include('public-cars.partials.home-scene')
+                <div class="amd-home-search-panel">@include('public-cars.partials.search-form')</div>
+            </div>
+        </div>
+    </div>
+</section>
+@endif
+<div class="{{ $searched ? 'amd-main amd-results-main' : 'amd-home-sections' }}" @if($searched) id="public-search-results" data-search-url="{{ route($routePrefix.'.index') }}" @endif>
+@if($searched)
+    @if(session('status'))<p class="amd-account-notice" role="status">{{ session('status') }}</p>@endif
+    @if($deliveryLookupNeeded)
+        @include('public-cars.partials.delivery-place-choices')
+    @else
+    @if($deliveryPoint)<p class="amd-result-period"><a href="{{ route($routePrefix.'.index', \Illuminate\Support\Arr::except($filters, ['delivery_place', 'page'])) }}#pickup-map">Modifica il punto sulla mappa</a></p>@endif
+    <div class="amd-results-layout">
+        <aside class="amd-filters" aria-label="Filtri delle auto">
+            <details class="amd-filter-disclosure" open data-filter-disclosure>
+                <summary>Filtra le auto</summary>
+                <form method="get" action="{{ route($routePrefix.'.index') }}" class="amd-filter-form" data-live-search>
+                    @foreach($baseFilters as $key => $filterValue)<input type="hidden" name="{{ $key }}" value="{{ $filterValue }}">@endforeach
+                    <input type="hidden" name="sort" value="{{ $value('sort', 'price_asc') }}">
+                    <div class="amd-field"><label for="budget">Budget massimo totale</label><div class="amd-money-input"><input id="budget" name="budget" type="number" min="0" max="1000000" step="0.01" inputmode="decimal" value="{{ $value('budget') }}" placeholder="Nessun limite" aria-describedby="budget-help"><span aria-hidden="true">€</span></div><small id="budget-help">Per tutto il periodo, cauzione esclusa.</small></div>
+                    <div class="amd-field"><label for="segment">Tipo di veicolo</label><select id="segment" name="segment"><option value="">Tutti i tipi di veicolo</option>@foreach($segments as $segment)<option value="{{ $segment }}" @selected(mb_strtolower($value('segment')) === mb_strtolower($segment))>{{ $segment }}</option>@endforeach</select></div>
+                    <div class="amd-field"><label for="transmission">Cambio</label><select id="transmission" name="transmission"><option value="">Qualsiasi</option>@foreach(\App\Models\Vehicle::TRANSMISSION_LABELS_IT as $key => $label)<option value="{{ $key }}" @selected($value('transmission') === $key)>{{ $label }}</option>@endforeach</select></div>
+                    <div class="amd-field"><label for="fuel-type">Alimentazione</label><select id="fuel-type" name="fuel_type"><option value="">Qualsiasi</option>@foreach(\App\Models\Vehicle::FUEL_TYPE_LABELS_IT as $key => $label)<option value="{{ $key }}" @selected($value('fuel_type') === $key)>{{ $label }}</option>@endforeach</select></div>
+                    <div class="amd-field"><label for="seats">Posti minimi</label><input id="seats" name="seats" type="number" min="1" max="20" step="1" value="{{ $value('seats') }}" placeholder="Qualsiasi"></div>
+                    <div class="amd-field"><label for="car-query">Marca o modello</label><input id="car-query" name="q" type="search" maxlength="100" value="{{ $value('q') }}" placeholder="Cerca marca o modello"></div>
+                    <button class="amd-button" type="submit">Applica filtri</button><a class="amd-reset" href="{{ route($routePrefix.'.index', $baseFilters) }}">Rimuovi filtri</a>
+                </form>
+            </details>
+        </aside>
+        <section class="amd-results" aria-labelledby="results-title">
+            <div class="amd-results-heading"><div><h2 id="results-title">{{ $results->total() === 1 ? '1 auto disponibile' : $results->total().' auto disponibili' }}</h2>@if($selectedPlace)<p class="amd-results-place">{{ $selectedPlace->name }}@if($selectedPlace->city), {{ $selectedPlace->city }}@endif</p>@elseif($value('city'))<p class="amd-results-place">{{ $value('city') }} — Tutti i punti di ritiro</p>@endif</div>
+                <form method="get" action="{{ route($routePrefix.'.index') }}" class="amd-sort" data-live-search>
+                    @foreach($filters as $key => $filterValue) @if(!in_array($key, ['sort','page']) && $filterValue !== null)<input type="hidden" name="{{ $key }}" value="{{ $filterValue }}">@endif @endforeach
+                    <label for="sort">Ordina per</label><select id="sort" name="sort"><option value="price_asc" @selected(($filters['sort'] ?? '') !== 'price_desc')>Prezzo crescente</option><option value="price_desc" @selected(($filters['sort'] ?? '') === 'price_desc')>Prezzo decrescente</option></select><button class="amd-button amd-button-secondary" type="submit">Ordina</button>
+                </form>
+            </div>
+            <p class="amd-result-period">Dal {{ \Carbon\CarbonImmutable::parse($filters['pickup_at'])->format('d/m/Y H:i') }} al {{ \Carbon\CarbonImmutable::parse($filters['return_at'])->format('d/m/Y H:i') }}. Prezzi per l’intero periodo. Per ogni tipo di veicolo trovi l’auto disponibile al prezzo più basso.</p>
+            @if($customPickup)<p class="amd-result-period">Ritiro richiesto: <strong>{{ $value('delivery_address') }}</strong>. Consegna e ritiro inclusi nel prezzo. Scegli l’auto, indica dove riconsegnarla e richiedi disponibilità.</p>@endif
+            <div class="amd-car-grid">
+            @forelse($results as $car)
+                <article class="amd-car" aria-labelledby="car-{{ $car['id'] }}">
+                    <figure class="amd-car-photo">@if($car['has_photo'])<img src="{{ route($routePrefix.'.photo', $car['id']) }}" alt="{{ $car['photo_is_reference'] ? 'Immagine indicativa: '.$car['title'] : $car['title'] }}" loading="lazy" width="360" height="240">@if($car['photo_is_reference'])<figcaption>Immagine indicativa del modello</figcaption>@endif @else<span>Foto non disponibile</span>@endif</figure>
+                    <div class="amd-car-info"><h3 id="car-{{ $car['id'] }}">{{ $car['product_name'] ?? $car['title'] }}</h3>
+                        @if($car['product_name'] !== null && $car['product_name'] !== $car['title'])<p>{{ $car['title'] }}</p>@endif
+                        @if(!empty($car['is_demo']))<p>Auto dimostrativa: prezzi e copertura simulati, prenotazioni disabilitate.</p>@endif
+                        <dl class="amd-specs">@if($car['seats'])<div><dt>Posti</dt><dd>{{ $car['seats'] }}</dd></div>@endif @if($car['transmission'])<div><dt>Cambio</dt><dd>{{ $car['transmission'] }}</dd></div>@endif @if($car['fuel'])<div><dt>Alimentazione</dt><dd>{{ $car['fuel'] }}</dd></div>@endif</dl>
+                        <div class="amd-car-pickup">
+                            <span>{{ $customPickup ? 'Riconsegna' : 'Punto di ritiro' }}</span>
+                            <p>
+                                @if($customPickup && !empty($filters['request_custom_return']))
+                                    {{ $filters['return_address'] }} (da confermare)
+                                @elseif($customPickup && empty($filters['place_id']))
+                                    La scegli dopo l’auto
+                                @else
+                                    {{ $car['location'] }}@if($car['city']), {{ $car['city'] }}@endif
+                                @endif
+                            </p>
+                        </div>
+                        <p class="amd-car-mileage">{{ $car['km_per_day'] === null ? 'Chilometraggio illimitato' : $car['km_per_day'].' km inclusi al giorno' }}</p>
+                    </div>
+                    <div class="amd-car-price"><span>Totale per {{ $car['days'] }} {{ $car['days'] === 1 ? 'giorno' : 'giorni' }}</span><strong>{{ $money($car['total_cents']) }}</strong><small>{{ $car['prices_include_vat'] ? 'IVA inclusa' : 'Importo di listino, IVA da verificare' }}</small><small>{{ $money($car['total_cents'] / max(1, $car['days'])) }} al giorno in media</small><small>Cauzione separata: {{ $money($car['deposit_cents']) }}</small><small>@if(!empty($car['is_demo'])) Simulazione senza pagamenti @elseif($car['customer_deposit_bps'] === 0) Pagamento al ritiro @else {{ \App\Services\AmdRent\CustomerDeposit::label($car['customer_deposit_bps']) }} online dopo la conferma, saldo al ritiro @endif</small><a class="amd-button" href="{{ route($routePrefix.'.show', ['pricelist' => $car['id']] + $filters) }}">{{ !empty($car['is_demo']) ? 'Esplora questa auto' : 'Scegli questa auto' }}</a></div>
+                </article>
+            @empty
+                <div class="amd-empty">
+                    <h3>Nessuna auto disponibile con questi criteri</h3>
+                    <p>Prova altre date o rimuovi i filtri. Puoi anche scegliere un altro luogo di consegna.</p>
+                    @if($customPickup && !empty($filters['request_custom_return']))
+                        <p><a class="amd-button amd-button-secondary" href="{{ route($routePrefix.'.index', \Illuminate\Support\Arr::except($filters, ['request_custom_return', 'return_address', 'return_place', 'place_id', 'city', 'page'])) }}">Cambia luogo di riconsegna</a></p>
+                    @endif
+                    <a class="amd-button amd-button-secondary" href="{{ route($routePrefix.'.index', $baseFilters) }}">Rimuovi filtri</a><a class="amd-empty-edit" href="#car-search">Modifica luogo o date</a>
+                </div>
+            @endforelse
+            </div>
+            @if($results->hasPages())<nav class="amd-pagination" aria-label="Pagine dei risultati">@if(!$results->onFirstPage())<a href="{{ $results->previousPageUrl() }}">Pagina precedente</a>@endif<span>Pagina {{ $results->currentPage() }} di {{ $results->lastPage() }}</span>@if($results->hasMorePages())<a href="{{ $results->nextPageUrl() }}">Pagina successiva</a>@endif</nav>@endif
+        </section>
+    </div>
+    @endif
+@else
+    @include('public-cars.partials.home-guide')
+@endif
+</div>
+@endsection

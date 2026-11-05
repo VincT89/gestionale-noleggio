@@ -248,6 +248,7 @@ class RentalController extends Controller
 
             if ($isRenter) {
                 $calc = $fees->calculateForRental($rental, $rental->actual_return_at ?: $closedAt);
+                if ($rental->booking_channel === 'amd_rent') $rental->amd_extra_fee_percent = $calc['extra_percent'];
 
                 $rental->forceFill([
                     'admin_fee_percent' => $calc['percent'], // es. float|null
@@ -455,6 +456,8 @@ class RentalController extends Controller
      */
     public function distanceOverage(Rental $rental)
     {
+        $this->authorize('update', $rental);
+
         /**
          * ✅ Fonte unica: flag "overage pagato?"
          * (manteniamo lo stesso comportamento UI)

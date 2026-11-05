@@ -1,0 +1,185 @@
+import './password-visibility';
+import './public-home-motion';
+import './public-interface';
+import './public-cookie-notice';
+
+const desktop = window.matchMedia('(min-width: 901px)');
+const mobileNav = document.querySelector('.amd-mobile-nav');
+const mobileButton = mobileNav.querySelector('.amd-mobile-toggle');
+const mobilePanel = mobileNav.querySelector('nav');
+mobileButton.hidden = false;
+
+function setMobileMenu(open, restoreFocus = false) {
+    mobileButton.setAttribute('aria-expanded', String(open));
+    mobilePanel.hidden = !open;
+    if (restoreFocus) mobileButton.focus();
+}
+
+mobileButton.addEventListener('click', () => setMobileMenu(mobilePanel.hidden));
+for (const eventName of ['click', 'focusin']) {
+    document.addEventListener(eventName, event => {
+        if (!mobilePanel.hidden && !mobileNav.contains(event.target)) setMobileMenu(false);
+    });
+}
+document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !mobilePanel.hidden) setMobileMenu(false, true);
+});
+desktop.addEventListener('change', () => {
+    if (desktop.matches) setMobileMenu(false);
+});
+
+document.querySelectorAll('[data-booking-form]').forEach(form => {
+    form.addEventListener('submit', () => {
+        const button = form.querySelector('button[type="submit"]');
+        if (!button) return;
+        button.disabled = true;
+        button.setAttribute('aria-busy', 'true');
+    });
+});
+window.addEventListener('pageshow', () => {
+    document.querySelectorAll('[data-booking-form] button[type="submit"]').forEach(button => {
+        button.disabled = false;
+        button.removeAttribute('aria-busy');
+    });
+});
+document.querySelector('[data-booking-errors]')?.focus();
+
+// The native select remains usable without JavaScript; submit only a selected destination.
+document.querySelectorAll('[data-place-select]').forEach(select => {
+    const options = [...select.options].filter(option => option.value);
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = `${select.id}-search`;
+    input.placeholder = select.options[0].textContent.trim();
+    input.autocomplete = 'off';
+    input.required = select.required;
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-autocomplete', 'list');
+    input.setAttribute('aria-expanded', 'false');
+    input.setAttribute('aria-describedby', 'place-help');
+    const list = document.createElement('ul');
+    list.id = `${select.id}-options`;
+    list.className = 'amd-place-options';
+    list.setAttribute('role', 'listbox');
+    list.setAttribute('aria-label', 'Luoghi di ritiro');
+    list.hidden = true;
+    input.setAttribute('aria-controls', list.id);
+    document.querySelector(`label[for="${select.id}"]`).htmlFor = input.id;
+    select.before(input);
+    select.after(list);
+    select.hidden = true;
+    select.classList.add('amd-place-select-native');
+    select.required = false;
+    input.value = select.value ? select.selectedOptions[0].textContent : '';
+    const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('it');
+    let matches = [];
+    let active = -1;
+    const close = () => {
+        list.hidden = true;
+        input.setAttribute('aria-expanded', 'false');
+        input.removeAttribute('aria-activedescendant');
+        active = -1;
+    };
+    const highlight = (index, scroll = false) => {
+        active = index;
+        [...list.querySelectorAll('[role="option"]')].forEach((item, i) => {
+            item.setAttribute('aria-selected', String(i === index));
+            if (i === index) {
+                input.setAttribute('aria-activedescendant', item.id);
+                if (scroll) item.scrollIntoView({ block: 'nearest' });
+            }
+        });
+    };
+    const choose = option => {
+        select.value = option.value;
+        input.value = option.textContent;
+        input.setCustomValidity('');
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        close();
+    };
+    select.addEventListener('change', () => {
+        input.value = select.value ? select.selectedOptions[0].textContent : '';
+        input.setCustomValidity('');
+        close();
+    });
+    const show = () => {
+        const words = select.value ? [] : normalize(input.value).trim().split(/\s+/).filter(Boolean);
+        matches = options.filter(option => words.every(word => normalize(option.textContent).includes(word)));
+        list.replaceChildren();
+        active = -1;
+        input.removeAttribute('aria-activedescendant');
+        matches.forEach((option, index) => {
+            const item = document.createElement('li');
+            item.id = `${list.id}-${index}`;
+            item.setAttribute('role', 'option');
+            item.setAttribute('aria-selected', 'false');
+            item.textContent = option.textContent;
+            item.addEventListener('pointerdown', event => { event.preventDefault(); choose(option); });
+            item.addEventListener('pointermove', () => highlight(index));
+            list.append(item);
+        });
+        if (!matches.length) {
+            const message = document.createElement('li');
+            message.className = 'amd-place-none';
+            message.setAttribute('role', 'presentation');
+            message.textContent = 'Per altri luoghi scegli il ritiro a un indirizzo personalizzato.';
+            list.append(message);
+        }
+        list.hidden = false;
+        list.scrollTop = 0;
+        input.setAttribute('aria-expanded', 'true');
+    };
+    input.addEventListener('focus', show);
+    input.addEventListener('click', show);
+    input.addEventListener('input', () => {
+        select.value = '';
+        input.setCustomValidity(input.value ? 'Scegli un luogo dall’elenco dei risultati.' : '');
+        show();
+    });
+    input.addEventListener('keydown', event => {
+        if (event.key === 'Escape') { close(); return; }
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (list.hidden) show();
+            if (matches.length) highlight((active + (event.key === 'ArrowDown' ? 1 : -1) + matches.length) % matches.length, true);
+        } else if (event.key === 'Enter' && !list.hidden && active >= 0) {
+            event.preventDefault();
+            choose(matches[active]);
+        }
+    });
+    input.addEventListener('blur', close);
+    input.form.addEventListener('reset', () => { input.value = ''; select.value = ''; input.setCustomValidity(''); close(); });
+});
+
+const searchDelivery = document.querySelector('[data-search-delivery]');
+if (searchDelivery) {
+    const field = document.querySelector('[data-search-delivery-field]');
+    const address = document.querySelector('[data-search-delivery-address]');
+    const placeLabel = document.querySelector('[data-search-place-label]');
+    const placeHelp = document.getElementById('place-help');
+    const updateSearchDelivery = () => {
+        field.hidden = !searchDelivery.checked;
+        address.disabled = !searchDelivery.checked;
+        address.required = searchDelivery.checked;
+        const placeInput = document.getElementById('pickup-place-search');
+        if (placeInput) placeInput.required = !searchDelivery.checked;
+        const searchSubmit = document.querySelector('[data-search-submit]');
+        if (searchSubmit) searchSubmit.textContent = 'Cerca auto';
+        placeLabel.textContent = searchDelivery.checked ? 'Luogo di riconsegna (facoltativo)' : 'Luogo di ritiro';
+        placeHelp.textContent = searchDelivery.checked
+            ? 'Puoi scegliere ora oppure dopo aver trovato l’auto.'
+            : 'Scegli un’area di Bari oppure cerca per indirizzo.';
+    };
+    searchDelivery.addEventListener('change', updateSearchDelivery);
+    window.addEventListener('pageshow', updateSearchDelivery);
+    updateSearchDelivery();
+}
+
+const pickupDate = document.getElementById('pickup-at');
+const returnDate = document.getElementById('return-at');
+pickupDate?.addEventListener('change', () => {
+    if (returnDate && pickupDate.value) returnDate.min = pickupDate.value;
+});
+
+import './public-return-map';
+import './public-booking-pickup';

@@ -9,10 +9,10 @@
 
     /* ------- 2. Offset radiale (max 8) -------------------------------- */
     $offsets = [
-        ['x'=> 0,'y'=>-90], ['x'=> 90,'y'=>  0],
-        ['x'=> 0,'y'=> 90], ['x'=>-90,'y'=>  0],
-        ['x'=> 60,'y'=>-60],['x'=> 60,'y'=> 60],
-        ['x'=>-60,'y'=> 60],['x'=>-60,'y'=>-60],
+        ['x'=> 0,'y'=>-1], ['x'=> 1,'y'=>  0],
+        ['x'=> 0,'y'=> 1], ['x'=>-1,'y'=>  0],
+        ['x'=> .75,'y'=>-.75],['x'=> .75,'y'=> .75],
+        ['x'=>-.75,'y'=> .75],['x'=>-.75,'y'=>-.75],
     ];
 @endphp
 
@@ -40,7 +40,7 @@ function centerTile(el){
 
 <div
     x-data="menuGrid()"
-    x-init="init()"
+    @keydown.escape.stop.prevent="close(true)"
     class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3
            gap-x-10 overflow-visible transition-all duration-100"
     :style="gridStyle()"
@@ -51,13 +51,17 @@ function centerTile(el){
 
         {{-- pulsante macro-modulo --}}
         <button
+            type="button"
+            id="dashboard-section-button-{{ $i }}"
+            :aria-expanded="openKey === {{ $i }}"
+            aria-controls="dashboard-section-{{ $i }}"
             :data-row="Math.floor({{ $i }} / columns)"
             @click.stop="toggle({{ $i }})"
             class="w-28 h-28 bg-white dark:bg-gray-800 rounded-lg shadow
                    flex flex-col items-center justify-center
                    hover:btn-hover-bg-color dark:hover:bg-indigo-900
-                   transition-all duration-100">
-            <i class="fas {{ $section['icon'] }} text-3xl btn-text-color dark:text-indigo-400"></i>
+                   transition-all duration-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-600">
+            <i class="fas {{ $section['icon'] }} text-3xl btn-text-color dark:text-indigo-400" aria-hidden="true"></i>
             <span class="mt-1 text-sm font-medium text-gray-800 dark:text-gray-200">
                 {{ $section['section'] }}
             </span>
@@ -65,24 +69,31 @@ function centerTile(el){
 
         {{-- menu radiale --}}
         <template x-if="openKey === {{ $i }}">
-            <div class="absolute inset-0 flex items-center justify-center pointer-events-none
+            <div id="dashboard-section-{{ $i }}" aria-labelledby="dashboard-section-button-{{ $i }}"
+                 class="absolute inset-0 flex items-center justify-center pointer-events-none
                         z-30" x-cloak
-                 @click.outside="openKey=null;openRow=null">
+                 @click.outside="close()">
                 @php
                     $items = collect($section['items'])
                              ->filter(fn($it)=>auth()->user()->can($it['permission']))
                              ->values()->take(8);
                 @endphp
                 @foreach($items as $k=>$item)
-                    @php $o=$offsets[$k]; @endphp
+                    @php
+                        $o = match ($items->count()) {
+                            2 => $offsets[$k === 1 ? 2 : 0],
+                            3 => [['x' => -.6, 'y' => -1], ['x' => .6, 'y' => -1], ['x' => 0, 'y' => 1]][$k],
+                            default => $offsets[$k],
+                        };
+                    @endphp
                     <a href="{{ route($item['route']) }}"
-                       class="absolute w-14 h-14 bg-white dark:bg-gray-800 rounded-full shadow-lg z-40
+                       class="absolute w-28 h-28 bg-white dark:bg-gray-800 rounded-full shadow-lg z-40
                               flex flex-col items-center justify-center pointer-events-auto
-                              hover:scale-110 transition"
-                       style="left:50%;top:50%;
-                              transform:translate(-50%,-50%) translate({{$o['x']}}px,{{$o['y']}}px);">
-                        <i class="fas {{ $item['icon'] }} text-lg"></i>
-                        <span class="text-xs whitespace-nowrap">{{ $item['label'] }}</span>
+                              text-gray-800 dark:text-gray-200 hover:scale-105 transition
+                              focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                       :style="itemStyle({{ $o['x'] }}, {{ $o['y'] }})">
+                        <i class="fas {{ $item['icon'] }} text-lg" aria-hidden="true"></i>
+                        <span class="max-w-full px-2 text-xs text-center leading-tight whitespace-normal break-words">{{ $item['label'] }}</span>
                     </a>
                 @endforeach
             </div>
@@ -98,26 +109,40 @@ function getCols(){return window.innerWidth>=768?3:window.innerWidth>=640?2:1}
 
 function menuGrid(){
 return{
-    openKey:null,openRow:null,columns:getCols(),
-    init(){window.addEventListener('resize',()=>this.columns=getCols())},
+    openKey:null,columns:getCols(),
+    init(){
+        this.onResize=()=>this.columns=getCols();
+        window.addEventListener('resize',this.onResize);
+    },
+    destroy(){window.removeEventListener('resize',this.onResize)},
 
     totalRows(){return Math.ceil({{ $visibleSections->count() }} / this.columns)},
 
     gridStyle () {
         const hasOpen = this.openKey !== null;
+        const openRow = hasOpen ? Math.floor(this.openKey / this.columns) : null;
 
-        const gap = hasOpen ? '8rem' : '2.5rem';
-        const top = (hasOpen && this.openRow === 0) ? '6rem' : '0';
-        const bot = (hasOpen && this.openRow === this.totalRows() - 1) ? '6rem' : '0';
+        const gap = hasOpen ? '10rem' : '2.5rem';
+        const padding = this.columns === 1 ? '9rem' : '10rem';
+        const top = (hasOpen && openRow === 0) ? padding : '0';
+        const bot = (hasOpen && openRow === this.totalRows() - 1) ? padding : '0';
 
         return `row-gap:${gap}; padding-top:${top}; padding-bottom:${bot}`;
     },
 
-    toggle(idx){
-        const row=Math.floor(idx/this.columns);
+    itemStyle(x,y){
+        const radius=this.columns===1?128:144;
+        return {left:'50%',top:'50%',transform:`translate(-50%,-50%) translate(${x*radius}px,${y*radius}px)`};
+    },
 
+    close(restoreFocus=false){
+        const idx=this.openKey;
+        this.openKey=null;
+        if(restoreFocus && idx!==null) this.$refs['tile'+idx]?.querySelector('button')?.focus();
+    },
+
+    toggle(idx){
         this.openKey=this.openKey===idx?null:idx;
-        this.openRow=this.openKey!==null?row:null;
 
         if(this.openKey!==null){
             /* aspetta il repaint + transizione (300ms) → 350ms total */

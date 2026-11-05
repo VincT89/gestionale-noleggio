@@ -1,0 +1,121 @@
+/* Search is a working space: one trip summary, then the current choice. */
+.amd-search-page .amd-search-band--results { background: #fff; border-bottom: 1px solid #d9dfe6; }
+.amd-search-page .amd-search-band--results .amd-search-band-inner { padding-block: 22px 26px; }
+.amd-search-page .amd-search-band--results .amd-page-heading { margin-bottom: 18px; }
+.amd-search-page .amd-search-band--results h1 { color: var(--amd-blue); font-size: 21px; letter-spacing: -.025em; margin: 0; }
+.amd-search-page .amd-search-recap { padding: 0; border: 0; border-radius: 0; gap: 28px; align-items: center; }
+.amd-search-page #public-search-recap { display: grid; grid-template-columns: minmax(200px, 1fr) 140px 140px; flex: 1; gap: 28px; }
+.amd-search-page #public-search-recap > div { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.amd-search-page #public-search-recap span { color: var(--amd-muted); font-size: 13px; }
+.amd-search-page #public-search-recap strong { color: var(--amd-ink); font-size: 17px; line-height: 1.45; font-weight: 650; }
+.amd-search-page #public-search-recap small { color: var(--amd-muted); font-size: 12px; }
+.amd-search-page #public-search-recap .amd-trip-date { border-left: 1px solid #d9dfe6; padding-left: 24px; }
+.amd-search-page #public-search-recap .amd-trip-date strong { font-size: 18px; }
+.amd-search-page #public-search-recap .amd-trip-credit { margin-block: -1px 2px; }
+.amd-search-page .amd-search-recap .amd-button { min-height: 46px; }
+.amd-search-page .amd-search-recap + .amd-search { margin-top: 24px; box-shadow: none; background: #f6f6f6; }
+.amd-search-page .amd-results-main { padding-block: 46px 64px; min-height: 550px; }
+.amd-search-page .amd-button { border-radius: 5px; }
+.amd-search-page .amd-results-main .amd-button:not(.amd-button-secondary) { background: var(--amd-primary); border-color: var(--amd-primary); }
+.amd-search-page .amd-results-main .amd-button:not(.amd-button-secondary):hover { background: var(--amd-primary-hover); border-color: var(--amd-primary-hover); }
+
+.amd-delivery-layout { display: grid; grid-template-columns: minmax(0, .78fr) minmax(0, 1.8fr); gap: 48px; align-items: start; }
+.amd-delivery-intro { min-width: 0; }
+.amd-delivery-intro h2, .amd-place-guide h2 { font-size: clamp(29px, 2.7vw, 38px); line-height: 1.1; letter-spacing: -.045em; margin: 0 0 24px; }
+.amd-delivery-intro > p { margin: 0 0 14px; font-size: 15px; color: var(--amd-muted); }
+.amd-delivery-intro > .amd-delivery-lead { font-size: 19px; line-height: 1.5; color: var(--amd-ink); }
+.amd-delivery-guidance { background: var(--amd-blue); color: #fff; padding: 24px; margin-top: 28px; border-radius: 6px; }
+.amd-delivery-guidance h3 { color: #fff; font-size: 19px; margin: 0 0 12px; }
+.amd-delivery-guidance p { font-size: 14px; margin: 0; line-height: 1.65; }
+.amd-delivery-guidance p + p { margin-top: 18px; }
+.amd-delivery-guidance a { color: #fff; }
+.amd-delivery-intro > .amd-text-link { margin-top: 12px; font-size: 14px; line-height: 1.5; }
+.amd-delivery-offers { display: grid; gap: 20px; min-width: 0; }
+.amd-delivery-offers .amd-delivery-provider { grid-template-columns: minmax(0, 1fr) 235px; gap: 0; padding: 0; border: 1px solid #d6dde5; border-radius: 8px; background: #fff; overflow: hidden; box-shadow: 0 4px 12px #17233005; }
+.amd-delivery-provider-info { padding: 28px; min-width: 0; }
+.amd-delivery-offers .amd-delivery-provider h3 { font-size: 24px; line-height: 1.25; letter-spacing: -.025em; margin: 0 0 12px; }
+.amd-delivery-provider-info > p { font-size: 14px; color: var(--amd-muted); }
+.amd-provider-location { display: flex; flex-wrap: wrap; gap: 20px 28px; margin: 24px 0 0; padding-top: 20px; border-top: 1px solid #e3e6eb; }
+.amd-provider-location dt { color: var(--amd-muted); font-size: 12px; margin-bottom: 6px; }
+.amd-provider-location dd { margin: 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.amd-provider-location small { display: block; font-size: 12px; font-weight: 400; color: var(--amd-muted); margin-top: 4px; }
+.amd-delivery-provider-info .amd-provider-area { margin-top: 20px; font-size: 13px; }
+.amd-delivery-offers .amd-delivery-provider-offer { padding: 28px 24px; border-left: 1px solid #e0e4ea; background: #fafafa; display: flex; flex-direction: column; }
+.amd-delivery-provider-offer .amd-provider-price { display: flex; flex-direction: column; margin: 0; gap: 2px; }
+.amd-provider-price > span { font-size: 13px; color: var(--amd-muted); }
+.amd-provider-price > strong { font-size: 33px; letter-spacing: -.04em; font-weight: 700; line-height: 1.3; color: var(--amd-blue); }
+.amd-delivery-provider-offer p.amd-delivery-price-note { font-size: 12px; line-height: 1.5; margin: 14px 0 20px; }
+.amd-delivery-offers .amd-delivery-provider-offer .amd-button { margin-top: auto; font-size: 14px; padding-inline: 12px; width: 100%; }
+.amd-delivery-empty { border: 1px solid #d6dde5; border-radius: 8px; background: #fff; padding: 40px; }
+.amd-delivery-empty > h3 { font-size: clamp(26px, 2.3vw, 32px); letter-spacing: -.035em; line-height: 1.2; max-width: 490px; margin: 0 0 20px; }
+.amd-delivery-empty > p { margin: 0; max-width: 560px; font-size: 16px; color: var(--amd-muted); }
+.amd-delivery-empty-action { margin-top: 32px; border-top: 1px solid #e0e4ea; padding-top: 26px; }
+.amd-delivery-empty-action p { font-size: 15px; color: var(--amd-muted); margin: 0 0 20px; max-width: 500px; }
+
+.amd-place-workspace { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 40px; align-items: start; }
+.amd-place-guide { min-width: 0; }
+.amd-place-guide > .amd-place-lead { font-size: 19px; margin: 0 0 22px; color: var(--amd-ink); }
+.amd-place-guide > p { color: var(--amd-muted); font-size: 15px; }
+.amd-place-notice { padding: 22px 0; border-block: 1px solid #d7dee6; margin: 26px 0 12px; }
+.amd-place-notice h3 { font-size: 18px; line-height: 1.4; margin: 0 0 12px; }
+.amd-place-notice p { margin: 0; font-size: 15px; color: var(--amd-muted); }
+.amd-place-guide .amd-location-choices { display: grid; gap: 14px; margin: 22px 0 14px; }
+.amd-place-guide .amd-location-choices li { padding: 0; border: 0; }
+.amd-place-guide .amd-location-choices form { display: flex; flex-direction: column; gap: 18px; align-items: stretch; padding: 20px; background: #fff; border: 1px solid #ced8e2; border-radius: 6px; }
+.amd-place-guide .amd-location-choices form:hover, .amd-place-guide .amd-location-choices form:focus-within { border-color: var(--amd-primary); background: #fff; }
+.amd-place-guide .amd-location-choices p { font-size: 15px; font-weight: 600; line-height: 1.6; }
+.amd-place-guide .amd-location-choices .amd-button { margin: 0; font-size: 14px; }
+.amd-place-guide .amd-place-credit { font-size: 12px; }
+.amd-place-guide p.amd-place-note { font-size: 13px; }
+.amd-place-guide > .amd-text-link { font-size: 14px; }
+.amd-search-page .amd-car-grid .amd-car-price { background: #fafafa; }
+
+@media (max-width: 1100px) {
+    .amd-search-page #public-search-recap { grid-template-columns: minmax(180px, 1fr) 118px 118px; gap: 20px; }
+    .amd-search-page #public-search-recap .amd-trip-date { padding-left: 18px; }
+    .amd-delivery-layout { grid-template-columns: 270px minmax(0, 1fr); gap: 28px; }
+    .amd-delivery-offers .amd-delivery-provider { grid-template-columns: 1fr; }
+    .amd-delivery-offers .amd-delivery-provider-offer { border-left: 0; border-top: 1px solid #e0e4ea; }
+    .amd-place-workspace { grid-template-columns: 250px minmax(0, 1fr); gap: 28px; }
+}
+@media (max-width: 800px) {
+    .amd-search-page .amd-search-recap { flex-wrap: wrap; gap: 18px; }
+    .amd-search-page #public-search-recap { flex-basis: 100%; }
+    .amd-search-page .amd-search-recap .amd-button { align-self: flex-start; }
+    .amd-search-page .amd-results-main { padding-top: 32px; }
+    .amd-delivery-layout, .amd-place-workspace { grid-template-columns: 1fr; gap: 28px; }
+    .amd-delivery-intro h2, .amd-place-guide h2 { max-width: 540px; font-size: 34px; margin-bottom: 16px; }
+    .amd-delivery-guidance { padding: 22px; margin-top: 20px; }
+    .amd-delivery-offers .amd-delivery-provider { grid-template-columns: minmax(0, 1fr) 225px; }
+    .amd-delivery-offers .amd-delivery-provider-offer { border-top: 0; border-left: 1px solid #e0e4ea; }
+    .amd-place-guide .amd-location-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .amd-place-notice { margin-top: 18px; padding: 18px 0; }
+}
+@media (max-width: 600px) {
+    .amd-search-page .amd-search-band--results .amd-search-band-inner { padding: 16px 20px 20px; }
+    .amd-search-page .amd-search-band--results .amd-page-heading { margin-bottom: 16px; }
+    .amd-search-page #public-search-recap { width: 100%; grid-template-columns: 1fr 1fr; gap: 18px 20px; }
+    .amd-search-page #public-search-recap .amd-trip-place { grid-column: 1 / -1; }
+    .amd-search-page #public-search-recap .amd-trip-date { display: grid; grid-template-columns: 1fr auto; align-items: baseline; border-left: 0; border-top: 1px solid #d9dfe6; padding: 12px 0 0; gap: 4px 6px; }
+    .amd-search-page #public-search-recap .amd-trip-date > span { grid-column: 1 / -1; }
+    .amd-search-page #public-search-recap .amd-trip-date strong { font-size: 15px; }
+    .amd-search-page #public-search-recap .amd-trip-date small { font-size: 11px; }
+    .amd-search-page .amd-search-recap { flex-direction: column; align-items: stretch; padding: 0; }
+    .amd-search-page .amd-search-recap .amd-button { width: 100%; }
+    .amd-search-page .amd-search-recap + .amd-search { padding: 18px; }
+    .amd-search-page .amd-results-main { padding: 28px 20px 40px; }
+    .amd-delivery-intro h2, .amd-place-guide h2 { font-size: 32px; }
+    .amd-delivery-offers .amd-delivery-provider { grid-template-columns: 1fr; }
+    .amd-delivery-offers .amd-delivery-provider-offer { padding: 22px; border-left: 0; border-top: 1px solid #e0e4ea; }
+    .amd-delivery-provider-info { padding: 24px 22px; }
+    .amd-delivery-empty { padding: 26px 22px; }
+    .amd-delivery-empty > h3 { font-size: 26px; }
+    .amd-delivery-empty-action { margin-top: 24px; padding-top: 22px; }
+    .amd-delivery-empty-action .amd-button { width: 100%; }
+    .amd-place-guide .amd-location-choices { grid-template-columns: 1fr; }
+    .amd-place-guide:has(.amd-place-notice) h2 { font-size: 28px; margin-bottom: 14px; }
+    .amd-place-guide:has(.amd-place-notice) .amd-place-lead { display: none; }
+    .amd-place-guide .amd-place-notice { border-top: 0; padding: 0 0 16px; margin: 0 0 8px; }
+    .amd-place-guide .amd-place-notice h3 { font-size: 16px; margin-bottom: 8px; }
+    .amd-place-guide .amd-place-notice p { font-size: 14px; }
+}

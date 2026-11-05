@@ -1,4 +1,4 @@
-{{-- Pagina informativa: organizzazione archiviata --}}
+{{-- Pagina informativa per account o organizzazione sospesi. --}}
 <x-guest-layout>
     <div class="max-w-md mx-auto mt-10">
         <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
@@ -7,7 +7,7 @@
             </h1>
 
             <p class="mt-3 text-sm text-gray-700 dark:text-gray-300">
-                La tua organizzazione risulta archiviata, quindi l’accesso alla piattaforma è momentaneamente disabilitato.
+                Il tuo account o la tua organizzazione non sono attivi. L’accesso alla piattaforma è disabilitato.
             </p>
 
             <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">

@@ -1,0 +1,274 @@
+/* Public palette combines AMD navy with the warm light in the photographs. */
+:root { --amd-accent: #f4c575; --amd-canvas: #fffaf2; --amd-sand: #eedcbb; --amd-sun: #f4c575; --amd-petrol: #143d4a; }
+/* The photograph and working search form share one scroll stage. */
+.amd-home-hero { background: var(--amd-blue); padding: 36px 32px 40px; }
+.amd-home-hero-layout { max-width: 1280px; margin: auto; }
+.amd-home-intro { display: flex; justify-content: space-between; align-items: flex-end; gap: 40px; margin: 0 24px 32px; }
+.amd-home-intro h1 { margin: 0; font-size: clamp(48px, 5.2vw, 76px); font-weight: 650; letter-spacing: -.065em; line-height: .99; color: #fff; }
+.amd-home-intro h1 span { color: var(--amd-accent); }
+.amd-home-intro-copy { padding-bottom: 4px; }
+.amd-home-intro p { margin: 0; font-size: 18px; line-height: 1.55; color: #f5f0e7; }
+.amd-home-search-link { display: inline-block; margin-top: 18px; color: var(--amd-accent); text-underline-offset: 6px; font-size: 15px; font-weight: 650; }
+.amd-home-hero .amd-scene-track { padding: 0; }
+.amd-home-hero [data-scene-hold]::after { content: ''; display: block; height: var(--amd-scene-hold, 0px); }
+.amd-home-hero .amd-scene-sticky { position: relative; top: auto; }
+.amd-home-hero [data-scene-hold] .amd-scene-sticky { position: sticky; top: var(--amd-stage-top, 74px); }
+.amd-home-hero .amd-home-visual[data-home-scene] { position: relative; z-index: 0; inset: auto; width: 100%; height: clamp(280px, 43svh, 440px); margin: 0; border-radius: 4px; --amd-scene-min-width: 1060px; --amd-scene-x: 100%; --amd-scene-y: 56%; }
+.amd-home-search-panel { position: relative; z-index: 2; width: calc(100% - 64px); margin: -28px auto 0; }
+.amd-home-search-panel .amd-search { border: 1px solid #d4dddF; border-radius: 4px; padding: 24px 28px 18px; box-shadow: 0 14px 32px #081f3433; }
+.amd-search-intro { margin-bottom: 20px; }
+.amd-search-intro h2 { margin: 0; font-size: 23px; line-height: 1.2; letter-spacing: -.035em; }
+.amd-home-search-panel .amd-search-primary { display: grid; grid-template-columns: minmax(260px, 1.5fr) minmax(205px, 1fr) minmax(205px, 1fr) auto; gap: 20px; }
+.amd-home-search-panel .amd-field { min-width: 0; }
+.amd-home-search-panel .amd-field > input, .amd-home-search-panel .amd-field > select { width: 100%; min-width: 0; }
+.amd-home-search-panel .amd-search-delivery-choice { margin-top: 12px; font-size: 13px; line-height: 1.5; }
+.amd-home-search-panel .amd-search-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 20px; margin-top: 18px; padding-top: 12px; }
+.amd-home-search-panel .amd-search-foot .amd-search-note { margin: 0; font-size: 13px; line-height: 1.6; }
+.amd-home-search-panel .amd-search-submit { min-height: 52px; margin-top: 28px; }
+.amd-home-sections { background: var(--amd-canvas); }
+.amd-home-pickup { padding: 76px 0 0; background: var(--amd-canvas); }
+.amd-pickup-layout { display: grid; grid-template-columns: minmax(0, .86fr) minmax(0, 1.14fr); align-items: center; gap: 72px; }
+.amd-home-pickup h2, .amd-home-long-term h2, .amd-home-answers h2 { margin: 0 0 22px; font-size: clamp(36px, 3.4vw, 48px); line-height: 1.06; letter-spacing: -.05em; font-weight: 650; }
+.amd-pickup-lead { max-width: 370px; font-size: 17px; line-height: 1.65; margin: 0 0 24px; color: var(--amd-muted); }
+.amd-pickup-tabs { display: flex; border-bottom: 1px solid #bca98a; margin-bottom: 22px; }
+.amd-pickup-tabs button { flex: 1; color: var(--amd-ink); padding: 14px 4px; min-height: 48px; border: 0; border-bottom: 3px solid transparent; background: transparent; font: inherit; font-size: 15px; font-weight: 650; cursor: pointer; }
+.amd-pickup-tabs button[aria-selected="true"] { color: #fff; background: var(--amd-blue); border-color: var(--amd-sun); }
+.amd-pickup-panel { min-height: 240px; }
+.amd-pickup-panel h3 { font-size: 22px; margin: 0 0 12px; letter-spacing: -.03em; }
+.amd-pickup-panel p { line-height: 1.7; margin: 0 0 22px; color: var(--amd-muted); }
+.amd-pickup-panel small { display: block; margin-top: 14px; line-height: 1.6; color: var(--amd-muted); font-size: 13px; }
+.amd-pickup-gallery { min-width: 0; }
+.amd-pickup-photos { position: relative; display: grid; gap: 18px; }
+.amd-pickup-photos figure { margin: 0; min-width: 0; aspect-ratio: 3 / 2; overflow: hidden; border-radius: 4px; background: #e8eef2; }
+.amd-pickup-photos figure img { display: block; width: 100%; height: 100%; -o-object-fit: contain; object-fit: contain; }
+[data-pickup-active] .amd-pickup-photos { gap: 0; }
+[data-pickup-active] .amd-pickup-photos figure { grid-area: 1 / 1; }
+[data-pickup-active="pickup-point"] .amd-delivery-photo,
+[data-pickup-active="pickup-address"] .amd-places-photo { opacity: 0; visibility: hidden; }
+.amd-photo-note { margin: 12px 0 0; color: var(--amd-muted); font-size: 12px; line-height: 1.5; }
+.amd-home-long-term { padding: 92px 0 64px; background: var(--amd-sand); }
+.amd-home-long-term-layout { display: grid; grid-template-columns: 1fr 1fr; align-items: center; }
+.amd-home-long-term-layout::before { content: ''; position: absolute; z-index: -1; inset: 0 32px; background: var(--amd-blue); border-radius: 4px; }
+.amd-long-term-photo { margin: 0; width: 100%; aspect-ratio: 3 / 2; overflow: hidden; border-radius: 4px 0 0 4px; }
+.amd-long-term-photo img { display: block; width: 100%; height: 100%; -o-object-fit: contain; object-fit: contain; }
+.amd-long-term-copy { color: white; background: var(--amd-blue); border-radius: 0 4px 4px 0; padding: 36px 44px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
+.amd-long-term-copy h2 { color: white; font-size: clamp(32px, 3vw, 44px); }
+.amd-long-term-copy p { line-height: 1.75; color: #e5ecf4; margin: 0 0 24px; }
+.amd-long-term-copy .amd-button { border-color: var(--amd-sun); background: var(--amd-sun); color: var(--amd-ink); }
+.amd-long-term-copy .amd-button:hover { border-color: #ffe0a6; background: #ffe0a6; }
+.amd-home-answers { padding: 64px 0 76px; background: var(--amd-petrol); }
+.amd-home-answers h2 { color: #fff; }
+.amd-home-answers .amd-answers-layout > div > p { color: #eee7dc; }
+.amd-home-answers .amd-text-link { color: var(--amd-accent); }
+.amd-home-answers .amd-text-link:focus-visible { outline-color: var(--amd-accent); }
+.amd-answers-layout { display: grid; grid-template-columns: .8fr 1.2fr; gap: 72px; }
+.amd-answers-layout > div > p { color: var(--amd-muted); line-height: 1.65; }
+.amd-home-answers .amd-home-faq { padding: 0 24px; border: 0; box-shadow: none; border-radius: 4px; background: #fff; }
+.amd-home-answers .amd-home-faq details { border-bottom: 1px solid #cbd5df; margin: 0; padding: 0; }
+.amd-home-answers .amd-home-faq details:first-child { border-top: 0; }
+.amd-home-answers .amd-home-faq details:last-child { border-bottom: 0; }
+.amd-home-answers .amd-home-faq details[open] { background: #fff8e9; }
+.amd-home-hero .amd-home-search-link:focus-visible { outline-color: var(--amd-sun); }
+.amd-home-search-link:hover { color: #fff; }
+.amd-pickup-tabs button:not([aria-selected="true"]):hover { background: #f7e8cb; }
+.amd-home-sections .amd-home-route-bed { stroke: #ddc79f; }
+.amd-home-sections .amd-home-route-line { stroke: #866940; }
+.amd-home-answers .amd-home-faq summary { position: relative; padding: 22px 32px 22px 0; font-size: 17px; line-height: 1.45; cursor: pointer; list-style: none; }
+.amd-home-answers .amd-home-faq summary::-webkit-details-marker { display: none; }
+.amd-home-answers .amd-home-faq summary::after { content: '+'; position: absolute; right: 4px; font-size: 24px; top: 17px; font-weight: 400; }
+.amd-home-answers .amd-home-faq details[open] summary::after { content: '−'; }
+.amd-home-answers .amd-home-faq details p { margin: 0; padding: 0 22px 24px 0; line-height: 1.75; color: var(--amd-muted); }
+.amd-return-choice { margin: 24px 0; }
+.amd-return-choice .amd-field { margin-bottom: 18px; }
+.amd-return-choice .amd-button { width: 100%; }
+@media (prefers-reduced-motion: no-preference) {
+    .amd-pickup-photos figure { transition: opacity 480ms ease, visibility 480ms; }
+    .amd-pickup-tabs button { transition: border-color 180ms, color 180ms; }
+}
+@media (max-width: 1150px) {
+    .amd-home-hero { padding: 30px 24px 36px; }
+    .amd-home-intro { margin-inline: 8px; }
+    .amd-home-search-panel { width: calc(100% - 32px); }
+    .amd-home-search-panel .amd-search { padding-inline: 22px; }
+    .amd-home-search-panel .amd-search-primary { grid-template-columns: minmax(220px, 1.4fr) minmax(180px, 1fr) minmax(180px, 1fr); gap: 18px; }
+    .amd-home-search-panel .amd-place-field { grid-row: 1 / span 2; }
+    .amd-home-search-panel .amd-search-submit { grid-column: 2 / -1; margin-top: 0; }
+    .amd-pickup-layout, .amd-answers-layout { gap: 40px; }
+    .amd-pickup-panel { min-height: 265px; }
+    .amd-long-term-copy { padding: 32px; }
+    .amd-home-long-term-layout::before { inset-inline: 24px; }
+}
+@media (max-width: 900px) {
+    .amd-home-search-panel .amd-search-primary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .amd-home-search-panel .amd-place-field { grid-column: 1 / -1; grid-row: auto; }
+    .amd-home-search-panel .amd-search-submit { grid-column: 1 / -1; }
+    .amd-home-intro { align-items: center; gap: 24px; }
+    .amd-home-intro h1 { font-size: 52px; }
+    .amd-home-intro p { font-size: 16px; }
+    .amd-home-hero .amd-home-visual[data-home-scene] { height: 300px; --amd-scene-min-width: 860px; --amd-scene-y: 64%; }
+}
+@media (max-width: 800px) {
+    .amd-home-intro { display: block; margin-bottom: 24px; }
+    .amd-home-intro-copy { margin-top: 18px; }
+    .amd-home-intro p br { display: none; }
+    .amd-home-search-link { margin-top: 12px; }
+    .amd-home-pickup { padding-top: 54px; }
+    .amd-pickup-layout { grid-template-columns: 1fr; gap: 28px; }
+    .amd-pickup-copy { display: contents; }
+    .amd-pickup-layout h2 { margin-bottom: -12px; }
+    .amd-pickup-lead { max-width: 520px; margin: 0; }
+    .amd-pickup-tabs { margin: 0; }
+    .amd-pickup-gallery { grid-row: 4; }
+    .amd-pickup-panel { min-height: 0; }
+    .amd-home-long-term-layout { grid-template-columns: 1fr; }
+    .amd-long-term-photo { border-radius: 4px 4px 0 0; }
+    .amd-long-term-copy { padding: 32px; border-radius: 0 0 4px 4px; }
+    .amd-home-long-term { padding: 64px 0 48px; }
+    .amd-answers-layout { grid-template-columns: 1fr; gap: 32px; }
+    .amd-home-answers { padding: 48px 0 56px; }
+}
+@media (max-width: 600px) {
+    .amd-home-hero { padding: 26px 20px 32px; }
+    .amd-home-intro { margin-inline: 0; }
+    .amd-home-intro h1 { font-size: clamp(39px, 10.9vw, 56px); }
+    .amd-home-intro p { max-width: 320px; font-size: 16px; }
+    .amd-home-hero .amd-home-visual[data-home-scene] { height: 236px; --amd-scene-min-width: 660px; --amd-scene-x: 90%; }
+    .amd-home-search-panel { width: 100%; margin-top: 0; }
+    .amd-home-search-panel .amd-search { border-top: 0; border-radius: 0 0 4px 4px; padding: 24px 18px 18px; }
+    .amd-home-hero .amd-home-visual[data-home-scene] { border-radius: 4px 4px 0 0; }
+    .amd-home-search-panel .amd-search-primary { grid-template-columns: 1fr; }
+    .amd-home-search-panel .amd-search-foot { display: block; }
+    .amd-home-search-panel .amd-search-foot .amd-search-note + .amd-search-note { margin-top: 4px; }
+    .amd-search-intro h2 { font-size: 22px; }
+    .amd-home-long-term-layout::before { inset-inline: 20px; }
+    .amd-long-term-copy { padding: 32px 24px; }
+    .amd-home-pickup h2, .amd-home-answers h2 { font-size: 38px; }
+}
+@media (max-width: 360px) {
+    .amd-home-hero { padding-inline: 16px; }
+    .amd-home-search-panel .amd-search { padding-inline: 14px; }
+    .amd-home-hero .amd-home-visual[data-home-scene] { --amd-scene-min-width: 600px; }
+    .amd-pickup-tabs button { font-size: 14px; }
+    .amd-home-long-term-layout::before { inset-inline: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .amd-home-hero .amd-scene-track { padding-bottom: 0; }
+    .amd-home-hero [data-scene-hold] .amd-scene-sticky { position: relative; top: auto; }
+    .amd-pickup-photos figure { transition: none; }
+}
+/* Shared public interactions; home geometry is scoped in public-home-layout.css. */
+[hidden] { display: none !important; }
+html { scroll-padding-top: 84px; }
+html:has(.amd-home-hero) { scrollbar-width: none; }
+html:has(.amd-home-hero)::-webkit-scrollbar { display: none; }
+#car-search, #public-search-results { scroll-margin-top: 16px; }
+.amd-header .amd-header-inner { padding-block: 5px; }
+.amd-header .amd-logo { flex-basis: 116px; }
+.amd-header .amd-logo img { width: 116px; }
+.amd-scene-sticky { top: 78px; }
+@media (max-width: 900px) {
+    .amd-header .amd-logo { flex-basis: 104px; }
+    .amd-header .amd-logo img { width: 104px; }
+    .amd-scene-sticky { top: 72px; }
+}
+.amd-header { position: sticky; top: 0; background: #fff; transition: box-shadow .2s ease; }
+.amd-header--scrolled { box-shadow: 0 5px 20px #18324e15; }
+.amd-button { transition: background-color .18s, border-color .18s, box-shadow .18s, transform .18s; }
+.amd-button:active { transform: translateY(1px); }
+.amd-field input, .amd-field select { transition: border-color .18s, box-shadow .18s; }
+.amd-field input:focus, .amd-field select:focus { box-shadow: 0 0 0 3px #175b991a; }
+.amd-text-link { display: inline-block; font-weight: 650; text-underline-offset: 5px; padding-block: 8px; }
+@media (prefers-reduced-motion: no-preference) {
+    /* Pointer focus must not snap an entering panel away between pointerdown and click. */
+    .amd-home-sections [data-home-reveal]:focus-within:not(:has(:focus-visible)) {
+        transition: opacity 700ms ease, transform 850ms cubic-bezier(.2, .75, .25, 1);
+    }
+}
+.amd-destination-shortcuts { list-style: none; margin: 24px 0 20px; padding: 0; border-top: 1px solid var(--amd-border); }
+.amd-destination-shortcuts li { border-bottom: 1px solid var(--amd-border); }
+.amd-destination-shortcuts a { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 17px 0; text-decoration: none; font-weight: 650; transition: padding .2s, background-color .2s; }
+.amd-destination-shortcuts a:hover, .amd-destination-shortcuts a:focus-visible { padding-inline: 12px; background: #edf3f7; }
+.amd-destination-shortcuts a > span:first-child { overflow-wrap: anywhere; }
+.amd-destination-action { flex: 0 0 auto; font-size: 12px; font-weight: 500; }
+.amd-rental-tabs { display: flex; gap: 24px; margin: 28px 0; border-bottom: 1px solid #ffffff4d; }
+.amd-rental-tabs button { background: none; border: 0; border-bottom: 3px solid transparent; color: #d6e2ed; padding: 12px 0; font: inherit; font-weight: 600; cursor: pointer; }
+.amd-rental-tabs button[aria-selected="true"] { color: #fff; border-bottom-color: #fff; }
+.amd-rental-tabs button:focus-visible { outline: 2px solid #fff; outline-offset: 5px; }
+.amd-rental-panel { min-height: 245px; }
+.amd-rental-panel h3 { color: #fff; font-size: 25px; line-height: 1.35; }
+.amd-rental-options p.amd-rental-detail { font-size: 13px; margin-bottom: 0; max-width: 440px; }
+.amd-delivery-feature-copy p.amd-delivery-condition { margin: 12px 0 0; font-size: 13px; line-height: 1.65; }
+.amd-home-faq details { transition: background-color .2s; }
+.amd-home-faq details[open] { background: #f5f8fb; }
+.amd-home-faq summary { padding-right: 12px; }
+.amd-search-band--results .amd-page-heading { margin-bottom: 20px; }
+.amd-search-recap { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 20px 24px; border: 1px solid var(--amd-border); background: #fff; border-radius: 8px; }
+.amd-search-recap > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.amd-search-recap strong { font-size: 17px; overflow-wrap: anywhere; }
+.amd-search-recap span { color: var(--amd-muted); font-size: 14px; }
+.amd-search-recap .amd-button { flex-shrink: 0; }
+.amd-search-recap + .amd-search { margin-top: 16px; }
+.amd-live-status { position: fixed; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; }
+.amd-live-status--visible { z-index: 40; top: 96px; left: 50%; transform: translateX(-50%); width: -moz-max-content; width: max-content; max-width: calc(100vw - 32px); height: auto; overflow: visible; clip-path: none; white-space: normal; padding: 12px 20px; background: #193e66; color: #fff; box-shadow: 0 5px 20px #18324e26; border-radius: 6px; font-size: 14px; }
+.amd-results-main[aria-busy="true"] { opacity: .6; cursor: progress; }
+.amd-results-main { transition: opacity .15s; }
+.amd-results-heading { border: 0; padding: 0 0 16px; border-bottom: 1px solid var(--amd-border); border-radius: 0; background: transparent; }
+.amd-result-period { border: 0; border-radius: 0; background: transparent; padding: 0; margin: 16px 0 22px; }
+.amd-car-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.amd-car-grid .amd-car { display: flex; flex-direction: column; gap: 0; padding: 0; margin: 0; overflow: hidden; box-shadow: none; transition: border-color .2s, box-shadow .2s, transform .2s; }
+.amd-car-grid .amd-car:hover, .amd-car-grid .amd-car:focus-within { border-color: #6d92b4; box-shadow: 0 12px 24px #18324e12; }
+.amd-car-grid .amd-car-photo { align-self: stretch; border-radius: 0; min-height: 200px; }
+.amd-car-grid .amd-car-photo img { height: 210px; transition: transform .35s ease; }
+.amd-car-grid .amd-car-info { padding: 22px 24px; flex: 1; }
+.amd-car-grid .amd-car-info h3 { font-size: 25px; }
+.amd-car-grid .amd-car-price { border: 0; border-top: 1px solid var(--amd-border); border-radius: 0; background: #f1f5f8; padding: 22px 24px; }
+.amd-car-grid .amd-car-price .amd-button { margin-top: 14px; }
+.amd-car-grid > .amd-empty { grid-column: 1 / -1; }
+.amd-delivery-suppliers > p:not(.amd-map-attribution) { max-width: 850px; }
+.amd-delivery-provider { transition: border-color .2s, box-shadow .2s; }
+.amd-delivery-provider:hover, .amd-delivery-provider:focus-within { border-color: #6d92b4; box-shadow: 0 8px 24px #18324e12; }
+.amd-location-choices form { transition: border-color .2s, background-color .2s; }
+.amd-location-choices form:hover, .amd-location-choices form:focus-within { background: #f3f7fb; border-color: #6d92b4; }
+.amd-detail-figure { position: relative; }
+.amd-photo-open { display: block; margin: 12px auto 0; }
+.amd-photo-dialog { padding: 24px; border: 0; border-radius: 10px; width: min(960px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); color: var(--amd-ink); }
+.amd-photo-dialog::backdrop { background: #10283bd9; }
+.amd-photo-dialog > button { display: block; margin-left: auto; }
+.amd-photo-dialog figure { margin: 16px 0 0; }
+.amd-photo-dialog img { display: block; width: 100%; max-height: 68dvh; -o-object-fit: contain; object-fit: contain; }
+.amd-photo-dialog figcaption { text-align: center; font-size: 14px; margin-top: 16px; }
+body:has(.amd-photo-dialog[open]) { overflow: hidden; }
+@media (min-width: 901px) {
+    .amd-quote { top: 115px; }
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .amd-car-grid .amd-car:hover { transform: translateY(-3px); }
+    .amd-car-grid .amd-car:hover .amd-car-photo img { transform: scale(1.025); }
+}
+@media (max-width: 1100px) and (min-width: 901px) {
+    .amd-car-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+    html { scroll-padding-top: 76px; }
+    #car-search, #public-search-results { scroll-margin-top: 12px; }
+    .amd-car-grid { grid-template-columns: 1fr; gap: 20px; }
+    .amd-search-recap { align-items: stretch; flex-direction: column; gap: 16px; padding: 20px; }
+    .amd-search-recap .amd-button { align-self: flex-start; }
+    .amd-destination-shortcuts a { align-items: flex-start; flex-direction: column; gap: 4px; }
+    .amd-rental-tabs { gap: 22px; }
+    .amd-rental-panel { min-height: 280px; }
+    .amd-rental-panel h3 { font-size: 24px; }
+    .amd-live-status--visible { top: 85px; }
+    .amd-photo-dialog { padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .amd-header, .amd-button, .amd-field input, .amd-field select, .amd-destination-shortcuts a,
+    .amd-home-faq details, .amd-results-main, .amd-car-grid .amd-car, .amd-car-grid .amd-car-photo img,
+    .amd-delivery-provider, .amd-location-choices form { transition: none; }
+    .amd-button:active { transform: none; }
+}
+/* Warm search actions stand out against the public navy. */
+.amd-search .amd-search-submit { color: var(--amd-ink); background: var(--amd-sun); border-color: #dbad5b; }
+.amd-search .amd-search-submit:hover { color: var(--amd-ink); background: #ffe0a6; border-color: #c99741; }
+.amd-footer .amd-footer-brand { color: var(--amd-accent); }
+.amd-footer a:hover { color: var(--amd-sun); }

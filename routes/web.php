@@ -27,6 +27,12 @@ use App\Http\Controllers\Admin\ReportPresetRunController;
 use App\Http\Controllers\Admin\ReportPresetController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AuditController;
+use App\Http\Controllers\PublicCarSearchController;
+use App\Http\Controllers\PublicDeliveryLocationController;
+use App\Http\Controllers\PublicBookingController;
+use App\Http\Controllers\VehicleProductController;
+
+require __DIR__.'/public-cars.php';
 
 
 /*
@@ -46,7 +52,6 @@ Route::get('/', function () {
 });
 
 Route::middleware([
-    'ensure.organization.active',
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',
@@ -60,6 +65,42 @@ Route::middleware([
     | Permessi: gestiti nella view via Gate (le tiles e il menu si auto-filtrano).
     */
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
+    require __DIR__.'/amd-rent.php';
+    Route::get('/prenotazioni-sito', [PublicBookingController::class, 'index'])
+        ->middleware([\App\Http\Middleware\RequireModernEra::class, 'can:rentals.viewAny'])->name('public-bookings.index');
+
+    Route::middleware([\App\Http\Middleware\RequireModernEra::class, 'can:manage.renters'])->prefix('prodotti-flotta')->name('fleet-products.')->group(function () {
+        Route::get('/', [VehicleProductController::class, 'index'])->name('index');
+        Route::post('/', [VehicleProductController::class, 'store'])->name('store');
+        Route::get('/{product}', [VehicleProductController::class, 'edit'])->whereNumber('product')->name('edit');
+        Route::put('/{product}', [VehicleProductController::class, 'update'])->whereNumber('product')->name('update');
+        Route::post('/{product}/auto', [VehicleProductController::class, 'attach'])->whereNumber('product')->name('attach');
+        Route::delete('/{product}/auto/{vehicle}', [VehicleProductController::class, 'detach'])
+            ->whereNumber('product')->whereNumber('vehicle')->name('detach');
+    });
+
+    Route::middleware('can:vehicle_pricing.update')->group(function () {
+        Route::get('/catalogo-pubblico', fn () => redirect()->route('public-deliveries.index'))->name('public-offers.index');
+        Route::get('/catalogo-pubblico/luoghi', [PublicDeliveryLocationController::class, 'index'])->name('public-deliveries.index');
+        Route::post('/catalogo-pubblico/luoghi', [PublicDeliveryLocationController::class, 'store'])->name('public-deliveries.store');
+        Route::put('/catalogo-pubblico/luoghi/{delivery}', [PublicDeliveryLocationController::class, 'update'])->whereNumber('delivery')->name('public-deliveries.update');
+    });
+    Route::middleware([\App\Http\Middleware\RequireModernEra::class, 'can:vehicle_pricing.update'])->group(function () {
+        Route::get('/catalogo-pubblico/anteprima', [PublicCarSearchController::class, 'preview'])->name('public-cars.preview.index');
+        Route::post('/catalogo-pubblico/anteprima/ritiro-mappa/cerca', [\App\Http\Controllers\PublicPickupMapController::class, 'search'])->middleware('throttle:20,1')->name('public-cars.preview.map.search');
+        Route::post('/catalogo-pubblico/anteprima/ritiro-mappa/indirizzo', [\App\Http\Controllers\PublicPickupMapController::class, 'address'])->middleware('throttle:20,1')->name('public-cars.preview.map.address');
+        Route::post('/catalogo-pubblico/anteprima/ritiro-mappa/conferma', [\App\Http\Controllers\PublicPickupMapController::class, 'store'])->middleware('throttle:20,1')->name('public-cars.preview.map.store');
+        Route::post('/catalogo-pubblico/anteprima/riconsegna-mappa/conferma', [\App\Http\Controllers\PublicPickupMapController::class, 'storeReturn'])->middleware('throttle:20,1')->name('public-cars.preview.return-map.store');
+        Route::get('/catalogo-pubblico/anteprima/{offer}', [PublicCarSearchController::class, 'legacy'])->whereNumber('offer')->name('public-cars.preview.legacy.show');
+        Route::get('/catalogo-pubblico/anteprima/{offer}/foto', [PublicCarSearchController::class, 'legacy'])->whereNumber('offer')->name('public-cars.preview.legacy.photo');
+        Route::get('/catalogo-pubblico/anteprima/{offer}/prenota', [PublicCarSearchController::class, 'legacy'])->whereNumber('offer')->name('public-cars.preview.legacy.booking');
+        Route::post('/catalogo-pubblico/anteprima/{offer}/prenota', [PublicCarSearchController::class, 'expiredCheckout'])
+            ->whereNumber('offer')->middleware('throttle:public-bookings')->name('public-cars.preview.legacy.store');
+        Route::get('/catalogo-pubblico/anteprima/auto/{pricelist}/prenota', [PublicBookingController::class, 'create'])->whereNumber('pricelist')->name('public-cars.preview.booking.create');
+        Route::post('/catalogo-pubblico/anteprima/auto/{pricelist}/prenota', [PublicBookingController::class, 'store'])->whereNumber('pricelist')->middleware('throttle:public-bookings')->name('public-cars.preview.booking.store');
+        Route::get('/catalogo-pubblico/anteprima/auto/{pricelist}/foto', [PublicCarSearchController::class, 'previewPhoto'])->whereNumber('pricelist')->name('public-cars.preview.photo');
+        Route::get('/catalogo-pubblico/anteprima/auto/{pricelist}', [PublicCarSearchController::class, 'previewShow'])->whereNumber('pricelist')->name('public-cars.preview.show');
+    });
 
 /*
 |--------------------------------------------------------------------------
