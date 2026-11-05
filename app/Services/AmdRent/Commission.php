@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\{DB, Schema};
 
 class Commission
 {
+    public const DEFAULT_BPS = 1500;
+
     public static function earnedCents(\App\Models\PublicBooking $booking): int
     {
         $netPaid = max(0, $booking->online_paid_cents - $booking->refunded_cents);
@@ -22,9 +24,9 @@ class Commission
 
     public static function currentBps(): int
     {
-        // Default also covers a fresh installation before its first settings save.
-        if (!Schema::hasColumn('amd_rent_settings', 'commission_bps')) return 2000;
-        return (int) (DB::table('amd_rent_settings')->where('id', 1)->value('commission_bps') ?? 2000);
+        /** The default also covers a fresh installation before its first settings save. */
+        if (!Schema::hasColumn('amd_rent_settings', 'commission_bps')) return self::DEFAULT_BPS;
+        return (int) (DB::table('amd_rent_settings')->where('id', 1)->value('commission_bps') ?? self::DEFAULT_BPS);
     }
 
     public static function label(?int $bps = null): string

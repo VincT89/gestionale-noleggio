@@ -50,8 +50,13 @@
             <p class="app-muted mt-2">I luoghi italiani con città Bari e tipo Aeroporto, Porto o Stazione sono raggruppati nella ricerca pubblica. Il punto d’incontro preciso resta nella prenotazione. La consegna per indirizzo continua a usare la copertura configurata.</p>
             <p class="app-muted mt-2">Disattivando un luogo lo escludi dalle nuove ricerche per la tua organizzazione. Le prenotazioni esistenti restano associate al luogo concordato.</p>
             <div class="divide-y mt-4">@forelse($deliveries as $delivery)
+                <details class="amr-disclosure">
+                    <summary>
+                        <span class="font-semibold break-words">{{ $delivery->place->label }}</span>
+                        <span class="block text-sm app-muted">{{ $delivery->organization->name }} — {{ $delivery->is_active ? 'Attivo nelle ricerche' : 'Disattivato' }}</span>
+                    </summary>
                 <article id="delivery-{{ $delivery->id }}" class="py-4 flex flex-wrap justify-between items-center gap-4">
-                    <div class="min-w-0"><h3 class="font-semibold break-words">{{ $delivery->place->label }}</h3><p class="text-sm app-muted">{{ $delivery->organization->name }}</p><p class="text-sm app-muted">{{ $delivery->place->address_line }}</p><p class="text-sm mt-1">{{ $delivery->is_active ? 'Attivo nelle ricerche' : 'Disattivato' }}</p></div>
+                    <p class="min-w-0 text-sm app-muted break-words">{{ $delivery->place->address_line }}</p>
                     <form method="post" action="{{ route('public-deliveries.update', $delivery) }}">@csrf @method('PUT')<input type="hidden" name="is_active" value="{{ $delivery->is_active ? 0 : 1 }}"><button class="rounded border px-4 py-3" type="submit">{{ $delivery->is_active ? 'Disattiva' : 'Riattiva' }}</button></form>
                 </article>
                 @if(auth()->user()->hasRole('admin'))
@@ -73,6 +78,7 @@
 <button class="amr-button" type="submit" name="locate_origin" value="1">Cerca o aggiorna la posizione della sede</button>
 <p>La ricerca usa l’indirizzo della sede su OpenStreetMap e ti chiede di confermare il risultato prima di salvare. La posizione aggiornata vale per tutti i servizi collegati alla stessa sede.</p>
 <p>Riceverai auto, date, luoghi e recapiti nella richiesta. Conferma disponibilità e appuntamenti prima del pagamento del cliente.</p><button class="amr-button">Salva servizio di consegna</button></form></details>
+                </details>
             @empty<p class="py-4">Non hai ancora configurato luoghi di consegna.</p>@endforelse</div>
         </section>
     </div>

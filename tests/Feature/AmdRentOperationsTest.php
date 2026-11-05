@@ -86,10 +86,10 @@ class AmdRentOperationsTest extends PublicBookingTestCase
         DB::table('amd_rent_settings')->updateOrInsert(['id' => 1], ['commission_bps' => 3000]);
         $booking->refresh();
         $this->assertSame(4500, $booking->online_due_cents);
-        $this->assertSame(2000, $booking->quote_snapshot['commission_bps']);
+        $this->assertSame(1500, $booking->quote_snapshot['commission_bps']);
         $this->assertSame(1500, $booking->quote_snapshot['customer_deposit_bps']);
         $this->webhook('checkout.session.completed', $this->stripeSession($booking, ['payment_status' => 'paid', 'status' => 'complete']))->assertOk();
-        $this->assertEquals(60, app(\App\Domain\Fees\AdminFeeResolver::class)->calculateForRental($booking->rental)['amount']);
+        $this->assertEquals(45, app(\App\Domain\Fees\AdminFeeResolver::class)->calculateForRental($booking->rental)['amount']);
     }
 
     public function test_old_booking_keeps_its_twenty_percent_payment_and_receipt(): void
@@ -126,7 +126,7 @@ class AmdRentOperationsTest extends PublicBookingTestCase
         $this->webhook('charge.refunded', $charge)->assertOk();
         $this->webhook('charge.refunded', $charge)->assertOk();
         $this->assertSame(26500, $booking->fresh()->pickup_due_cents);
-        $this->assertEquals(60, app(\App\Domain\Fees\AdminFeeResolver::class)->calculateForRental($booking->rental)['amount']);
+        $this->assertEquals(45, app(\App\Domain\Fees\AdminFeeResolver::class)->calculateForRental($booking->rental)['amount']);
         $this->assertEquals(35, $booking->rental->fresh()->admin_fee_collected_amount);
         $this->assertDatabaseCount('rental_charges', 2);
         $this->webhook('charge.refunded', array_replace($charge, ['amount_refunded' => 4500]))->assertOk();
@@ -215,7 +215,7 @@ class AmdRentOperationsTest extends PublicBookingTestCase
         $this->assertSame('45.00', RentalCharge::first()->amount);
         $this->assertFalse(RentalCharge::first()->is_commissionable);
         $fee = app(\App\Domain\Fees\AdminFeeResolver::class)->calculateForRental($booking->rental);
-        $this->assertEquals(60, $fee['amount']);
+        $this->assertEquals(45, $fee['amount']);
         $this->get($booking->confirmationUrl())->assertOk()->assertSee('Prenotazione confermata');
     }
     public function test_bad_signature_cannot_confirm_a_booking(): void
@@ -332,7 +332,7 @@ class AmdRentOperationsTest extends PublicBookingTestCase
         $rental->charges()->create(['kind' => RentalCharge::KIND_OTHER, 'amount' => '50.00', 'is_commissionable' => true,
             'payment_method' => 'cash', 'payment_recorded' => true, 'payment_recorded_at' => now()]);
         $fee = app(\App\Domain\Fees\AdminFeeResolver::class)->calculateForRental($rental);
-        $this->assertEquals(65, $fee['amount']);
+        $this->assertEquals(50, $fee['amount']);
         $this->assertEquals(45, $rental->admin_fee_collected_amount);
     }
     public function test_missing_stripe_configuration_does_not_create_a_reservation(): void
@@ -486,9 +486,9 @@ class AmdRentOperationsTest extends PublicBookingTestCase
             ->assertSee('Totale prenotato dal cliente')->assertSee('330,00 €');
         $this->webhook('checkout.session.completed', $this->stripeSession($booking, ['payment_status' => 'paid', 'status' => 'complete']))->assertOk();
         $fee = app(\App\Domain\Fees\AdminFeeResolver::class)->calculateForRental($booking->fresh()->rental);
-        $this->assertEquals(20, $fee['percent']);
+        $this->assertEquals(15, $fee['percent']);
         $this->assertEquals(330, $fee['commissionable_total']);
-        $this->assertEquals(66, $fee['amount']);
+        $this->assertEquals(49.5, $fee['amount']);
     }
     public function test_zero_commission_does_not_remove_the_customers_fifteen_percent_deposit(): void
     {

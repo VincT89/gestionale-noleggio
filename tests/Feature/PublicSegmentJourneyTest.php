@@ -271,7 +271,7 @@ class PublicSegmentJourneyTest extends PublicBookingTestCase
         $this->post(route('public-cars.booking.store', 1), $form)->assertStatus(303)->assertSessionHasNoErrors();
         $case = AmdRentEnquiry::sole();
         $this->assertSame(33000, $case->booking_context['car']['total_cents']);
-        $this->assertSame(2000, $case->booking_context['car']['commission_bps']);
+        $this->assertSame(1500, $case->booking_context['car']['commission_bps']);
         $this->assertSame(3000, $case->delivery_fee_cents);
         $this->assertSame('Aeroporto dimostrativo, partenze', $case->booking_context['return_address']);
         $this->assertDatabaseCount('public_bookings', 0);
@@ -295,13 +295,13 @@ class PublicSegmentJourneyTest extends PublicBookingTestCase
         $car = $page->viewData('car');
         $this->assertSame(33000, $car['total_cents']);
         $this->assertSame(0, DeliveryQuotes::onlineDue($car));
-        $this->assertSame(2000, $car['commission_bps']);
+        $this->assertSame(1500, $car['commission_bps']);
         $newPage = $this->get(route('public-cars.booking.create', ['pricelist' => 1] + $this->trip(true)))->assertOk();
         $this->assertSame(2550, $newPage->viewData('car')['commission_bps']);
         $this->post(route('public-cars.booking.store', 1), array_replace($form, $page->viewData('filters'),
             ['request_delivery' => 0, 'request_custom_return' => 0, 'checkout_token' => $page->viewData('checkoutToken')]))->assertStatus(303)->assertSessionHasNoErrors();
         $booking = PublicBooking::sole();
-        $this->assertSame(2000, $booking->quote_snapshot['commission_bps']);
+        $this->assertSame(1500, $booking->quote_snapshot['commission_bps']);
         $this->assertSame(33000, $booking->total_cents);
     }
 
