@@ -16,6 +16,9 @@ class PublicBookingRequest extends PublicCarSearchRequest
             'email' => ['required', 'email:rfc', 'max:191'],
             'phone' => ['required', 'string', 'min:6', 'max:32', 'regex:/^[+0-9().\s-]+$/'],
             'checkout_token' => ['required', 'string', 'max:8192'],
+            'extras' => ['sometimes', 'array', 'list', 'max:100'],
+            'extras.*' => ['required', 'integer', 'min:1', 'distinct'],
+            'displayed_total_cents' => ['nullable', 'integer', 'min:0', 'max:9999999999'],
             'accept_summary' => ['accepted'],
             'website' => ['nullable', 'string', 'max:0'],
             'request_delivery' => ['nullable', 'boolean'],
@@ -91,6 +94,7 @@ class PublicBookingRequest extends PublicCarSearchRequest
             'phone.*' => 'Inserisci un numero di telefono valido.',
             'accept_summary.*' => 'Controlla e accetta il riepilogo prima di confermare.',
             'checkout_token.*' => 'Riapri il riepilogo della prenotazione.',
+            'extras.*' => 'Controlla gli extra selezionati.',
             'website.*' => 'Non è stato possibile inviare il modulo.',
         ];
     }

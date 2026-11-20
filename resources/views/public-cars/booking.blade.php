@@ -10,7 +10,10 @@
     $browseFilters = $browseFilters ?? $filters;
     $canChoosePickup = !$fixedDelivery && empty($car['delivery_request_id']) && ($car['custom_delivery_enabled'] ?? false);
     $customReturn = !empty($car['return_address']);
-    $needsOnlinePayment = config('amd_rent.payment_mode') === 'stripe' && \App\Services\AmdRent\DeliveryQuotes::onlineDue($car) > 0;
+    $checkoutQuote = $checkoutQuote ?? $car;
+    $canSelectExtras = !empty($bookingOptions['extras']);
+    $onlineDue = \App\Services\AmdRent\DeliveryQuotes::onlineDue($checkoutQuote);
+    $needsOnlinePayment = config('amd_rent.payment_mode') === 'stripe' && $onlineDue > 0;
 @endphp
 @if(!empty($deliveryRequestUrl))
     <a class="amd-back" href="{{ $deliveryRequestUrl }}">Torna alla proposta</a>
@@ -19,15 +22,31 @@
 @endif
 <div class="amd-page-heading"><h1>{{ $fixedDelivery ? 'Richiedi disponibilità' : 'Prenota la tua auto' }}</h1><p>{{ $fixedDelivery ? 'Controlla auto, luoghi e date e inserisci i tuoi recapiti. Il noleggiatore confermerà auto e appuntamenti prima del pagamento.' : 'Controlla il riepilogo e inserisci i tuoi recapiti. La quota online e il saldo al ritiro sono indicati nel riepilogo.' }}</p></div>
 <div class="amd-detail amd-booking-layout">
-    <aside class="amd-quote" aria-labelledby="booking-summary-title">@include('public-cars.partials.booking-summary')</aside>
-    <form method="post" action="{{ route($routePrefix.'.booking.store', $car['id']) }}" class="amd-detail-info amd-booking-form" data-booking-form aria-label="Dati per la prenotazione">
+    <aside class="amd-quote" aria-labelledby="booking-summary-title">@include('public-cars.partials.booking-summary', ['car' => $checkoutQuote])</aside>
+    <form method="post" action="{{ route($routePrefix.'.booking.store', $car['id']) }}" class="amd-detail-info amd-booking-form" data-booking-form aria-label="Dati per la prenotazione"
+          @if($canSelectExtras) data-options-base="{{ $car['total_cents'] }}" data-options-days="{{ $car['days'] }}" data-options-deposit-bps="{{ $car['customer_deposit_bps'] }}" @endif>
         @csrf
         <input type="hidden" name="checkout_token" value="{{ $checkoutToken }}">
+        <input type="hidden" name="displayed_total_cents" value="{{ $checkoutQuote['total_cents'] }}">
         @foreach(\Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at', 'place_id', 'delivery_place', 'return_place']) as $field => $fieldValue)<input type="hidden" name="{{ $field }}" value="{{ $fieldValue }}">@endforeach
         @if($customReturn && empty($car['delivery_request_id']))<input type="hidden" name="request_custom_return" value="1">@endif
+        @if($errors->any())<div class="amd-errors" role="alert" tabindex="-1" data-booking-errors><strong>Controlla i dati prima di confermare.</strong><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+        @if(isset($bookingOptions))
+            @include('public-cars.partials.booking-options')
+        @else
+            @include('public-cars.partials.agreed-options', ['terms' => $car])
+        @endif
+        @if($canSelectExtras)
+            <div class="amd-extras-total" role="status">
+                <p>Totale IVA inclusa <strong data-options-total>{{ number_format($checkoutQuote['total_cents'] / 100, 2, ',', '.') }} €</strong></p>
+                <p data-options-online-summary @unless($needsOnlinePayment) hidden @endunless>
+                    Quota online{{ $fixedDelivery ? ' prevista' : '' }} <strong data-options-online>{{ number_format($onlineDue / 100, 2, ',', '.') }} €</strong>
+                    · Saldo al ritiro <strong data-options-balance>{{ number_format(($checkoutQuote['total_cents'] - $onlineDue) / 100, 2, ',', '.') }} €</strong>
+                </p>
+            </div>
+        @endif
         <h2>I tuoi dati</h2>
         <p>Non serve creare un account. I recapiti saranno disponibili al noleggiatore che gestirà la prenotazione. @if(!$accountContact)<a href="{{ $loginUrl ?? route('public-account.login') }}">Accedi</a> per usare i dati del tuo profilo.@endif</p>
-        @if($errors->any())<div class="amd-errors" role="alert" tabindex="-1" data-booking-errors><strong>Controlla i dati prima di confermare.</strong><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
         <div class="amd-booking-fields">
             @foreach(['first_name' => ['Nome', 'given-name', 'text', 90], 'last_name' => ['Cognome', 'family-name', 'text', 90], 'email' => ['Email', 'email', 'email', 191], 'phone' => ['Telefono', 'tel', 'tel', 32]] as $field => [$label, $autocomplete, $type, $max])
             <div class="amd-field"><label for="booking-{{ $field }}">{{ $label }}</label><input id="booking-{{ $field }}" name="{{ $field }}" type="{{ $type }}" autocomplete="{{ $autocomplete }}" maxlength="{{ $max }}" value="{{ $inputValue($field) }}" required @if($errors->has($field)) aria-invalid="true" aria-describedby="error-{{ $field }}" @endif>@error($field)<small id="error-{{ $field }}" class="amd-field-error">{{ $message }}</small>@enderror</div>

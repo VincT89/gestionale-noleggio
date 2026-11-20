@@ -3,14 +3,15 @@
 namespace App\Domain\Rentals;
 
 use App\Models\{Customer, PublicBooking, PublicRentalOffer, Rental, RentalContractSnapshot, VehicleAssignment, VehiclePricelist};
+use App\Services\AmdRent\BookingOptions;
 use App\Services\Rentals\RentalNumberAllocator;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Str;
+use Illuminate\Support\{Arr, Str};
 use Illuminate\Validation\ValidationException;
 
 class PublicBookingService
 {
-    public function __construct(private PublicVehicleSearch $search, private RentalNumberAllocator $numbers, private ReservationTransaction $transaction) {}
+    public function __construct(private PublicVehicleSearch $search, private RentalNumberAllocator $numbers, private ReservationTransaction $transaction, private BookingOptions $options) {}
 
     public static function fingerprint(array $car): string
     {
@@ -24,6 +25,11 @@ class PublicBookingService
         // order or numeric types used by the database. Keep legacy quotes valid.
         if (!empty($car['return_destination'])) {
             $values['return_destination'] = array_map(fn ($key) => number_format((float) $car['return_destination'][$key], 7, '.', ''), ['lat', 'lng']);
+        }
+        foreach (['standard_protection', 'selected_extras'] as $field) {
+            if (isset($car[$field])) {
+                $values[$field] = Arr::sortRecursive($car[$field]);
+            }
         }
         return hash('sha256', json_encode($values, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
     }
@@ -56,6 +62,9 @@ class PublicBookingService
             $car = $this->search->search(VehiclePricelist::forPublicRental()->whereKey($pricelist->id), $searchPeriod)->first();
             if ($car && $deliveryRequest) $car = app(\App\Services\AmdRent\DeliveryQuotes::class)->apply($car, $deliveryRequest, $attempts);
             $this->assertQuote($intent, $car);
+            if (!$deliveryRequest) {
+                $car = $this->options->apply($car, $intent);
+            }
             $channel = $stripe ? 'amd_rent' : null;
             $onlineDue = $stripe ? \App\Services\AmdRent\DeliveryQuotes::onlineDue($car) : 0;
             if ($stripe && $onlineDue > 0 && $onlineDue < 50) throw ValidationException::withMessages(['booking' => 'L’importo online è inferiore al minimo supportato. Contatta AMD Rent.']);
@@ -85,6 +94,10 @@ class PublicBookingService
                     .(!empty($car['return_address']) ? 'Riconsegna concordata: '.$car['return_address'].'. Associare il luogo gestionale verificato prima della comunicazione CARGOS. ' : '')
                     .'Completare i dati del conducente e il contratto prima della consegna.',
             ]));
+            $agreedOptions = Arr::only($car, ['standard_protection', 'selected_extras']);
+            if (isset($agreedOptions['standard_protection'])) {
+                $rental->coverage()->create(BookingOptions::rentalCoverage($agreedOptions));
+            }
             // Reuse ERA's existing freeze-once pricing snapshot for the future contract too.
             RentalContractSnapshot::create([
                 'rental_id' => $rental->id, 'created_by_user_id' => null,
@@ -93,8 +106,9 @@ class PublicBookingService
                     'tariff_total_cents' => $car['total_cents'], 'tariff_override_cents' => $car['total_cents'],
                     'km_daily_limit' => $car['km_per_day'], 'extra_km_cents' => $car['extra_km_cents'],
                     'deposit_cents' => $car['deposit_cents'],
-                    'second_driver_daily_cents' => (int) ($pricelist->second_driver_daily_cents ?? 0),
-                ] + (!empty($car['return_address']) ? ['return_address' => $car['return_address']] : [])
+                    'second_driver_daily_cents' => BookingOptions::hasSecondDriver($agreedOptions) ? 0 : (int) ($pricelist->second_driver_daily_cents ?? 0),
+                ] + ($agreedOptions ? ['amd_rent_options' => $agreedOptions] : [])
+                  + (!empty($car['return_address']) ? ['return_address' => $car['return_address']] : [])
                   + (!empty($car['return_destination']) ? ['return_destination' => $car['return_destination']] : []),
             ]);
             // Compatibility with existing booking foreign keys. Search never reads or creates offers;

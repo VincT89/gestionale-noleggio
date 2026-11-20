@@ -20,6 +20,7 @@
 @else<p>Riconsegna presso {{ $case->booking_context['car']['location'] }} — {{ $case->booking_context['car']['city'] }}.</p>@endif
 @include('public-cars.partials.selected-map-point', ['point' => $case->booking_context['delivery_destination'] ?? null])
 @include('public-cars.partials.selected-map-point', ['point' => $case->booking_context['return_destination'] ?? null, 'pointType' => 'return'])
+@include('public-cars.partials.agreed-options', ['terms' => $case->booking_context['car']])
 @if($case->public_booking_id)<p><a class="amd-button" href="{{ $case->booking->confirmationUrl() }}">Apri la prenotazione</a></p>
 @if(app(\App\Services\AmdRent\DeliveryBookingRecovery::class)->canReopen($case))
 <p>Il pagamento della prenotazione precedente non è stato avviato oppure è scaduto. Puoi riaprire questa richiesta conservando la proposta di consegna e la sua scadenza. Prezzo e disponibilità saranno ricontrollati prima di un nuovo pagamento.</p>
@@ -31,7 +32,7 @@
 </form>
 @endif
 @elseif($case->status === 'quoted' && $case->quote_expires_at?->isFuture())
-@php $proposedTotal = ($case->booking_context['car']['rental_total_cents'] ?? $case->booking_context['car']['total_cents']) + $case->delivery_fee_cents; @endphp
+@php $proposedTotal = \App\Services\AmdRent\DeliveryQuotes::proposedTotal($case->booking_context['car'], $case->delivery_fee_cents); @endphp
 <h3>La tua proposta: {{ $money($proposedTotal) }}</h3>
 <p>{{ $money($proposedTotal / max(1, $case->booking_context['car']['days'])) }} al giorno in media. Consegna, ritiro e IVA inclusi. Cauzione separata.</p>
 <p>Proposta valida fino al {{ $case->quote_expires_at->format('d/m/Y H:i') }}. Prezzo e disponibilità saranno ricontrollati nel riepilogo prima del pagamento.</p>

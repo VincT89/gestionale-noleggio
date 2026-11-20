@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Domain\Rentals\{PublicBookingService, PublicVehicleSearch};
 use App\Http\Requests\{PublicBookingRequest, PublicCarSearchRequest};
 use App\Models\{PublicBooking, VehiclePricelist};
-use App\Services\AmdRent\PublicBookingNavigation;
+use App\Services\AmdRent\{BookingOptions, PublicBookingNavigation};
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -25,7 +25,7 @@ class PublicBookingController extends Controller
             fn ($q) => $q->where('renter_org_id', $request->user()->organization_id));
     }
 
-    public function create(PublicCarSearchRequest $request, PublicVehicleSearch $search, int $pricelist)
+    public function create(PublicCarSearchRequest $request, PublicVehicleSearch $search, BookingOptions $options, int $pricelist)
     {
         $preview = $request->routeIs('public-cars.preview.*');
         $scope = $this->scope($request, $preview)->whereKey($pricelist);
@@ -59,8 +59,13 @@ class PublicBookingController extends Controller
                 ->resolve($filters['return_place'], $filters['return_address'], 'public-return');
         }
 
+        $catalog = $options->catalog($car);
+        $previousChoices = array_filter((array) $request->old('extras', []), fn ($id) => is_scalar($id) && ctype_digit((string) $id));
+        $selected = $options->selected($catalog, array_map('intval', $previousChoices));
+        $checkoutQuote = BookingOptions::withAgreedOptions($car, $catalog + ['selected_extras' => $selected]);
         $intent = ['nonce' => (string) Str::uuid(), 'source' => 'pricelist', 'pricelist' => $pricelist, 'period' => $period, 'preview' => $preview,
-            'fingerprint' => PublicBookingService::fingerprint($car), 'expires_at' => now()->addMinutes(30)->timestamp];
+            'fingerprint' => PublicBookingService::fingerprint($car), 'options_fingerprint' => $options->fingerprint($catalog),
+            'expires_at' => now()->addMinutes(30)->timestamp];
         if (!empty($car['delivery_destination'])) $intent['delivery_destination'] = $car['delivery_destination'];
         $intent['excluded_offers'] = $request->validated('exclude', '');
         if ($customReturn) {
@@ -72,6 +77,7 @@ class PublicBookingController extends Controller
         $request->session()->put('public_booking_checkouts', array_slice($known, -20, null, true));
         return $this->page('public-cars.booking', [
             'car' => $car, 'filters' => $filters, 'browseFilters' => $browseFilters, 'preview' => $preview, 'routePrefix' => $prefix,
+            'bookingOptions' => $catalog, 'checkoutQuote' => $checkoutQuote,
             'loginUrl' => !$preview ? app(PublicBookingNavigation::class)->loginUrl($request,
                 route($prefix.'.booking.create', ['pricelist' => $pricelist] + $browseFilters)) : route('public-account.login'),
             'checkoutToken' => Crypt::encryptString(json_encode($intent, JSON_THROW_ON_ERROR)),
@@ -111,6 +117,13 @@ class PublicBookingController extends Controller
             throw ValidationException::withMessages(['checkout_token' => 'La sessione, il luogo o le date sono cambiati. Riapri il riepilogo e riprova.']);
         }
         $contact = $request->safe()->only(['first_name', 'last_name', 'email', 'phone']);
+        $extraIds = array_map('intval', $request->validated('extras', []));
+        if (!empty($intent['delivery_request_id']) && $extraIds !== []) {
+            throw ValidationException::withMessages(['extras' => 'Gli extra fanno parte della proposta di consegna concordata. Torna alla proposta per controllarli.']);
+        }
+        $intent['extras'] = $extraIds;
+        $amount = $request->validated('displayed_total_cents');
+        $intent['displayed_total_cents'] = $amount === null ? null : (int) $amount;
         if (empty($intent['delivery_request_id'])) {
             $submittedReturn = $request->boolean('request_custom_return') ? $request->validated('return_address') : null;
             if (($intent['return_address'] ?? null) !== $submittedReturn) {

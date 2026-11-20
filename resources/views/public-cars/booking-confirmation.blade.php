@@ -28,6 +28,7 @@
             <p>Conserva questa pagina e il riferimento. Il saldo previsto si paga al ritiro; la cauzione è indicata separatamente nel riepilogo.</p>
             <p>Il noleggiatore completerà con te i dati del conducente e il contratto prima della consegna.</p>
         @else<p>Stato aggiornato della prenotazione: <strong>{{ $booking->status_label }}</strong>.</p>@endif
+        @include('public-cars.partials.agreed-options', ['terms' => $car])
         <p>Per richieste relative alla prenotazione, consulta la pagina <a href="{{ route('public-site.support') }}">Assistenza AMD Rent</a> indicando il riferimento {{ $booking->reference }}.</p>
         <p><a class="amd-button" href="{{ request()->routeIs('public-account.*') ? route('public-account.booking.pdf', ['reference' => $booking->reference, 'download' => 1]) : $booking->pdfUrl(true) }}">Scarica conferma PDF</a></p>
         <p><a class="amd-button amd-button-secondary" href="{{ request()->routeIs('public-account.*') ? route('public-account.booking.pdf', $booking->reference) : $booking->pdfUrl() }}" target="_blank" rel="noopener noreferrer">Stampa conferma</a></p>

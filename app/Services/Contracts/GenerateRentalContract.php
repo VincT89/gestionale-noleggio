@@ -9,6 +9,7 @@ use App\Models\Location;
 use App\Models\Customer;
 use App\Models\RentalContractSnapshot;
 use App\Domain\Pricing\VehiclePricingService;
+use App\Services\AmdRent\BookingOptions;
 use Illuminate\Contracts\View\Factory as ViewFactory;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -509,6 +510,16 @@ class GenerateRentalContract
             $finalFranchise[$key] = $reqOverrides[$key] ?? $dbOverrides[$key] ?? $base;
         }
 
+        $amdRentOptions = $pricingSnapshot['amd_rent_options'] ?? [];
+        if (isset($amdRentOptions['standard_protection'])) {
+            /** Booking terms stay fixed even when a vehicle’s franchise or the public offer changes. */
+            $acceptedCoverage = BookingOptions::rentalCoverage($amdRentOptions);
+            $coverage = array_intersect_key($acceptedCoverage, $dbCoverageFlags);
+            foreach (array_keys($finalFranchise) as $key) {
+                $finalFranchise[$key] = $acceptedCoverage['franchise_'.$key];
+            }
+        }
+
         // ---------------------------------------------------------------------
         // 4) CLAUSOLE (INVARIATO PER ORA)
         // ---------------------------------------------------------------------
@@ -654,6 +665,7 @@ class GenerateRentalContract
             'pricing'    => $pricingData,
             'coverages'  => $coverage,
             'franchigie' => $finalFranchise,
+            'amd_rent_options' => $amdRentOptions,
             'clauses'    => $clauses,
             'render_signatures' => $renderSignatures,
             'signature_customer' => $signatureCustomerDataUri,

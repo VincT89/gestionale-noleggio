@@ -14,7 +14,17 @@ class Commission
         if (!isset($booking->quote_snapshot['customer_deposit_bps'])) return $netPaid;
         if ($booking->online_due_cents <= 0 || $netPaid === 0) return 0;
         /** A partial deposit refund increases the customer's pickup balance; it does not change the agreed rental total or commission rate. */
-        return intdiv($booking->total_cents * (int) $booking->quote_snapshot['commission_bps'] + 5000, 10000);
+        return intdiv(self::baseCents($booking) * (int) $booking->quote_snapshot['commission_bps'] + 5000, 10000);
+    }
+
+    public static function baseCents(\App\Models\PublicBooking $booking): int
+    {
+        $quote = $booking->quote_snapshot;
+        if (isset($quote['commission_bps'])) {
+            return BookingOptions::paymentBase(['total_cents' => $booking->total_cents] + $quote, 'commissionable');
+        }
+
+        return $booking->total_cents - $booking->delivery_fee_cents;
     }
 
     public static function collectedCents(\App\Models\PublicBooking $booking): int

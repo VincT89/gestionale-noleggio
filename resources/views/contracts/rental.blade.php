@@ -711,7 +711,12 @@
         </div>
     @endif
 
-    @if($second_driver && !empty($pricing_totals))
+    @php
+        $amdRentTerms = $amd_rent_options ?? [];
+        $amdRentExtras = $amdRentTerms['selected_extras'] ?? [];
+        $prebookedDriver = \App\Services\AmdRent\BookingOptions::hasSecondDriver($amdRentTerms);
+    @endphp
+    @if(($second_driver || $amdRentExtras !== []) && !empty($pricing_totals))
         @php
             $cur = $pricing_totals['currency'] ?? 'EUR';
             $money = function (int $cents) use ($cur) {
@@ -724,17 +729,31 @@
             <table class="table">
                 <tr>
                     <th>Tariffa noleggio</th>
-                    <td>{{ $money((int) ($pricing_totals['tariff_effective_cents'] ?? $pricing_totals['tariff_total_cents'] ?? 0)) }}</td>
+                    <td>{{ $money((int) ($pricing_totals['tariff_effective_cents'] ?? $pricing_totals['tariff_total_cents'] ?? 0) - \App\Services\AmdRent\BookingOptions::total($amdRentExtras)) }}</td>
                 </tr>
-                <tr>
-                    <th>Seconda guida</th>
-                    <td>{{ $money((int) $pricing_totals['second_driver_cents']) }}</td>
-                </tr>
+                @if($second_driver && !$prebookedDriver)
+                    <tr>
+                        <th>Seconda guida</th>
+                        <td>{{ $money((int) $pricing_totals['second_driver_cents']) }}</td>
+                    </tr>
+                @endif
+                @foreach($amdRentExtras as $extra)
+                    <tr>
+                        <th>{{ $extra['name'] }}</th>
+                        <td>{{ $money($extra['total_cents']) }}</td>
+                    </tr>
+                @endforeach
                 <tr>
                     <th><strong>Totale</strong></th>
                     <td><strong>{{ $money((int) $pricing_totals['computed_total_cents']) }}</strong></td>
                 </tr>
             </table>
+        </div>
+    @endif
+
+    @if($amdRentTerms !== [])
+        <div class="box">
+            @include('public-cars.partials.agreed-options', ['terms' => $amdRentTerms, 'showStandardCoverage' => false, 'showAmounts' => false])
         </div>
     @endif
 

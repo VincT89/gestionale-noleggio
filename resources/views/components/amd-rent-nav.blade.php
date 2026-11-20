@@ -5,5 +5,8 @@
     <a href="{{ route('amd-rent.enquiries.index', ['type' => 'delivery']) }}" @if(($type ?? $case->type ?? request('type')) === 'delivery') aria-current="page" @endif>Richieste di consegna</a>
     <a href="{{ route('amd-rent.enquiries.index', ['type' => 'long_term']) }}" @if(request()->routeIs('amd-rent.enquiries.*') && ($type ?? $case->type ?? request('type', 'long_term')) === 'long_term') aria-current="page" @endif>Lungo termine</a>
     @can('vehicle_pricing.update')<a href="{{ route('public-deliveries.index') }}" @if(request()->routeIs('public-deliveries.*')) aria-current="page" @endif>Luoghi serviti</a>@endcan
-    @if(auth()->user()->hasRole('admin'))<a href="{{ route('amd-rent.settings') }}" @if(request()->routeIs('amd-rent.settings*')) aria-current="page" @endif>Impostazioni</a>@endif
+    @if(auth()->user()->hasRole('admin'))
+        <a href="{{ route('amd-rent.options.index') }}" @if(request()->routeIs('amd-rent.options.*')) aria-current="page" @endif>Protezione ed extra</a>
+        <a href="{{ route('amd-rent.settings') }}" @if(request()->routeIs('amd-rent.settings*')) aria-current="page" @endif>Impostazioni</a>
+    @endif
 </nav>

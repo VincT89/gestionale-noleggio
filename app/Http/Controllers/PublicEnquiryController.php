@@ -5,8 +5,7 @@ namespace App\Http\Controllers;
 use App\Domain\Rentals\{PublicBookingService, PublicVehicleSearch};
 use App\Models\{AmdRentEnquiry, VehiclePricelist};
 use App\Http\Requests\PublicLongTermRequest;
-use App\Services\AmdRent\DeliveryQuotes;
-use App\Services\AmdRent\DeliveryBookingRecovery;
+use App\Services\AmdRent\{BookingOptions, DeliveryBookingRecovery, DeliveryQuotes};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
@@ -47,6 +46,7 @@ class PublicEnquiryController extends Controller
         if ($car && !empty($intent['return_address'])) $car['return_address'] = $intent['return_address'];
         if ($car && !empty($intent['return_destination'])) $car['return_destination'] = $intent['return_destination'];
         app(PublicBookingService::class)->assertQuote($intent, $car);
+        $car = app(BookingOptions::class)->apply($car, $intent);
         abort_unless($car['custom_delivery_enabled'], 422, 'Il noleggiatore non accetta richieste di consegna personalizzata per questo luogo.');
         $case = AmdRentEnquiry::firstOrCreate(['request_hash' => $hash], [
             'type' => 'delivery', 'reference' => 'CON-'.Str::upper(Str::random(12)), 'organization_id' => $car['supplier_id'],

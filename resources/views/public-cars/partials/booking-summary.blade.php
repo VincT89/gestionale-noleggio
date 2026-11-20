@@ -1,4 +1,9 @@
-@php $money = fn ($cents) => number_format($cents / 100, 2, ',', '.').' €'; @endphp
+@php
+    $money = fn ($cents) => number_format($cents / 100, 2, ',', '.').' €';
+    $liveOptions = !empty($bookingOptions['extras']);
+    $selectedExtras = $car['selected_extras'] ?? [];
+    $extrasTotal = \App\Services\AmdRent\BookingOptions::total($selectedExtras);
+@endphp
 <h2 id="booking-summary-title">Il tuo noleggio</h2>
 @if(!isset($booking) && $car['has_photo'])<img class="amd-booking-car-photo" src="{{ route($routePrefix.'.photo', $car['id']) }}" alt="{{ $car['photo_is_reference'] ? 'Immagine indicativa: '.$car['title'] : $car['title'] }}" width="360" height="200">@if($car['photo_is_reference'])<small>Immagine indicativa del modello</small>@endif @endif
 <h3>{{ $car['title'] }}</h3>
@@ -23,16 +28,44 @@
     <div><dt>Riconsegna</dt><dd>{{ \Carbon\CarbonImmutable::parse($filters['return_at'])->format('d/m/Y H:i') }}</dd></div>
     <div><dt>Durata tariffata</dt><dd>{{ $car['days'] }} {{ $car['days'] === 1 ? 'giorno' : 'giorni' }}</dd></div>
 </dl>
+@if($liveOptions || $selectedExtras !== [])
+    <dl class="amd-quote-lines">
+        <div><dt>Tariffa di partenza</dt><dd>{{ $money($car['total_cents'] - $extrasTotal) }}</dd></div>
+        @if($liveOptions)
+            <div data-extra-summary @if($selectedExtras === []) hidden @endif>
+                <dt>Extra selezionati</dt><dd data-options-subtotal>{{ $money($extrasTotal) }}</dd>
+            </div>
+        @else
+            @foreach($selectedExtras as $extra)
+                <div><dt>{{ $extra['name'] }}</dt><dd>{{ $money($extra['total_cents']) }}</dd></div>
+            @endforeach
+        @endif
+    </dl>
+@endif
 <p class="amd-total-label">{{ ($requestDelivery ?? false) && empty($car['delivery_request_id']) ? 'Totale richiesto, IVA inclusa' : 'Totale concordato, IVA inclusa' }}</p>
-<strong class="amd-total">{{ $money($car['total_cents']) }}</strong><p>{{ $money($car['total_cents'] / max(1, $car['days'])) }} al giorno in media.@if(!empty($car['delivery_destination'])) Consegna e ritiro inclusi.@endif</p>
+<strong class="amd-total" data-options-total>{{ $money($car['total_cents']) }}</strong><p><span data-options-daily>{{ $money($car['total_cents'] / max(1, $car['days'])) }} al giorno in media.</span>@if(!empty($car['delivery_destination'])) Consegna e ritiro inclusi.@endif</p>
 <p>{{ $car['prices_include_vat'] ? 'IVA inclusa' : 'Importo di listino, IVA da verificare' }}</p>
 <dl class="amd-quote-lines">
     <div><dt>Cauzione separata</dt><dd>{{ $money($car['deposit_cents']) }}</dd></div>
     <div><dt>Chilometri inclusi</dt><dd>{{ $car['km_per_day'] === null ? 'Illimitati' : $car['km_per_day'].' km/giorno' }}</dd></div>
     @if($car['km_per_day'] !== null)<div><dt>Chilometri extra</dt><dd>{{ $money($car['extra_km_cents']) }}/km</dd></div>@endif
 </dl>
-@php $online = isset($booking) ? $booking->online_due_cents : \App\Services\AmdRent\DeliveryQuotes::onlineDue($car); @endphp
-@if($online > 0 && ((isset($booking) && $booking->payment_method === 'stripe') || (!isset($booking) && config('amd_rent.payment_mode') === 'stripe')))
-<dl class="amd-quote-lines"><div><dt>Quota online</dt><dd>{{ $money($online) }}</dd></div><div><dt>Saldo previsto al ritiro</dt><dd>{{ $money(isset($booking) ? $booking->pickup_due_cents : $car['total_cents'] - $online) }}</dd></div>@if(isset($booking))<div><dt>Versato online, al netto dei rimborsi</dt><dd>{{ $money($booking->online_paid_cents - $booking->refunded_cents) }}</dd></div>@endif</dl><p class="amd-booking-payment">La quota online è indicata sopra e viene calcolata sul totale. Cauzione separata, da gestire con il noleggiatore.</p>
-@else<p class="amd-booking-payment">Pagamento al ritiro. Nessun addebito online.</p>@endif
+@php
+    $online = isset($booking) ? $booking->online_due_cents : \App\Services\AmdRent\DeliveryQuotes::onlineDue($car);
+    $onlineMode = isset($booking) ? $booking->payment_method === 'stripe' : config('amd_rent.payment_mode') === 'stripe';
+    $hasOnline = $onlineMode && $online > 0;
+@endphp
+@if($hasOnline || ($liveOptions && $onlineMode))
+    <div data-options-online-summary @unless($hasOnline) hidden @endunless>
+        <dl class="amd-quote-lines">
+            <div><dt>Quota online{{ ($requestDelivery ?? false) ? ' prevista' : '' }}</dt><dd data-options-online>{{ $money($online) }}</dd></div>
+            <div><dt>Saldo previsto al ritiro</dt><dd data-options-balance>{{ $money(isset($booking) ? $booking->pickup_due_cents : $car['total_cents'] - $online) }}</dd></div>
+            @if(isset($booking))<div><dt>Versato online, al netto dei rimborsi</dt><dd>{{ $money($booking->online_paid_cents - $booking->refunded_cents) }}</dd></div>@endif
+        </dl>
+        <p class="amd-booking-payment">La cauzione si gestisce a parte con il noleggiatore.</p>
+    </div>
+@endif
+@if(!$hasOnline || $liveOptions)
+    <p class="amd-booking-payment" data-options-pickup-summary @if($hasOnline) hidden @endif>Pagamento al ritiro. Nessun addebito online.</p>
+@endif
 @if($car['description'])<h3>Condizioni dell’offerta</h3><p class="amd-description">{{ $car['description'] }}</p>@endif

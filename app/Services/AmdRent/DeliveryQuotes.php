@@ -41,11 +41,25 @@ class DeliveryQuotes
         } else {
             unset($result['customer_deposit_bps']);
         }
+        $result = BookingOptions::withAgreedOptions($result, $context['car']);
+        if ($result['total_cents'] > 9999999999) {
+            throw ValidationException::withMessages(['booking' => 'Il totale della proposta supera l’importo massimo gestibile. Contatta il noleggiatore.']);
+        }
+
         return $result;
     }
+
+    public static function proposedTotal(array $requestedCar, int $fee): int
+    {
+        $extras = BookingOptions::total($requestedCar['selected_extras'] ?? []);
+        return ($requestedCar['rental_total_cents'] ?? ($requestedCar['total_cents'] - $extras)) + $fee + $extras;
+    }
+
     public static function onlineDue(array $car): int
     {
-        if (isset($car['customer_deposit_bps'])) return intdiv($car['total_cents'] * $car['customer_deposit_bps'] + 5000, 10000);
+        if (isset($car['customer_deposit_bps'])) {
+            return intdiv(BookingOptions::paymentBase($car, 'depositable') * $car['customer_deposit_bps'] + 5000, 10000);
+        }
         if (isset($car['commission_bps'])) return intdiv($car['total_cents'] * $car['commission_bps'] + 5000, 10000);
         $base = $car['rental_total_cents'] ?? $car['total_cents'];
         return intdiv($base * 2000 + 5000, 10000)

@@ -16,5 +16,11 @@
 <div class="amr-actions">@if($booking->rental && !$booking->rental->trashed())@can('view', $booking->rental)<a class="amr-button" href="{{ route('rentals.show', $booking->rental_id) }}">Apri noleggio n. {{ $booking->rental->display_number }}</a>@endcan @endif<a class="amr-link" href="{{ $booking->confirmationUrl() }}" target="_blank" rel="noopener noreferrer">Riepilogo cliente</a><a class="amr-link" href="{{ $booking->pdfUrl(true) }}">Scarica PDF</a></div>
 @if($booking->payment_status === 'pending')<p class="app-muted">L’auto è temporaneamente riservata; il pagamento non è ancora confermato. La scadenza viene riconciliata con Stripe prima di liberare l’auto.</p>@endif
 @if($booking->payment_status === 'review')<p class="amr-notice">Pagamento da verificare con AMD Rent: la prenotazione non va modificata prima della riconciliazione.</p>@include('amd-rent.payment-review')@endif
+@if(isset($booking->quote_snapshot['standard_protection']) || !empty($booking->quote_snapshot['selected_extras']))
+    <details class="amr-disclosure">
+        <summary>Protezione ed extra</summary>
+        @include('public-cars.partials.agreed-options', ['terms' => $booking->quote_snapshot])
+    </details>
+@endif
 <details class="amr-disclosure"><summary>Condividi il riepilogo</summary><div class="amr-actions"><a class="amr-link" href="{{ $booking->emailComposeUrl() }}">Prepara email</a>@if($booking->whatsappComposeUrl())<a class="amr-link" href="{{ $booking->whatsappComposeUrl() }}" target="_blank" rel="noopener noreferrer">Prepara WhatsApp</a>@endif<a class="amr-link" href="{{ $booking->pdfUrl() }}" target="_blank" rel="noopener noreferrer">Stampa riepilogo</a></div><p>Controlla il messaggio prima di inviarlo. Il PDF va allegato manualmente.</p></details>
 </article>@empty<section class="amr-panel app-surface"><p>Nessuna prenotazione corrisponde alla selezione.</p></section>@endforelse{{ $bookings->links() }}</div></x-app-layout>

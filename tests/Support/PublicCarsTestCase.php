@@ -47,6 +47,9 @@ abstract class PublicCarsTestCase extends TestCase
             $t->string('segment')->nullable(); $t->string('fuel_type')->nullable(); $t->string('transmission')->nullable();
             $t->integer('seats')->nullable(); $t->integer('year')->nullable();
             $t->integer('lt_rental_monthly_cents')->default(80000); $t->boolean('is_active')->default(true);
+            foreach (['rca', 'kasko', 'cristalli', 'furto'] as $coverage) {
+                $t->unsignedBigInteger('insurance_'.$coverage.'_cents')->nullable();
+            }
             $t->softDeletes(); $t->timestamps();
         });
         Schema::create('vehicle_pricelists', function (Blueprint $t) {
@@ -92,7 +95,7 @@ abstract class PublicCarsTestCase extends TestCase
             $t->dateTime('started_at'); $t->dateTime('ended_at')->nullable(); $t->timestamps();
         });
         Schema::create('media', function (Blueprint $t) {
-            $t->id(); $t->morphs('model'); $t->string('collection_name'); $t->string('name');
+            $t->id(); $t->uuid('uuid')->nullable(); $t->morphs('model'); $t->string('collection_name'); $t->string('name');
             $t->string('file_name'); $t->string('mime_type'); $t->string('disk');
             $t->string('conversions_disk')->default('public'); $t->unsignedBigInteger('size')->default(0);
             foreach (['manipulations','custom_properties','generated_conversions','responsive_images'] as $field) $t->text($field)->default('{}');

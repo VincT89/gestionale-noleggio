@@ -40,6 +40,7 @@ abstract class PublicBookingTestCase extends PublicCarsTestCase
         (require database_path('migrations/2026_10_07_120100_add_total_commission_to_amd_rent_settings.php'))->up();
         (require database_path('migrations/2026_11_05_120000_set_default_amd_rent_commission_to_fifteen_percent.php'))->up();
         (require database_path('migrations/2026_09_25_100000_create_public_customer_accounts.php'))->up();
+        (require database_path('migrations/2026_11_17_120000_create_amd_rent_options_table.php'))->up();
         // Preserve coverage of previously accepted pay-at-pickup bookings. Stripe has a dedicated suite.
         config(['amd_rent.payment_mode' => 'pickup']);
         foreach ([2 => 'rentals.viewAny', 3 => 'rentals.view', 4 => 'rentals.create'] as $id => $name) {

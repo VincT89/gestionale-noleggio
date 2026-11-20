@@ -11,14 +11,18 @@
 @php
     $requestedCar = $case->booking_context['car'];
     $deliveryTotal = $case->booking?->total_cents ?? ($case->status === 'quoted'
-        ? ($requestedCar['rental_total_cents'] ?? $requestedCar['total_cents']) + $case->delivery_fee_cents
+        ? \App\Services\AmdRent\DeliveryQuotes::proposedTotal($requestedCar, $case->delivery_fee_cents)
         : $requestedCar['total_cents']);
     $deliveryTotalLabel = $case->booking ? 'Totale prenotato dal cliente'
         : ($case->status === 'quoted' ? 'Totale della proposta al cliente' : 'Totale richiesto dal cliente');
 @endphp
 <p>{{ $deliveryTotalLabel }}: <strong>{{ $money($deliveryTotal) }}</strong>.
-@if(isset($case->booking_context['car']['commission_bps'])) Commissione AMD Rent sul totale, cauzione esclusa: <strong>{{ \App\Services\AmdRent\Commission::label($case->booking_context['car']['commission_bps']) }}</strong>.
+@if(isset($case->booking_context['car']['commission_bps'])) Commissione AMD Rent su noleggio, consegna ed extra commissionabili: <strong>{{ \App\Services\AmdRent\Commission::label($case->booking_context['car']['commission_bps']) }}</strong>.
 @else Questa richiesta mantiene il precedente calcolo delle commissioni. @endif</p>
+@include('public-cars.partials.agreed-options', ['terms' => $case->booking?->quote_snapshot ?? $requestedCar])
+@if(!$case->booking && !empty($requestedCar['selected_extras']))
+    <p>Prima di confermare la consegna verifica la disponibilità degli extra richiesti.</p>
+@endif
 @endif
 @if($case->booking)<p><a class="amr-button" href="{{ route('public-bookings.index', ['q' => $case->booking->reference]) }}">Apri prenotazione {{ $case->booking->reference }}</a></p>@endif</header>
 @if(app(\App\Services\AmdRent\DeliveryBookingRecovery::class)->canReopen($case))

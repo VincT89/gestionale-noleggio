@@ -1,12 +1,20 @@
 <?php
 
-use App\Http\Controllers\{AmdRentController, AmdRentEnquiryController};
+use App\Http\Controllers\{AmdRentController, AmdRentEnquiryController, AmdRentOptionsController};
+use App\Models\AmdRentOption;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(\App\Http\Middleware\RequireModernEra::class)->prefix('amd-rent')->name('amd-rent.')->group(function () {
     Route::get('/', [AmdRentController::class, 'index'])->name('index');
     Route::get('/impostazioni', [AmdRentController::class, 'settings'])->name('settings');
     Route::put('/impostazioni', [AmdRentController::class, 'saveSettings'])->name('settings.save');
+    Route::get('/protezioni-extra', [AmdRentOptionsController::class, 'index'])->name('options.index');
+    Route::get('/protezioni-extra/{organization}/nuovo/{kind}', [AmdRentOptionsController::class, 'create'])
+        ->whereNumber('organization')->whereIn('kind', array_keys(AmdRentOption::KINDS))->name('options.create');
+    Route::post('/protezioni-extra/{organization}/nuovo/{kind}', [AmdRentOptionsController::class, 'store'])
+        ->whereNumber('organization')->whereIn('kind', array_keys(AmdRentOption::KINDS))->name('options.store');
+    Route::get('/protezioni-extra/{option}', [AmdRentOptionsController::class, 'edit'])->whereNumber('option')->name('options.edit');
+    Route::put('/protezioni-extra/{option}', [AmdRentOptionsController::class, 'update'])->whereNumber('option')->name('options.update');
     Route::put('/prenotazioni/{booking}/verifica', [\App\Http\Controllers\StripeBookingController::class, 'review'])->whereNumber('booking')->name('bookings.review');
     Route::get('/pratiche', [AmdRentEnquiryController::class, 'index'])->name('enquiries.index');
     Route::get('/pratiche/nuova', [AmdRentEnquiryController::class, 'create'])->name('enquiries.create');

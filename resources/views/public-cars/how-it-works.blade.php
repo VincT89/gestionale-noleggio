@@ -34,7 +34,7 @@
     @else
     <h2 id="conferma-e-ritiro">Il {{ \App\Services\AmdRent\CustomerDeposit::label() }} online, il resto al ritiro</h2>
     <p>Prenoti senza creare un account: inserisci i recapiti e controlla il riepilogo. Verifichiamo nuovamente prezzo e disponibilità prima del pagamento online, gestito da Stripe. Il pagamento riuscito conferma la prenotazione.</p>
-    <p>Conserva il riferimento e scarica il PDF della prenotazione. Versi ad AMD Rent il {{ \App\Services\AmdRent\CustomerDeposit::label() }} del totale online e paghi il saldo al noleggiatore al ritiro; il noleggiatore verifica i documenti del conducente e completa il contratto prima della consegna.</p>
+    <p>Conserva il riferimento e scarica il PDF della prenotazione. L’acconto online è il {{ \App\Services\AmdRent\CustomerDeposit::label() }} degli importi indicati per il pagamento online nel riepilogo. Il saldo si paga al noleggiatore al ritiro, quando verifica i documenti del conducente e completa il contratto.</p>
     @endif
     <h2 id="consegna-personalizzata">Consegna e ritiro dove ti servono</h2>
     <p>Il prezzo comprende noleggio, consegna e ritiro: trovi un unico totale e la tariffa media giornaliera. I giorni sono periodi di 24 ore; una frazione aggiuntiva conta come un giorno. La cauzione resta separata.</p>
