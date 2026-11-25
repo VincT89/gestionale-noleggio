@@ -20,7 +20,7 @@
                     <label class="amd-option-choice" for="booking-extra-{{ $extra['id'] }}">
                         <input id="booking-extra-{{ $extra['id'] }}" type="checkbox" name="extras[]" value="{{ $extra['id'] }}"
                                data-extra-price="{{ $extra['total_cents'] }}" data-extra-depositable="{{ $extra['depositable'] ? '1' : '0' }}"
-                               @checked(in_array($extra['id'], $selectedIds, true))>
+                               @checked(in_array($extra['id'], $selectedIds, true)) @disabled($readonlyOptions ?? false)>
                         <span>
                             <strong>{{ $extra['name'] }}</strong>
                             <span class="amd-option-price">
@@ -64,6 +64,8 @@
                 </div>
             @endforeach
         </fieldset>
-        <noscript><p>Se selezioni degli extra, vedrai il totale aggiornato prima di confermare il pagamento o la richiesta.</p></noscript>
+        @unless($readonlyOptions ?? false)
+            <noscript><p>Se selezioni degli extra, vedrai il totale aggiornato prima di confermare il pagamento o la richiesta.</p></noscript>
+        @endunless
     @endif
 </section>

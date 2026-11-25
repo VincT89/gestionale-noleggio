@@ -48,6 +48,10 @@
             @else<p>@unless($customPickup)Ritiro: @endunless<strong>{{ $car['location'] }}</strong><br>{{ $car['address'] }}<br>{{ $car['city'] }}</p>@endif
             @unless($customPickup)<p>Riconsegna: {{ $car['location'] }}.</p>@endunless
             @if($car['description'])<h2>Informazioni sull’offerta</h2><p class="amd-description">{{ $car['description'] }}</p>@endif
+            @if(!empty($car['is_demo']) && isset($bookingOptions))
+                <p>Anteprima delle protezioni: importi e condizioni dimostrativi. Le opzioni sono mostrate per confronto; prenotazioni e pagamenti restano disabilitati.</p>
+                @include('public-cars.partials.booking-options', ['readonlyOptions' => true])
+            @endif
         </section>
         <aside class="amd-quote" aria-labelledby="quote-title"><h2 id="quote-title">Il tuo noleggio</h2>
             <dl class="amd-quote-lines"><div><dt>Ritiro</dt><dd>{{ \Carbon\CarbonImmutable::parse($filters['pickup_at'])->format('d/m/Y H:i') }}</dd></div><div><dt>Riconsegna</dt><dd>{{ \Carbon\CarbonImmutable::parse($filters['return_at'])->format('d/m/Y H:i') }}</dd></div><div><dt>Durata tariffata</dt><dd>{{ $car['days'] }} {{ $car['days'] === 1 ? 'giorno' : 'giorni' }}</dd></div></dl>

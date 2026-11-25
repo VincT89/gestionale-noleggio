@@ -153,6 +153,7 @@ class PublicCarSearchController extends Controller
 
         return response()->view('public-cars.show', [
             'car' => $result, 'filters' => $request->validated(), 'preview' => $preview,
+            'bookingOptions' => !empty($result['is_demo']) ? app(\App\Services\AmdRent\BookingOptions::class)->catalog($result) : null,
             'returnPoint' => !empty($filters['request_custom_return'])
                 ? app(\App\Services\Geocoding\PlaceSelection::class)->resolve($filters['return_place'], $filters['return_address'], 'public-return') : null,
             'routePrefix' => $preview ? 'public-cars.preview' : 'public-cars', 'returnPlaces' => $returnPlaces,

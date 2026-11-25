@@ -127,7 +127,8 @@ class PublicVehicleSearch
     {
         // Pick the cheapest first, regardless of the customer's final display ordering.
         $cheapest = $this->sortByPrice($offers, 'price_asc')->unique(fn (array $offer) =>
-            $offer['product_id'] !== null ? 'product:'.$offer['product_id'] : 'offer:'.$offer['id']);
+            !empty($offer['is_demo']) ? 'demo:'.$offer['vehicle_id']
+                : ($offer['product_id'] !== null ? 'product:'.$offer['product_id'] : 'offer:'.$offer['id']));
 
         return $this->sortByPrice($cheapest, $sort);
     }
