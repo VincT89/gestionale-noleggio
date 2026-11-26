@@ -11,9 +11,11 @@ use RuntimeException;
 
 class PrepareAmdRentDemoInsurance extends Command
 {
+    private const DEMO_DESCRIPTION = 'Esempio dimostrativo di coperture e franchigie. Non è un’offerta assicurativa.';
+    private const CHECKOUT_NOTE = 'DEMO: coperture, accessori ed età configurati (26/11/2026).';
     protected $signature = 'amd-rent:demo-insurance {renter? : ID del noleggiatore DEMO da aggiornare} {--min-cars=3 : Numero minimo di auto demo, da 1 a 10} {--apply : Aggiunge le sole copie e protezioni demo mancanti}';
 
-    protected $description = 'Conta e completa le auto demo, con Standard e AMD Plus modificabili in ERA. Senza --apply non modifica dati.';
+    protected $description = 'Completa la demo con Kasko, supplementi per età e accessori modificabili in ERA. Senza --apply non modifica dati.';
 
     public function handle(): int
     {
@@ -44,14 +46,17 @@ class PrepareAmdRentDemoInsurance extends Command
                     $demo->where('status', 'active')->count(), $prices->count() - $demo->count()];
             }
             $this->table(['ID DEMO', 'Noleggiatore', 'Auto demo', 'Listini attivi', 'Listini non demo o da verificare'], $rows);
-            $this->line('Obiettivo: almeno '.$minimum.' auto demo. Le eventuali nuove copie riprendono un’auto demo attiva, con targa distinta e tariffa dimostrativa di 100 EUR/giorno. Le auto esistenti non vengono modificate.');
+            $this->line('Obiettivo: almeno '.$minimum.' auto demo. Le eventuali nuove copie riprendono un’auto demo attiva, con targa distinta e tariffa dimostrativa di 100 EUR/giorno. Tariffe, chilometri e cauzioni già configurati restano invariati.');
             $this->line('Esempio: Standard RCA 1.500 EUR e furto 3.000 EUR; Plus RCA 500 EUR e furto 1.500 EUR. Tariffa auto con Plus: moltiplicatore 1,88.');
+            $this->line('Nuovi esempi demo: Kasko base 1.000 EUR se mancante, Standard ×3 e Plus ×1,5; età 18–21 anni +10 EUR/giorno, oltre 21 anni +0 EUR.');
+            $this->line('Accessori demo: catene da neve 10 EUR/noleggio e seggiolino 5 EUR/giorno. Tutti gli importi sono dimostrativi e modificabili dall’Admin in ERA.');
             if (!$this->option('apply')) {
                 $this->info('Solo lettura. Per aggiungere i dati dimostrativi: amd-rent:demo-insurance ID --apply');
                 return self::SUCCESS;
             }
-            if (!Schema::hasTable('amd_rent_options') || !Schema::hasColumn('amd_rent_options', 'price_multiplier_bps')) {
-                throw new RuntimeException('La migrazione delle protezioni non è completa. Verificarla prima di aggiornare la demo.');
+            if (!Schema::hasTable('amd_rent_options') || !Schema::hasColumn('amd_rent_options', 'price_multiplier_bps')
+                || !Schema::hasColumn('amd_rent_options', 'is_available') || !Schema::hasColumn('vehicle_pricelists', 'driver_age_supplements')) {
+                throw new RuntimeException('Le migrazioni di protezioni e prenotazione non sono complete. Verificarle prima di aggiornare la demo.');
             }
             $result = DB::transaction(function () use ($id, $minimum) {
                 /** The same organization lock serializes this command with the options editor. */
@@ -66,8 +71,8 @@ class PrepareAmdRentDemoInsurance extends Command
                 $addedCars = $this->completeCars($organization, $prices, $minimum);
                 $created = 0;
                 foreach ([
-                    'standard' => ['name' => 'Protezione standard', 'coverage' => ['rca' => 150000, 'furto_incendio' => 300000]],
-                    'plus' => ['name' => 'AMD Plus', 'coverage' => ['rca' => 50000, 'furto_incendio' => 150000],
+                    'standard' => ['name' => 'Protezione standard', 'coverage' => ['rca' => 150000, 'furto_incendio' => 300000, 'kasko' => null], 'franchise_multipliers' => ['kasko' => 30000]],
+                    'plus' => ['name' => 'AMD Plus', 'coverage' => ['rca' => 50000, 'furto_incendio' => 150000, 'kasko' => null], 'franchise_multipliers' => ['kasko' => 15000],
                         'protection_type' => 'reduction', 'price_unit' => 'multiplier', 'price_multiplier_bps' => 18800,
                         'depositable' => true, 'commissionable' => true],
                 ] as $kind => $values) {
@@ -75,18 +80,69 @@ class PrepareAmdRentDemoInsurance extends Command
                     $option = AmdRentOption::firstOrCreate([
                         'organization_id' => $organization->id, 'kind' => $kind, 'vehicle_id' => null, 'vehicle_product_id' => null,
                     ], $values + ['published' => true,
-                        'description' => 'Esempio dimostrativo di coperture e franchigie. Non è un’offerta assicurativa.',
+                        'description' => self::DEMO_DESCRIPTION,
                         'exclusions' => 'Condizioni simulate per la presentazione. Nessuna copertura reale viene attivata.']);
                     $created += (int) $option->wasRecentlyCreated;
                 }
-                return ['options' => $created, 'cars' => $addedCars];
+                $prices = VehiclePricelist::where('renter_org_id', $organization->id)->with('vehicle')->orderBy('id')->lockForUpdate()->get();
+                $checkout = $this->completeCheckout($organization, $prices);
+                return ['options' => $created, 'cars' => $addedCars] + $checkout;
             });
-            $this->info('Auto demo aggiunte: '.$result['cars'].'. Configurazioni demo aggiunte: '.$result['options'].'. Configurazioni esistenti, auto originali e listini conservati. Prenotazioni e pagamenti demo restano disabilitati.');
+            $this->info('Auto demo aggiunte: '.$result['cars'].'. Configurazioni demo aggiunte: '.$result['options'].'. Tariffe, chilometri, cauzioni e auto originali conservati. Prenotazioni e pagamenti demo restano disabilitati.');
+            $this->info('Listini demo completati: '.$result['prices'].'. Protezioni demo precedenti completate con Kasko: '.$result['coverages'].'. Accessori demo aggiunti: '.$result['services'].'.');
             return self::SUCCESS;
         } catch (RuntimeException $exception) {
             $this->error($exception->getMessage());
             return self::FAILURE;
         }
+    }
+
+    private function completeCheckout(Organization $organization, \Illuminate\Support\Collection $prices): array
+    {
+        $count = 0;
+        foreach ($prices as $price) {
+            if (str_contains((string) $price->notes, self::CHECKOUT_NOTE)) continue;
+            $notes = trim((string) $price->notes."\n".self::CHECKOUT_NOTE);
+            if (mb_strlen($notes) > 255) throw new RuntimeException('Note troppo lunghe sul listino demo '.$price->id.'. Nessuna modifica applicata.');
+            /** The marker prevents a later run from resetting supplements deliberately cleared by the Admin. */
+            if ($price->driver_age_supplements === null && $price->version === 1) {
+                $price->driver_age_supplements = ['18_21' => ['amount_cents' => 1000, 'unit' => 'day'],
+                    'over_21' => ['amount_cents' => 0, 'unit' => 'rental']];
+            }
+            $price->notes = $notes;
+            $price->save();
+            $vehicle = Vehicle::whereKey($price->vehicle_id)->lockForUpdate()->firstOrFail();
+            if (!DemoMap::isVehicle($vehicle, $organization->id)) throw new RuntimeException('Veicolo non demo: operazione annullata.');
+            foreach (['insurance_rca_cents' => 50000, 'insurance_furto_cents' => 150000, 'insurance_kasko_cents' => 100000] as $field => $value) {
+                if ($vehicle->{$field} === null) $vehicle->{$field} = $value;
+            }
+            if ($vehicle->isDirty()) $vehicle->save();
+            $count++;
+        }
+        $coverages = 0;
+        foreach (['standard' => 30000, 'plus' => 15000] as $kind => $factor) {
+            $option = AmdRentOption::where('organization_id', $organization->id)->where('kind', $kind)
+                ->whereNull('vehicle_id')->whereNull('vehicle_product_id')->lockForUpdate()->first();
+            /** Only untouched records created by the earlier demo command receive the new Kasko rule. */
+            if (!$option || $option->revision !== 1 || $option->description !== self::DEMO_DESCRIPTION
+                || array_key_exists('kasko', $option->coverage ?? [])) continue;
+            $option->coverage = ($option->coverage ?? []) + ['kasko' => null];
+            $option->franchise_multipliers = ($option->franchise_multipliers ?? []) + ['kasko' => $factor];
+            $option->revision++;
+            $option->save();
+            $coverages++;
+        }
+        $services = 0;
+        foreach (['Catene da neve — demo' => ['price_cents' => 1000, 'price_unit' => 'rental'],
+            'Seggiolino — demo' => ['price_cents' => 500, 'price_unit' => 'day']] as $name => $values) {
+            $option = AmdRentOption::firstOrCreate(['organization_id' => $organization->id, 'kind' => 'service',
+                'name' => $name, 'vehicle_id' => null, 'vehicle_product_id' => null], $values + [
+                    'published' => true, 'is_available' => true, 'depositable' => true, 'commissionable' => true,
+                    'description' => 'Accessorio dimostrativo. Prezzo e disponibilità sono modificabili dall’Admin in ERA.',
+                    'exclusions' => 'Esempio per la presentazione: nessun servizio reale viene prenotato.']);
+            $services += (int) $option->wasRecentlyCreated;
+        }
+        return ['prices' => $count, 'coverages' => $coverages, 'services' => $services];
     }
 
     private function completeCars(Organization $organization, \Illuminate\Support\Collection $prices, int $minimum): int

@@ -118,7 +118,7 @@ class PublicPortalDomainTest extends PublicBookingTestCase
         $this->post(route('public-cars.booking.store', 1), $this->period() + [
             'checkout_token' => $page->viewData('checkoutToken'),
             'first_name' => 'Cliente', 'last_name' => 'Dimostrativo',
-            'email' => 'cliente@example.test', 'phone' => '+39 320 0000000', 'accept_summary' => '1',
+            'email' => 'cliente@example.test', 'phone' => '+39 320 0000000', ...$this->bookingDetailsFixture(), 'accept_summary' => '1',
         ])->assertStatus(303);
         return PublicBooking::firstOrFail();
     }

@@ -26,6 +26,7 @@
         </div>
         <div class="amd-field"><label for="pickup-at">Ritiro</label><input id="pickup-at" name="pickup_at" type="datetime-local" required value="{{ $value('pickup_at', now()->addDay()->setTime(10, 0)->format('Y-m-d\TH:i')) }}" min="{{ now()->format('Y-m-d\TH:i') }}" @if($errors->has('pickup_at')) aria-invalid="true" @endif></div>
         <div class="amd-field"><label for="return-at">Riconsegna</label><input id="return-at" name="return_at" type="datetime-local" required value="{{ $value('return_at', now()->addDays(4)->setTime(10, 0)->format('Y-m-d\TH:i')) }}" min="{{ now()->format('Y-m-d\TH:i') }}" @if($errors->has('return_at')) aria-invalid="true" @endif></div>
+        <div class="amd-field"><label for="search-driver-age">Età del conducente</label><select id="search-driver-age" name="driver_age_band" required><option value="">Scegli la fascia di età</option>@foreach(\App\Services\AmdRent\DriverAgePricing::BANDS as $band => $label)<option value="{{ $band }}" @selected($value('driver_age_band') === $band)>{{ $label }}</option>@endforeach</select><small>Alla data del ritiro. Gli eventuali supplementi sono inclusi nel prezzo.</small></div>
         <button class="amd-button amd-search-submit" type="submit" data-search-submit>Cerca auto</button>
     </div>
     <div class="amd-search-foot">

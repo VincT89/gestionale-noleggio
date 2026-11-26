@@ -13,9 +13,12 @@
     </div>
 
     @if($bookingOptions['extras'] !== [])
+        @foreach(['plus' => 'Protezione aggiuntiva', 'service' => 'Accessori e servizi aggiuntivi'] as $extraKind => $groupLabel)
+        @php $groupExtras = array_filter($bookingOptions['extras'], fn ($entry) => $entry['kind'] === $extraKind); @endphp
+        @if($groupExtras !== [])
         <fieldset class="amd-options-list">
-            <legend>Aggiungi i servizi che ti servono</legend>
-            @foreach($bookingOptions['extras'] as $extra)
+            <legend>{{ $groupLabel }}</legend>
+            @foreach($groupExtras as $extra)
                 <div class="amd-option-panel">
                     <label class="amd-option-choice" for="booking-extra-{{ $extra['id'] }}">
                         <input id="booking-extra-{{ $extra['id'] }}" type="checkbox" name="extras[]" value="{{ $extra['id'] }}"
@@ -36,7 +39,7 @@
                         </span>
                     </label>
                     @if($extra['price_unit'] === 'multiplier')
-                        <p>Tariffa auto con AMD Plus <strong>{{ $money(($car['rental_total_cents'] ?? $car['total_cents']) + $extra['total_cents']) }}</strong> per il periodo.</p>
+                        <p>Tariffa auto con AMD Plus <strong>{{ $money(($car['vehicle_rental_total_cents'] ?? $car['rental_total_cents'] ?? $car['total_cents']) + $extra['total_cents']) }}</strong> per il periodo.</p>
                     @endif
                     @if($extra['protection_type'] === 'reduction')
                         <table class="amd-coverage-comparison">
@@ -64,6 +67,8 @@
                 </div>
             @endforeach
         </fieldset>
+        @endif
+        @endforeach
         @unless($readonlyOptions ?? false)
             <noscript><p>Se selezioni degli extra, vedrai il totale aggiornato prima di confermare il pagamento o la richiesta.</p></noscript>
         @endunless

@@ -31,7 +31,7 @@ class PublicBookingController extends Controller
         $scope = $this->scope($request, $preview)->whereKey($pricelist);
         abort_unless((clone $scope)->exists(), 404);
         $browseFilters = $request->validated();
-        $period = array_filter($request->safe()->only(['pickup_at', 'return_at', 'place_id']), fn ($value) => $value !== null);
+        $period = array_filter($request->safe()->only(['pickup_at', 'return_at', 'place_id', 'driver_age_band']), fn ($value) => $value !== null);
         $filters = $period + $request->safe()->only(['city', 'pickup_group', 'request_delivery', 'delivery_address', 'delivery_place', 'request_custom_return', 'return_address', 'return_place']);
         $customReturn = !empty($filters['request_custom_return']);
         // Both requested points must belong to the same configured service area.
@@ -49,6 +49,10 @@ class PublicBookingController extends Controller
             $segment = (clone $scope)->with('vehicle.product')->first()?->vehicle?->product?->name;
             if ($segment) $browseFilters['segment'] = $segment;
             return $this->page('public-cars.show', ['car' => null, 'filters' => $browseFilters, 'preview' => $preview, 'routePrefix' => $prefix]);
+        }
+        if (!empty($car['driver_age_required'])) {
+            return redirect()->route($prefix.'.show', ['pricelist' => $pricelist] + $browseFilters)
+                ->withErrors(['driver_age_band' => 'Indica l’età del conducente per conoscere il prezzo completo prima di prenotare.']);
         }
 
         // Resolve the actual service point without narrowing the original search links.
@@ -107,7 +111,9 @@ class PublicBookingController extends Controller
         }
         // MySQL reorders JSON object keys in saved delivery proposals. Compare the same
         // fields and types without treating their storage order as a changed period.
-        $submittedPeriod = array_filter($request->safe()->only(['pickup_at', 'return_at', 'place_id']), fn ($value) => $value !== null);
+        $periodFields = ['pickup_at', 'return_at', 'place_id'];
+        if (isset($intent['period']['driver_age_band'])) $periodFields[] = 'driver_age_band';
+        $submittedPeriod = array_filter($request->safe()->only($periodFields), fn ($value) => $value !== null);
         $issuedPeriod = $intent['period'] ?? [];
         ksort($submittedPeriod);
         if (is_array($issuedPeriod)) ksort($issuedPeriod);
@@ -117,6 +123,12 @@ class PublicBookingController extends Controller
             throw ValidationException::withMessages(['checkout_token' => 'La sessione, il luogo o le date sono cambiati. Riapri il riepilogo e riprova.']);
         }
         $contact = $request->safe()->only(['first_name', 'last_name', 'email', 'phone']);
+        $intent['booking_details'] = $request->safe()->only(['booking_customer_type', 'company_name', 'tax_code', 'vat_number',
+            'billing_address', 'billing_city', 'billing_postal_code', 'billing_country', 'sdi_code', 'pec', 'driver_age_band', 'birthdate']);
+        $intent['booking_details']['driver_age_at_pickup'] = \App\Services\AmdRent\DriverAgePricing::ageAtPickup(
+            $request->validated('birthdate'), $request->validated('pickup_at'));
+        $intent['booking_details']['privacy'] = ['version' => config('public_privacy.updated_at'),
+            'url' => config('public_cars.privacy_url') ?: route('public-site.privacy'), 'accepted_at' => now()->toIso8601String()];
         $extraIds = array_map('intval', $request->validated('extras', []));
         if (!empty($intent['delivery_request_id']) && $extraIds !== []) {
             throw ValidationException::withMessages(['extras' => 'Gli extra fanno parte della proposta di consegna concordata. Torna alla proposta per controllarli.']);

@@ -28,7 +28,7 @@ class PublicAutomaticCatalogTest extends PublicBookingTestCase
         $period = $this->period(['place_id' => PublicDeliveryLocation::where('organization_id', 1)->value('public_pickup_place_id')]);
         $page = $this->get(route('public-cars.booking.create', ['pricelist' => $id] + $period))->assertOk();
         return $period + ['checkout_token' => $page->viewData('checkoutToken'), 'first_name' => 'Cliente',
-            'last_name' => 'Dimostrativo', 'email' => 'automatico@example.test', 'phone' => '0000000000', 'accept_summary' => 1];
+            'last_name' => 'Dimostrativo', 'email' => 'automatico@example.test', 'phone' => '0000000000', ...$this->bookingDetailsFixture(), 'accept_summary' => 1];
     }
 
     public function test_places_appear_without_any_fleet_pricelist_or_offer_and_are_unique(): void

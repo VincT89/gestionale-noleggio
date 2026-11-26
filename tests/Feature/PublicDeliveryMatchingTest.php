@@ -38,7 +38,7 @@ class PublicDeliveryMatchingTest extends PublicBookingTestCase
         $period = $this->period(['place_id' => $place]);
         $page = $this->get(route('public-cars.booking.create', ['pricelist' => 1] + $period))->assertOk();
         return $period + ['checkout_token' => $page->viewData('checkoutToken'), 'first_name' => 'Cliente', 'last_name' => 'Dimostrativo',
-            'email' => 'matching@example.test', 'phone' => '0000000000', 'accept_summary' => 1];
+            'email' => 'matching@example.test', 'phone' => '0000000000', ...$this->bookingDetailsFixture(), 'accept_summary' => 1];
     }
 
     public function test_matching_uses_served_place_not_city_of_the_renters_office(): void

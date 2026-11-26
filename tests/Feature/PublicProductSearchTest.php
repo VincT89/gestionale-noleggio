@@ -130,7 +130,7 @@ class PublicProductSearchTest extends PublicBookingTestCase
         $this->results()->assertViewHas('results', fn ($rows) => $rows->pluck('id')->all() === [2]);
         $page = $this->get(route('public-cars.booking.create', ['pricelist' => 2] + $this->period()))->assertOk();
         $form = $this->period() + ['checkout_token' => $page->viewData('checkoutToken'), 'first_name' => 'Cliente', 'last_name' => 'Dimostrativo',
-            'email' => 'prodotto@example.test', 'phone' => '0000000000', 'accept_summary' => 1, 'vehicle_id' => 1, 'organization_id' => 1];
+            'email' => 'prodotto@example.test', 'phone' => '0000000000', ...$this->bookingDetailsFixture(), 'accept_summary' => 1, 'vehicle_id' => 1, 'organization_id' => 1];
         $this->post(route('public-cars.booking.store', 2), $form)->assertStatus(303);
         $booking = PublicBooking::sole();
         $this->assertSame(2, (int) $booking->rental->vehicle_id);

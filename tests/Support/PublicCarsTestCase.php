@@ -137,6 +137,9 @@ abstract class PublicCarsTestCase extends TestCase
             'plate' => 'TESTPLATE'.$id, 'vin' => 'PRIVATE-VIN-'.$id, 'make' => 'MarcaTest', 'model' => 'ModelloTest '.$id,
             'seats' => 5, 'fuel_type' => 'petrol', 'transmission' => 'manual', 'segment' => 'B', 'year' => 2024,
         ], $vehicle));
+        if (isset($price['driver_age_supplements']) && is_array($price['driver_age_supplements'])) {
+            $price['driver_age_supplements'] = json_encode($price['driver_age_supplements'], JSON_THROW_ON_ERROR);
+        }
         DB::table('vehicle_pricelists')->insert(array_replace(['id' => $id, 'vehicle_id' => $id, 'renter_org_id' => $organization], $price));
         $result = PublicRentalOffer::create(array_replace([
             'vehicle_id' => $id, 'organization_id' => $organization, 'location_id' => $organization,
@@ -159,5 +162,12 @@ abstract class PublicCarsTestCase extends TestCase
     protected function period(array $overrides = []): array
     {
         return array_replace(['pickup_at' => '2026-09-10T10:00', 'return_at' => '2026-09-13T10:00'], $overrides);
+    }
+
+    protected function bookingDetailsFixture(): array
+    {
+        return ['booking_customer_type' => 'private', 'driver_age_band' => 'over_21', 'birthdate' => '1980-01-01', 'accept_privacy' => 1,
+            'tax_code' => 'RSSMRA80A01H501U', 'billing_address' => 'Indirizzo dimostrativo',
+            'billing_city' => 'Bari', 'billing_postal_code' => '70100', 'billing_country' => 'IT'];
     }
 }

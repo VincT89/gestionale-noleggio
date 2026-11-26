@@ -134,6 +134,7 @@ class AmdRentOptionsController extends Controller
         $rules += $kind === 'service' ? [
             'name' => ['required', 'string', 'max:100'],
             'covers_second_driver' => ['nullable', 'boolean'],
+                'is_available' => ['nullable', 'boolean'],
         ] : [];
 
         $data = $request->validate($rules, [], [
@@ -188,6 +189,7 @@ class AmdRentOptionsController extends Controller
                 'depositable' => (bool) ($data['depositable'] ?? false),
                 'commissionable' => (bool) ($data['commissionable'] ?? false),
                 'covers_second_driver' => $driver,
+                'is_available' => $kind !== 'service' || (bool) ($data['is_available'] ?? true),
                 'published' => $published,
                 'revision' => ($option->revision ?? 0) + 1,
             ])->save();

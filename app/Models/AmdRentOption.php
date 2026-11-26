@@ -37,11 +37,13 @@ class AmdRentOption extends Model
         'coverage', 'franchise_multipliers', 'protection_type', 'provider', 'terms_url',
         'price_cents', 'price_multiplier_bps', 'price_unit', 'depositable',
         'commissionable', 'covers_second_driver', 'published', 'revision',
+        'is_available',
     ];
 
     protected $casts = [
         'coverage' => 'array',
         'franchise_multipliers' => 'array',
+        'is_available' => 'boolean',
         'price_cents' => 'integer',
         'price_multiplier_bps' => 'integer',
         'depositable' => 'boolean',

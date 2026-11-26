@@ -21,3 +21,7 @@
         @endforeach
     </section>
 @endif
+@if(($showAmounts ?? true) && isset($terms['driver_age']))
+    @include('public-cars.partials.driver-age-summary', ['car' => $terms])
+@endif
+@include('public-cars.partials.booking-details', ['details' => $terms['booking_details'] ?? []])

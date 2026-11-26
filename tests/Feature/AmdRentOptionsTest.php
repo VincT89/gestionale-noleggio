@@ -291,7 +291,7 @@ class AmdRentOptionsTest extends PublicBookingTestCase
         return $page->viewData('filters') + [
             'checkout_token' => $page->viewData('checkoutToken'),
             'first_name' => 'Cliente', 'last_name' => 'Di prova', 'email' => 'cliente@example.test',
-            'phone' => '+390800000000', 'accept_summary' => 1,
+            'phone' => '+390800000000', ...$this->bookingDetailsFixture(), 'accept_summary' => 1,
         ];
     }
 

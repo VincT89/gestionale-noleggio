@@ -46,6 +46,7 @@ class PublicEnquiryController extends Controller
         if ($car && !empty($intent['return_address'])) $car['return_address'] = $intent['return_address'];
         if ($car && !empty($intent['return_destination'])) $car['return_destination'] = $intent['return_destination'];
         app(PublicBookingService::class)->assertQuote($intent, $car);
+        $car['booking_details'] = $intent['booking_details'] ?? [];
         $car = app(BookingOptions::class)->apply($car, $intent);
         abort_unless($car['custom_delivery_enabled'], 422, 'Il noleggiatore non accetta richieste di consegna personalizzata per questo luogo.');
         $case = AmdRentEnquiry::firstOrCreate(['request_hash' => $hash], [
@@ -123,6 +124,7 @@ class PublicEnquiryController extends Controller
         $request->session()->put('public_booking_checkouts', array_slice($known, -20, null, true));
         return $this->page('public-cars.booking', ['car' => $car, 'filters' => $context['period'], 'preview' => false, 'routePrefix' => 'public-cars',
             'contact' => $context['contact'],
+            'bookingDetails' => $context['car']['booking_details'] ?? [],
             'deliveryRequestUrl' => $case->publicUrl(),
             'loginUrl' => app(\App\Services\AmdRent\PublicBookingNavigation::class)->loginUrl($request, $case->publicUrl()),
             'checkoutToken' => Crypt::encryptString(json_encode($intent, JSON_THROW_ON_ERROR))]);

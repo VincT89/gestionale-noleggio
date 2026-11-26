@@ -65,7 +65,7 @@ class PublicCustomPickupSearchTest extends PublicBookingTestCase
         $page = $this->get($bookingUrl)->assertOk()->assertSee('value="'.self::ADDRESS.'"', false)
             ->assertSee('Ritiro richiesto')->assertSee('Luogo di riconsegna')->assertSee('Richiedi disponibilità');
         $form = $filters + ['first_name' => 'Cliente', 'last_name' => 'Dimostrativo', 'email' => 'ritiro@example.test',
-            'phone' => '+393200000000', 'accept_summary' => 1, 'checkout_token' => $page->viewData('checkoutToken')];
+            'phone' => '+393200000000', ...$this->bookingDetailsFixture(), 'accept_summary' => 1, 'checkout_token' => $page->viewData('checkoutToken')];
         $response = $this->post(route('public-cars.booking.store', 1), $form)->assertStatus(303)->assertSessionHasNoErrors();
         $case = AmdRentEnquiry::firstOrFail();
         $this->assertSame(self::ADDRESS, $case->delivery_address);

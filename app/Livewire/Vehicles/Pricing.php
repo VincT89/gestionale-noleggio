@@ -41,6 +41,10 @@ class Pricing extends Component
     public ?int $km_included_per_day = null;
     public ?float $extra_km_eur = null;
     public ?float $deposit_eur = null;
+    public array $driver_age_rules = [
+        '18_21' => ['enabled' => false, 'amount' => null, 'unit' => 'day'],
+        'over_21' => ['enabled' => false, 'amount' => null, 'unit' => 'day'],
+    ];
     public string $rounding = 'none';
     public ?string $notes = null;
     public ?float $second_driver_daily_eur = null;
@@ -87,6 +91,23 @@ class Pricing extends Component
     private function recomputeFlags(): void
     {
         $this->canEdit = (!$this->pricelist) || ($this->pricelist->status === 'draft');
+        $this->loadDriverAgeRules();
+    }
+
+    public function setMileageMode(string $mode): void
+    {
+        abort_unless(auth()->user()->hasRole('admin') && $this->canEdit, 403);
+        abort_unless(in_array($mode, ['100', 'unlimited'], true), 422);
+        $this->km_included_per_day = $mode === '100' ? 100 : null;
+    }
+
+    private function loadDriverAgeRules(): void
+    {
+        foreach (array_keys(\App\Services\AmdRent\DriverAgePricing::BANDS) as $band) {
+            $rule = $this->pricelist?->driver_age_supplements[$band] ?? null;
+            $this->driver_age_rules[$band] = ['enabled' => $rule !== null,
+                'amount' => $rule === null ? null : $rule['amount_cents'] / 100, 'unit' => $rule['unit'] ?? 'day'];
+        }
     }
 
     public function mount(Vehicle $vehicle, VehiclePricingService $svc): void
@@ -136,18 +157,28 @@ class Pricing extends Component
 
     public function rules(): array
     {
-        return [
+        $rules = [
             'name' => ['nullable','string','max:128'],
             'currency' => ['required','in:EUR'],
             'base_daily_eur' => ['required','numeric','min:0'],
             'weekend_pct' => ['required','integer','min:0','max:100'],
-            'km_included_per_day' => ['nullable','integer','min:0'],
-            'extra_km_eur' => ['nullable','numeric','min:0'],
-            'deposit_eur' => ['nullable','numeric','min:0'],
+            'km_included_per_day' => ['nullable','integer','min:0','max:65535'],
+            'extra_km_eur' => ['nullable','numeric','min:0','max:42949672.95','decimal:0,2'],
+            'deposit_eur' => ['nullable','numeric','min:0','max:42949672.95','decimal:0,2'],
             'rounding' => ['required','in:none,up_1,up_5'],
             'notes' => ['nullable','string','max:255'],
             'second_driver_daily_eur' => ['nullable','numeric','min:0'],
         ];
+        if (auth()->user()->hasRole('admin')) {
+            $rules['driver_age_rules'] = ['array:18_21,over_21'];
+            foreach (array_keys(\App\Services\AmdRent\DriverAgePricing::BANDS) as $band) {
+                $prefix = 'driver_age_rules.'.$band;
+                $rules[$prefix.'.enabled'] = ['required', 'boolean'];
+                $rules[$prefix.'.amount'] = [\Illuminate\Validation\Rule::requiredIf((bool) ($this->driver_age_rules[$band]['enabled'] ?? false)), 'nullable', 'numeric', 'min:0', 'max:100000', 'decimal:0,2'];
+                $rules[$prefix.'.unit'] = ['required', 'in:day,rental'];
+            }
+        }
+        return $rules;
     }
 
     private function currentRenterOrgId(): ?int
@@ -198,9 +229,10 @@ class Pricing extends Component
             'currency' => $this->currency,
             'base_daily_cents' => (int) round($this->base_daily_eur * 100),
             'weekend_pct' => (int) $this->weekend_pct,
-            'km_included_per_day' => $this->km_included_per_day ?: null,
+            'km_included_per_day' => $this->km_included_per_day,
             'extra_km_cents' => $this->extra_km_eur !== null ? (int) round($this->extra_km_eur * 100) : null,
             'deposit_cents' => $this->deposit_eur !== null ? (int) round($this->deposit_eur * 100) : null,
+            'driver_age_supplements' => $this->pricelist?->driver_age_supplements,
             'rounding' => $this->rounding,
             'notes' => $this->notes,
             'status' => 'draft',
@@ -210,6 +242,14 @@ class Pricing extends Component
                 ? (int) round($this->second_driver_daily_eur * 100)
                 : null,
         ];
+
+        if (auth()->user()->hasRole('admin')) {
+            $ageRules = [];
+            foreach ($this->driver_age_rules as $band => $rule) {
+                if ($rule['enabled']) $ageRules[$band] = ['amount_cents' => (int) round($rule['amount'] * 100), 'unit' => $rule['unit']];
+            }
+            $payload['driver_age_supplements'] = $ageRules ?: null;
+        }
 
         if ($this->pricelist && $this->pricelist->status === 'draft') {
             $this->pricelist->update($payload);

@@ -17,10 +17,17 @@
         @endif
     </div>
 @else
-    <div class="amd-page-heading"><h1>{{ $car['title'] }}</h1><p>{{ $customPickup ? 'Ritiro richiesto: '.$filters['delivery_address'] : $car['city'].' — '.$car['location'] }}</p></div>
+    <div class="amd-page-heading"><h1>{{ $car['title'] }}</h1><p>{{ $customPickup ? 'Ritiro richiesto: '.$filters['delivery_address'] : 'Ritiro: '.$car['city'] }}</p></div>
     @if($errors->any())<div class="amd-errors" role="alert"><ul>@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
     <div class="amd-detail">
         <section class="amd-detail-info" aria-label="Dettagli dell’auto">
+            @if(empty($filters['driver_age_band']))
+                <form method="get" action="{{ route($routePrefix.'.show', $car['id']) }}" class="amd-age-choice">
+                    @foreach($filters as $field => $fieldValue) @if($field !== 'driver_age_band' && is_scalar($fieldValue))<input type="hidden" name="{{ $field }}" value="{{ $fieldValue }}">@endif @endforeach
+                    <div class="amd-field"><label for="detail-driver-age">Età del conducente alla data del ritiro</label><select id="detail-driver-age" name="driver_age_band" required><option value="">Scegli la fascia di età</option>@foreach(\App\Services\AmdRent\DriverAgePricing::BANDS as $band => $label)<option value="{{ $band }}">{{ $label }}</option>@endforeach</select></div>
+                    <button class="amd-button amd-button-secondary" type="submit">Mostra il prezzo per questa età</button>
+                </form>
+            @endif
             @if($car['has_photo'])
                 <figure class="amd-detail-figure">
                     <img class="amd-detail-photo" src="{{ route($routePrefix.'.photo', $car['id']) }}" alt="{{ $car['photo_is_reference'] ? 'Immagine indicativa: '.$car['title'] : $car['title'] }}" width="720" height="480">
@@ -45,8 +52,8 @@
             @if($customReturn)<p><strong>{{ $filters['return_address'] }}</strong><br>Da confermare dal noleggiatore.</p>
                 @include('public-cars.partials.selected-map-point', ['point' => $returnPoint ?? null, 'pointType' => 'return'])
             @elseif($customPickup && empty($filters['place_id']) && empty($filters['pickup_group']))<p>{{ !empty($car['is_demo']) ? 'La demo permette di esplorare la ricerca senza confermare appuntamenti.' : 'Scegli un punto servito oppure indica un altro luogo nel riepilogo del noleggio.' }}</p>
-            @else<p>@unless($customPickup)Ritiro: @endunless<strong>{{ $car['location'] }}</strong><br>{{ $car['address'] }}<br>{{ $car['city'] }}</p>@endif
-            @unless($customPickup)<p>Riconsegna: {{ $car['location'] }}.</p>@endunless
+            @else<p>@unless($customPickup)Ritiro: @endunless<strong>{{ $car['city'] }}</strong>. I riferimenti della sede e del noleggiatore saranno disponibili dopo l’ordine.</p>@endif
+            @unless($customPickup)<p>Riconsegna nello stesso punto di ritiro.</p>@endunless
             @if($car['description'])<h2>Informazioni sull’offerta</h2><p class="amd-description">{{ $car['description'] }}</p>@endif
             @if(!empty($car['is_demo']) && isset($bookingOptions))
                 <p>Anteprima delle protezioni: importi e condizioni dimostrativi. Le opzioni sono mostrate per confronto; prenotazioni e pagamenti restano disabilitati.</p>
@@ -55,8 +62,9 @@
         </section>
         <aside class="amd-quote" aria-labelledby="quote-title"><h2 id="quote-title">Il tuo noleggio</h2>
             <dl class="amd-quote-lines"><div><dt>Ritiro</dt><dd>{{ \Carbon\CarbonImmutable::parse($filters['pickup_at'])->format('d/m/Y H:i') }}</dd></div><div><dt>Riconsegna</dt><dd>{{ \Carbon\CarbonImmutable::parse($filters['return_at'])->format('d/m/Y H:i') }}</dd></div><div><dt>Durata tariffata</dt><dd>{{ $car['days'] }} {{ $car['days'] === 1 ? 'giorno' : 'giorni' }}</dd></div></dl>
-            <p>{{ $money($car['total_cents'] / max(1, $car['days'])) }} al giorno in media</p><p class="amd-total-label">Totale noleggio{{ $customPickup ? ', consegna e ritiro inclusi' : '' }}</p><strong class="amd-total">{{ $money($car['total_cents']) }}</strong><p>{{ $car['prices_include_vat'] ? 'IVA inclusa' : 'Importo di listino, IVA da verificare' }}</p>
-            <dl class="amd-quote-lines"><div><dt>Cauzione separata</dt><dd>{{ $money($car['deposit_cents']) }}</dd></div><div><dt>Chilometri inclusi</dt><dd>{{ $car['km_per_day'] === null ? 'Illimitati' : $car['km_per_day'].' km/giorno' }}</dd></div>@if($car['km_per_day'] !== null)<div><dt>Chilometri extra</dt><dd>{{ $money($car['extra_km_cents']) }}/km</dd></div>@endif</dl>
+            @include('public-cars.partials.driver-age-summary')
+            <p>{{ $money($car['total_cents'] / max(1, $car['days'])) }} al giorno in media</p><p class="amd-total-label">{{ !empty($car['driver_age_required']) ? 'Prezzo di partenza: scegli l’età per il totale' : 'Totale noleggio'.($customPickup ? ', consegna e ritiro inclusi' : '') }}</p><strong class="amd-total">{{ $money($car['total_cents']) }}</strong><p>{{ $car['prices_include_vat'] ? 'IVA inclusa' : 'Importo di listino, IVA da verificare' }}</p>
+            @include('public-cars.partials.mileage-deposit-summary')
             @if(isset($filters['budget']) && $car['total_cents'] > round((float)$filters['budget'] * 100))<p class="amd-errors" role="status">Il prezzo aggiornato supera il budget indicato. Puoi modificare la ricerca.</p>@endif
             <p class="amd-availability">{{ !empty($car['is_demo']) ? 'Disponibilità dimostrativa per il periodo selezionato.' : ($customPickup ? 'Richiedi conferma per auto e appuntamenti.' : 'Disponibile per il periodo selezionato.') }}</p>
             @if(!empty($car['is_demo']))
@@ -64,7 +72,7 @@
             @elseif($customPickup)
                 <form class="amd-return-choice" method="get" action="{{ route($routePrefix.'.booking.create', ['pricelist' => $car['id']]) }}" data-return-choice>
                     @foreach(\Illuminate\Support\Arr::except($filters, ['place_id', 'city', 'pickup_group', 'request_custom_return', 'return_address', 'return_place']) as $key => $fieldValue)<input type="hidden" name="{{ $key }}" value="{{ $fieldValue }}">@endforeach
-                    <div class="amd-field" data-return-standard><label for="return-place">Dove riconsegni l’auto?</label><select id="return-place" name="place_id" aria-describedby="return-place-help"><option value="">Scegli un punto di riconsegna</option>@foreach($returnPlaces as $place)<option value="{{ $place->id }}" @selected((string) ($filters['place_id'] ?? (!empty($filters['pickup_group']) ? $car['place_id'] : '')) === (string) $place->id)>{{ $place->label }}</option>@endforeach</select><small id="return-place-help">Scegli un punto servito oppure indica un indirizzo sulla mappa.</small></div>
+                    <div class="amd-field" data-return-standard><label for="return-place">Dove riconsegni l’auto?</label><select id="return-place" name="place_id" aria-describedby="return-place-help"><option value="">Scegli un punto di riconsegna</option>@foreach($returnPlaces as $place)<option value="{{ $place->id }}" @selected((string) ($filters['place_id'] ?? (!empty($filters['pickup_group']) ? $car['place_id'] : '')) === (string) $place->id)>{{ $place->public_label }}</option>@endforeach</select><small id="return-place-help">Scegli un punto servito oppure indica un indirizzo sulla mappa.</small></div>
                     <label class="amd-booking-accept amd-return-toggle" for="request-custom-return"><input id="request-custom-return" name="request_custom_return" type="checkbox" value="1" data-custom-return-toggle aria-controls="custom-return-field" @checked($customReturn)><span>Voglio riconsegnare l’auto in un altro luogo</span></label>
                     <div class="amd-field amd-custom-return-field" id="custom-return-field" data-custom-return-field>
                         <label for="return-address">Luogo di riconsegna personalizzato</label>

@@ -16,9 +16,9 @@
 <div class="amr-actions">@if($booking->rental && !$booking->rental->trashed())@can('view', $booking->rental)<a class="amr-button" href="{{ route('rentals.show', $booking->rental_id) }}">Apri noleggio n. {{ $booking->rental->display_number }}</a>@endcan @endif<a class="amr-link" href="{{ $booking->confirmationUrl() }}" target="_blank" rel="noopener noreferrer">Riepilogo cliente</a><a class="amr-link" href="{{ $booking->pdfUrl(true) }}">Scarica PDF</a></div>
 @if($booking->payment_status === 'pending')<p class="app-muted">L’auto è temporaneamente riservata; il pagamento non è ancora confermato. La scadenza viene riconciliata con Stripe prima di liberare l’auto.</p>@endif
 @if($booking->payment_status === 'review')<p class="amr-notice">Pagamento da verificare con AMD Rent: la prenotazione non va modificata prima della riconciliazione.</p>@include('amd-rent.payment-review')@endif
-@if(isset($booking->quote_snapshot['standard_protection']) || !empty($booking->quote_snapshot['selected_extras']))
+@if(isset($booking->quote_snapshot['standard_protection']) || !empty($booking->quote_snapshot['selected_extras']) || !empty($booking->quote_snapshot['booking_details']))
     <details class="amr-disclosure">
-        <summary>Protezione ed extra</summary>
+        <summary>{{ !empty($booking->quote_snapshot['booking_details']) ? 'Dati del conducente, fatturazione, protezione ed extra' : 'Protezione ed extra' }}</summary>
         @include('public-cars.partials.agreed-options', ['terms' => $booking->quote_snapshot])
     </details>
 @endif

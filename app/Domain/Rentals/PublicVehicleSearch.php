@@ -84,10 +84,9 @@ class PublicVehicleSearch
             $delivery = $deliveries->get($pricelist->renter_org_id);
             if (DemoMap::isDelivery($delivery) && !DemoMap::isVehicle($pricelist->vehicle, $pricelist->renter_org_id)) continue;
             $fee = $point ? (int) ($filters['approved_delivery_fee_cents'] ?? $delivery->custom_delivery_fee_cents) : 0;
-            if ($quote['total'] < 0 || ($budget !== null && $quote['total'] + $fee > $budget)) {
-                continue;
-            }
+            if ($quote['total'] < 0) continue;
             $result = $this->present($pricelist, $quote, $deliveries->get($pricelist->renter_org_id));
+            $result = app(\App\Services\AmdRent\DriverAgePricing::class)->apply($result, $pricelist, $filters['driver_age_band'] ?? null);
             $result['commission_bps'] = $commissionBps;
             $result['customer_deposit_bps'] = \App\Services\AmdRent\CustomerDeposit::currentBps();
             if ($point) {
@@ -97,6 +96,7 @@ class PublicVehicleSearch
                 $result['total_cents'] += $fee;
                 if ($returnPoint) $result['return_destination'] = $returnPoint;
             }
+            if ($budget !== null && $result['total_cents'] > $budget) continue;
             $results->push($result);
         }
 
@@ -162,6 +162,7 @@ class PublicVehicleSearch
             'fuel' => $vehicle->fuel_type_label,
             'organization' => $pricelist->renter->name,
             'location' => $delivery->place->name,
+            'public_location' => $delivery->place->public_label,
             'city' => $delivery->place->city,
             'address' => $delivery->place->address_line,
             // Pricelist notes and product descriptions are internal management data.

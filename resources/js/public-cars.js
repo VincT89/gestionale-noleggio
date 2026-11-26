@@ -3,6 +3,7 @@ import './public-home-motion';
 import './public-interface';
 import './public-cookie-notice';
 import './public-booking-options';
+import './public-booking-customer';
 
 const desktop = window.matchMedia('(min-width: 901px)');
 const mobileNav = document.querySelector('.amd-mobile-nav');

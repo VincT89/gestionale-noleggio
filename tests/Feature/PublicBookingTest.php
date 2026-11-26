@@ -19,7 +19,7 @@ class PublicBookingTest extends PublicBookingTestCase
         $page = $this->get($url)->assertOk();
         $this->from($url);
         return $this->period() + ['checkout_token' => $page->viewData('checkoutToken'), 'first_name' => 'Cliente',
-            'last_name' => 'Di Prova', 'email' => 'cliente@example.test', 'phone' => '+39 320 0000000', 'accept_summary' => '1'];
+            'last_name' => 'Di Prova', 'email' => 'cliente@example.test', 'phone' => '+39 320 0000000', ...$this->bookingDetailsFixture(), 'accept_summary' => '1'];
     }
 
     private function submit(array $form, int $offer = 1, bool $preview = false)

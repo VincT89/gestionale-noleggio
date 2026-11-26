@@ -24,4 +24,10 @@ class PublicPickupPlace extends Model
     {
         return $this->name.($this->city ? ' — '.$this->city : '').' ('.self::KINDS[$this->kind].')';
     }
+
+    public function getPublicLabelAttribute(): string
+    {
+        /** Public transport locations remain recognizable; private rental offices reveal no supplier name. */
+        return $this->kind !== 'location' ? $this->label : 'Punto di ritiro'.($this->city ? ' — '.$this->city : '');
+    }
 }

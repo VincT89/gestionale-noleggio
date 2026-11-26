@@ -4,7 +4,8 @@
 @php
     $accountContact = auth('public_customer')->user();
     $contact = array_replace($accountContact?->hasVerifiedEmail() ? $accountContact->only(['first_name', 'last_name', 'email', 'phone']) : [], $contact ?? []);
-    $inputValue = function ($field) use ($contact, $filters) { $v = old($field, $contact[$field] ?? ($field === 'delivery_address' ? ($filters[$field] ?? '') : '')); return is_scalar($v) ? (string) $v : ''; };
+    $contact = array_replace($contact, $bookingDetails ?? []);
+    $inputValue = function ($field) use ($contact, $filters) { $v = old($field, $contact[$field] ?? ($filters[$field] ?? '')); return is_scalar($v) ? (string) $v : ''; };
     $fixedDelivery = !empty($car['delivery_destination']) && empty($car['delivery_request_id']);
     $requestDelivery = $fixedDelivery;
     $browseFilters = $browseFilters ?? $filters;
@@ -45,13 +46,14 @@
                 </p>
             </div>
         @endif
-        <h2>I tuoi dati</h2>
+        <h2>Dati del conducente</h2>
         <p>Non serve creare un account. I recapiti saranno disponibili al noleggiatore che gestirà la prenotazione. @if(!$accountContact)<a href="{{ $loginUrl ?? route('public-account.login') }}">Accedi</a> per usare i dati del tuo profilo.@endif</p>
         <div class="amd-booking-fields">
             @foreach(['first_name' => ['Nome', 'given-name', 'text', 90], 'last_name' => ['Cognome', 'family-name', 'text', 90], 'email' => ['Email', 'email', 'email', 191], 'phone' => ['Telefono', 'tel', 'tel', 32]] as $field => [$label, $autocomplete, $type, $max])
             <div class="amd-field"><label for="booking-{{ $field }}">{{ $label }}</label><input id="booking-{{ $field }}" name="{{ $field }}" type="{{ $type }}" autocomplete="{{ $autocomplete }}" maxlength="{{ $max }}" value="{{ $inputValue($field) }}" required @if($errors->has($field)) aria-invalid="true" aria-describedby="error-{{ $field }}" @endif>@error($field)<small id="error-{{ $field }}" class="amd-field-error">{{ $message }}</small>@enderror</div>
             @endforeach
         </div>
+        @include('public-cars.partials.booking-customer-fields')
         @if($fixedDelivery)
         <fieldset class="amd-delivery-request">
             <legend>{{ $customReturn ? 'I tuoi appuntamenti' : 'Consegna in hotel o a un indirizzo' }}</legend>
@@ -64,7 +66,7 @@
                 <p>Per cambiare il luogo di riconsegna, <a href="{{ route($routePrefix.'.show', ['pricelist' => $car['id']] + $browseFilters) }}">torna all’auto</a>.</p>
             @endif
             <div class="amd-field"><label for="delivery-notes">Indicazioni per la consegna (facoltative)</label><textarea id="delivery-notes" name="delivery_notes" rows="3" maxlength="2000">{{ $inputValue('delivery_notes') }}</textarea></div>
-            <p>{{ $customReturn ? 'Il noleggiatore confermerà auto, ritiro e riconsegna nei luoghi indicati. Il prezzo comprende entrambi gli appuntamenti.' : 'Il noleggiatore confermerà auto e appuntamenti. Riconsegna presso '.$car['location'].'.' }} Pagherai dopo aver visto la proposta e il totale aggiornato.</p>
+            <p>{{ $customReturn ? 'Il noleggiatore confermerà auto, ritiro e riconsegna nei luoghi indicati. Il prezzo comprende entrambi gli appuntamenti.' : 'Il noleggiatore confermerà auto e appuntamenti. Riconsegna presso il punto di ritiro selezionato.' }} Pagherai dopo aver visto la proposta e il totale aggiornato.</p>
         </fieldset>
         @elseif($canChoosePickup)
         <fieldset class="amd-delivery-request">
@@ -76,6 +78,7 @@
         @endif
         <div class="amd-booking-trap" aria-hidden="true"><label for="booking-website">Sito web</label><input id="booking-website" name="website" tabindex="-1" autocomplete="off"></div>
         <p class="amd-booking-help">I dati completi del conducente e i documenti saranno verificati dal noleggiatore prima della consegna. <a href="{{ config('public_cars.privacy_url') ?: route('public-site.privacy') }}" target="_blank" rel="noopener noreferrer">Informativa privacy (nuova scheda)</a>.</p>
+        <label class="amd-booking-accept" for="accept-privacy"><input id="accept-privacy" name="accept_privacy" type="checkbox" value="1" required><span>Ho preso visione dell’<a href="{{ config('public_cars.privacy_url') ?: route('public-site.privacy') }}" target="_blank" rel="noopener noreferrer">informativa privacy (nuova scheda)</a>.</span></label>
         <label class="amd-booking-accept" for="accept-summary"><input id="accept-summary" name="accept_summary" type="checkbox" value="1" required><span>Ho controllato date, sede, importi e condizioni dell’offerta. Accetto la quota online indicata nel riepilogo e il saldo al ritiro. Se richiedo una consegna personalizzata, attendo prima la proposta del noleggiatore.</span></label>
         <button class="amd-button" type="submit" data-checkout-submit data-delivery-checkout-label="Richiedi disponibilità" data-standard-checkout-label="{{ $needsOnlinePayment ? 'Prosegui al pagamento' : 'Conferma prenotazione' }}">{{ $requestDelivery ? 'Richiedi disponibilità' : ($needsOnlinePayment ? 'Prosegui al pagamento' : 'Conferma prenotazione') }}</button>
         <p class="amd-booking-help">Disponibilità e prezzo vengono ricontrollati alla conferma.</p>

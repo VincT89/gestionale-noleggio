@@ -136,7 +136,7 @@ class PublicPickupDirectoryTest extends PublicBookingTestCase
         $this->assertSame($airportB->id, $form->viewData('filters')['place_id']);
         $this->post(route('public-cars.booking.store', 2), $form->viewData('filters') + [
             'checkout_token' => $form->viewData('checkoutToken'), 'first_name' => 'Cliente', 'last_name' => 'Dimostrativo',
-            'email' => 'group@example.test', 'phone' => '+390000000000', 'accept_summary' => 1,
+            'email' => 'group@example.test', 'phone' => '+390000000000', ...$this->bookingDetailsFixture(), 'accept_summary' => 1,
         ])->assertStatus(303)->assertSessionHasNoErrors();
         $booking = \App\Models\PublicBooking::sole();
         $this->assertSame($airportB->id, $booking->quote_snapshot['place_id']);

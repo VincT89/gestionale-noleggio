@@ -11,7 +11,7 @@
 @if(!empty($car['delivery_address']))
 <p class="amd-summary-label">Ritiro concordato</p><p><strong>{{ $car['delivery_address'] }}</strong></p>
 @else
-<div data-summary-standard-pickup @if($requestDelivery ?? false) hidden @endif><p class="amd-summary-label">Luogo di ritiro</p><p>{{ $car['location'] }} — {{ $car['city'] }}<br>{{ $car['address'] }}</p></div>
+<div data-summary-standard-pickup @if($requestDelivery ?? false) hidden @endif><p class="amd-summary-label">Luogo di ritiro</p><p>@if(isset($booking)){{ $car['location'] }} — {{ $car['city'] }}<br>{{ $car['address'] }}@else{{ $car['city'] }}. I riferimenti della sede e del noleggiatore saranno disponibili dopo l’ordine.@endif</p></div>
 @if(!isset($booking) && ($car['custom_delivery_enabled'] ?? false))
 <div data-summary-custom-pickup @unless($requestDelivery ?? false) hidden @endunless><p class="amd-summary-label">Ritiro richiesto</p><p>{{ $car['delivery_destination']['label'] ?? '' }}</p><p>Disponibilità e appuntamenti da confermare. Consegna e ritiro inclusi.</p></div>
 @endif
@@ -21,16 +21,16 @@
 <p><strong>{{ $car['return_address'] }}</strong></p>
 @include('public-cars.partials.selected-map-point', ['point' => $car['return_destination'] ?? null, 'pointType' => 'return'])
 @if(empty($car['delivery_request_id']))<p>Appuntamento da confermare.</p>@endif
-@else<p>{{ $car['location'] }} — {{ $car['city'] }}<br>{{ $car['address'] }}</p>@endif
-@if(isset($booking) || !empty($car['delivery_request_id']))<p>Servizio erogato da <strong>{{ $car['organization'] }}</strong>.</p>@endif
+@else<p>@if(isset($booking)){{ $car['location'] }} — {{ $car['city'] }}<br>{{ $car['address'] }}@else {{ $car['public_location'] ?? $car['city'] }}. @endif</p>@endif
+@if(isset($booking))<p>Servizio erogato da <strong>{{ $car['organization'] }}</strong>.</p>@endif
 <dl class="amd-quote-lines">
     <div><dt>Ritiro</dt><dd>{{ \Carbon\CarbonImmutable::parse($filters['pickup_at'])->format('d/m/Y H:i') }}</dd></div>
     <div><dt>Riconsegna</dt><dd>{{ \Carbon\CarbonImmutable::parse($filters['return_at'])->format('d/m/Y H:i') }}</dd></div>
     <div><dt>Durata tariffata</dt><dd>{{ $car['days'] }} {{ $car['days'] === 1 ? 'giorno' : 'giorni' }}</dd></div>
 </dl>
-@if($liveOptions || $selectedExtras !== [])
+@if($liveOptions || $selectedExtras !== [] || isset($car['driver_age']))
     <dl class="amd-quote-lines">
-        <div><dt>Tariffa di partenza</dt><dd>{{ $money($car['total_cents'] - $extrasTotal) }}</dd></div>
+        <div><dt>{{ !empty($car['delivery_fee_cents']) ? 'Tariffa auto e consegna' : 'Tariffa auto' }}</dt><dd>{{ $money($car['total_cents'] - $extrasTotal - ($car['driver_age']['total_cents'] ?? 0)) }}</dd></div>
         @if($liveOptions)
             <div data-extra-summary @if($selectedExtras === []) hidden @endif>
                 <dt>Extra selezionati</dt><dd data-options-subtotal>{{ $money($extrasTotal) }}</dd>
@@ -45,11 +45,8 @@
 <p class="amd-total-label">{{ ($requestDelivery ?? false) && empty($car['delivery_request_id']) ? 'Totale richiesto, IVA inclusa' : 'Totale concordato, IVA inclusa' }}</p>
 <strong class="amd-total" data-options-total>{{ $money($car['total_cents']) }}</strong><p><span data-options-daily>{{ $money($car['total_cents'] / max(1, $car['days'])) }} al giorno in media.</span>@if(!empty($car['delivery_destination'])) Consegna e ritiro inclusi.@endif</p>
 <p>{{ $car['prices_include_vat'] ? 'IVA inclusa' : 'Importo di listino, IVA da verificare' }}</p>
-<dl class="amd-quote-lines">
-    <div><dt>Cauzione separata</dt><dd>{{ $money($car['deposit_cents']) }}</dd></div>
-    <div><dt>Chilometri inclusi</dt><dd>{{ $car['km_per_day'] === null ? 'Illimitati' : $car['km_per_day'].' km/giorno' }}</dd></div>
-    @if($car['km_per_day'] !== null)<div><dt>Chilometri extra</dt><dd>{{ $money($car['extra_km_cents']) }}/km</dd></div>@endif
-</dl>
+@include('public-cars.partials.driver-age-summary')
+@include('public-cars.partials.mileage-deposit-summary')
 @php
     $online = isset($booking) ? $booking->online_due_cents : \App\Services\AmdRent\DeliveryQuotes::onlineDue($car);
     $onlineMode = isset($booking) ? $booking->payment_method === 'stripe' : config('amd_rent.payment_mode') === 'stripe';

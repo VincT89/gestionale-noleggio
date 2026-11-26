@@ -54,6 +54,9 @@
                     <label for="option-name">Nome del servizio</label>
                     <input class="app-field" id="option-name" name="name" maxlength="100" value="{{ $value('name', $option->name) }}" required>
                 </div>
+                <input type="hidden" name="is_available" value="0">
+                <label class="amr-check"><input type="checkbox" name="is_available" value="1" @checked($value('is_available', $option->is_available ?? true))><span>Disponibile per le nuove prenotazioni</span></label>
+                <p class="app-muted">Togli la spunta quando l’accessorio non è disponibile. Il servizio resta salvato e le prenotazioni già confermate conservano le condizioni concordate.</p>
             @endif
 
             @if($isPlus)
@@ -173,7 +176,8 @@
                                             <label for="option-franchise-multiplier-{{ $key }}">Moltiplicatore {{ $coverageLabel }}</label>
                                             <input class="app-field" id="option-franchise-multiplier-{{ $key }}" type="number"
                                                    min="0" max="{{ $maxMultiplier }}" step="0.0001" name="coverage[{{ $key }}][multiplier]" data-preview-factor
-                                                   value="{{ $value('coverage.'.$key.'.multiplier', isset($franchiseMultipliers[$key]) ? $franchiseMultipliers[$key] / $multiplierScale : '') }}">
+                                                   value="{{ $value('coverage.'.$key.'.multiplier', isset($franchiseMultipliers[$key]) ? $franchiseMultipliers[$key] / $multiplierScale : ($key === 'kasko' && !array_key_exists($key, $currentCoverage) ? ($isPlus ? '1.5' : '3') : '')) }}">
+                                            @if($key === 'kasko')<p class="app-muted text-sm">Valore proposto: {{ $isPlus ? '×1,5 con AMD Plus' : '×3 con Standard' }} sulla franchigia Kasko della scheda veicolo. Seleziona la copertura per applicarlo.</p>@endif
                                         </div>
                                     </div>
                                     <div class="mt-2" data-preview-amounts hidden>

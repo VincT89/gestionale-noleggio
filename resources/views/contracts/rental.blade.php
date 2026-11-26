@@ -714,9 +714,10 @@
     @php
         $amdRentTerms = $amd_rent_options ?? [];
         $amdRentExtras = $amdRentTerms['selected_extras'] ?? [];
+        $amdRentAge = $amdRentTerms['driver_age'] ?? null;
         $prebookedDriver = \App\Services\AmdRent\BookingOptions::hasSecondDriver($amdRentTerms);
     @endphp
-    @if(($second_driver || $amdRentExtras !== []) && !empty($pricing_totals))
+    @if(($second_driver || $amdRentExtras !== [] || $amdRentAge !== null) && !empty($pricing_totals))
         @php
             $cur = $pricing_totals['currency'] ?? 'EUR';
             $money = function (int $cents) use ($cur) {
@@ -729,8 +730,9 @@
             <table class="table">
                 <tr>
                     <th>Tariffa noleggio</th>
-                    <td>{{ $money((int) ($pricing_totals['tariff_effective_cents'] ?? $pricing_totals['tariff_total_cents'] ?? 0) - \App\Services\AmdRent\BookingOptions::total($amdRentExtras)) }}</td>
+                    <td>{{ $money((int) ($pricing_totals['tariff_effective_cents'] ?? $pricing_totals['tariff_total_cents'] ?? 0) - \App\Services\AmdRent\BookingOptions::total($amdRentExtras) - ($amdRentAge['total_cents'] ?? 0)) }}</td>
                 </tr>
+                @if($amdRentAge)<tr><th>Supplemento età — {{ $amdRentAge['label'] }}</th><td>{{ $money($amdRentAge['total_cents']) }}</td></tr>@endif
                 @if($second_driver && !$prebookedDriver)
                     <tr>
                         <th>Seconda guida</th>

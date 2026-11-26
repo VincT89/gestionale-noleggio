@@ -22,10 +22,10 @@
 <section aria-labelledby="dati">
     <h2 id="dati">I dati che servono al tuo noleggio</h2>
     <h3>Ricerca dell’auto e dei luoghi</h3>
-    <p>Usiamo date, orari, luoghi di ritiro e riconsegna, filtri e, se scegli un punto sulla mappa, le sue coordinate. Servono a mostrarti le proposte e verificare la zona richiesta. Non rileviamo automaticamente la posizione del tuo dispositivo.</p>
+    <p>Usiamo date, orari, luoghi di ritiro e riconsegna, filtri, fascia di età del conducente alla data del ritiro e, se scegli un punto sulla mappa, le sue coordinate. Servono a mostrarti le proposte, gli eventuali supplementi per età e verificare la zona richiesta. Non rileviamo automaticamente la posizione del tuo dispositivo.</p>
     <p>Il trattamento è necessario per rispondere alla tua richiesta prima di un eventuale contratto (art. 6, par. 1, lett. b GDPR).</p>
     <h3>Account e richieste</h3>
-    <p>Per l’area cliente raccogliamo nome, cognome, email, password e il telefono, se fornito. Per prenotazioni, consegne e preventivi usiamo anche i recapiti, i dettagli del viaggio, le preferenze di noleggio, gli eventuali dati aziendali e le note che inserisci. La password viene conservata in forma non leggibile.</p>
+    <p>Per l’area cliente raccogliamo nome, cognome, email, password e il telefono, se fornito. Per prenotazioni, consegne e preventivi usiamo anche i recapiti, i dettagli del viaggio, le preferenze di noleggio, gli eventuali dati aziendali e le note che inserisci. In prenotazione chiediamo la data di nascita del conducente per calcolare l’età al ritiro e controllare la fascia e il supplemento applicati; il noleggiatore verifica i dati sul documento prima della consegna. La password viene conservata in forma non leggibile.</p>
     <p>Questi dati permettono di gestire l’accesso, verificare l’email, rispondere alle richieste, preparare proposte e seguire le prenotazioni. La base giuridica è l’esecuzione del servizio richiesto e delle misure precontrattuali (art. 6, par. 1, lett. b GDPR). Le comunicazioni relative alla pratica non sono newsletter.</p>
     <h3>Documenti e pagamenti</h3>
     <p>I documenti che carichi nell’area cliente sono utilizzati per gestire la pratica e le verifiche richieste per il noleggio. Carica solo ciò che ti viene richiesto. Per i pagamenti conserviamo importi, riferimenti, stato ed eventuali rimborsi; i dati completi della carta vengono inseriti sul servizio di pagamento.</p>

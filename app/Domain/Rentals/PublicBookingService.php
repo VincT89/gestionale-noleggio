@@ -26,7 +26,7 @@ class PublicBookingService
         if (!empty($car['return_destination'])) {
             $values['return_destination'] = array_map(fn ($key) => number_format((float) $car['return_destination'][$key], 7, '.', ''), ['lat', 'lng']);
         }
-        foreach (['standard_protection', 'selected_extras'] as $field) {
+        foreach (['standard_protection', 'selected_extras', 'driver_age'] as $field) {
             if (isset($car[$field])) {
                 $values[$field] = Arr::sortRecursive($car[$field]);
             }
@@ -62,6 +62,10 @@ class PublicBookingService
             $car = $this->search->search(VehiclePricelist::forPublicRental()->whereKey($pricelist->id), $searchPeriod)->first();
             if ($car && $deliveryRequest) $car = app(\App\Services\AmdRent\DeliveryQuotes::class)->apply($car, $deliveryRequest, $attempts);
             $this->assertQuote($intent, $car);
+            /** A previous quote without age pricing records the selected band after its original price is verified. */
+            if (!isset($car['driver_age']) && isset($intent['booking_details']['driver_age_band'])) {
+                $car = app(\App\Services\AmdRent\DriverAgePricing::class)->apply($car, $pricelist, $intent['booking_details']['driver_age_band']);
+            }
             if (!$deliveryRequest) {
                 $car = $this->options->apply($car, $intent);
             }
@@ -74,6 +78,7 @@ class PublicBookingService
             // An unauthenticated visitor cannot claim or overwrite an existing customer by email.
             $customer = Customer::create($contact + [
                 'organization_id' => $pricelist->renter_org_id, 'name' => trim($contact['first_name'].' '.$contact['last_name']),
+                'birthdate' => $intent['booking_details']['birthdate'] ?? null,
             ]);
             $start = CarbonImmutable::parse($intent['period']['pickup_at'], config('app.timezone'));
             $end = CarbonImmutable::parse($intent['period']['return_at'], config('app.timezone'));
@@ -94,7 +99,8 @@ class PublicBookingService
                     .(!empty($car['return_address']) ? 'Riconsegna concordata: '.$car['return_address'].'. Associare il luogo gestionale verificato prima della comunicazione CARGOS. ' : '')
                     .'Completare i dati del conducente e il contratto prima della consegna.',
             ]));
-            $agreedOptions = Arr::only($car, ['standard_protection', 'selected_extras']);
+            $car['booking_details'] = $intent['booking_details'] ?? [];
+            $agreedOptions = Arr::only($car, ['standard_protection', 'selected_extras', 'driver_age', 'booking_details']);
             if (isset($agreedOptions['standard_protection'])) {
                 $rental->coverage()->create(BookingOptions::rentalCoverage($agreedOptions));
             }
@@ -139,6 +145,7 @@ class PublicBookingService
     {
         if (!$car) throw ValidationException::withMessages(['booking' => 'L’auto non è più disponibile per questo periodo. Scegli un’altra auto o modifica le date.']);
         if (!empty($car['is_demo'])) throw ValidationException::withMessages(['booking' => 'Auto dimostrativa: prenotazioni, richieste di consegna e pagamenti non sono disponibili.']);
+        if (!empty($car['driver_age_required'])) throw ValidationException::withMessages(['driver_age_band' => 'Indica la fascia di età del conducente e controlla il prezzo aggiornato.']);
         if ($intent['expires_at'] < now()->timestamp || !hash_equals($intent['fingerprint'], self::fingerprint($car))) {
             throw ValidationException::withMessages(['booking' => 'Il riepilogo è scaduto o le condizioni sono cambiate. Controlla il riepilogo aggiornato e conferma nuovamente.']);
         }

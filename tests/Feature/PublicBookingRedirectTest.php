@@ -26,7 +26,7 @@ class PublicBookingRedirectTest extends PublicBookingTestCase
         // Real browsers load the image after the form; no-referrer suppresses Referer on submit.
         $this->get(route($prefix.'.photo', 1))->assertOk()->assertHeader('Content-Type', 'image/png');
         return $this->period() + ['checkout_token' => $page->viewData('checkoutToken'), 'first_name' => 'Cliente',
-            'last_name' => 'Dimostrativo', 'email' => 'cliente@example.test', 'phone' => '+393200000000', 'accept_summary' => 1];
+            'last_name' => 'Dimostrativo', 'email' => 'cliente@example.test', 'phone' => '+393200000000', ...$this->bookingDetailsFixture(), 'accept_summary' => 1];
     }
 
     private function formUrl(bool $preview = false): string

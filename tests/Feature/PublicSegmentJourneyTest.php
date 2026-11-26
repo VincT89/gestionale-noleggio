@@ -134,7 +134,7 @@ class PublicSegmentJourneyTest extends PublicBookingTestCase
             ->assertViewIs('public-cars.booking');
         return $page->viewData('filters') + ['checkout_token' => $page->viewData('checkoutToken'),
             'first_name' => 'Cliente', 'last_name' => 'Dimostrativo', 'email' => 'segmenti@example.test',
-            'phone' => '+393200000000', 'accept_summary' => 1];
+            'phone' => '+393200000000', ...$this->bookingDetailsFixture(), 'accept_summary' => 1];
     }
 
     public function test_matching_shows_cheapest_inclusive_offer_per_segment_and_no_supplier_selection(): void

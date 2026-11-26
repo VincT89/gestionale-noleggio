@@ -168,7 +168,7 @@
                     <label class="block text-sm font-medium">Tariffa base giornaliera (€)</label>
                     <input type="number" step="0.01" min="0" wire:model.lazy="base_daily_eur" @disabled(!$this->canEdit)
                            class="mt-1 w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700" placeholder="es. 35">
-                    <p class="text-xs app-muted mt-1">Inserisci l’importo in euro, verrà salvato in centesimi.</p>
+                    <p class="text-xs app-muted mt-1">Prezzo dell’auto per ogni giorno tariffato. Supplementi e cauzione sono indicati separatamente.</p>
                     @error('base_daily_eur')<p class="text-sm text-red-600 dark:text-red-400 mt-1">{{ $message }}</p>@enderror
                 </div>
 
@@ -181,6 +181,13 @@
 
                 <div>
                     <label class="block text-sm font-medium">Km inclusi al giorno</label>
+                    @if(auth()->user()->hasRole('admin'))
+                        <div class="flex flex-wrap gap-2 mt-2 mb-2" role="group" aria-label="Chilometraggio incluso">
+                            <button type="button" wire:click="setMileageMode('100')" @disabled(!$this->canEdit) aria-pressed="{{ $km_included_per_day === 100 ? 'true' : 'false' }}" class="rounded border px-3 py-2 {{ $km_included_per_day === 100 ? 'bg-slate-800 text-white' : '' }}">100 km/giorno</button>
+                            <button type="button" wire:click="setMileageMode('unlimited')" @disabled(!$this->canEdit) aria-pressed="{{ $km_included_per_day === null ? 'true' : 'false' }}" class="rounded border px-3 py-2 {{ $km_included_per_day === null ? 'bg-slate-800 text-white' : '' }}">Illimitati</button>
+                        </div>
+                        <p class="text-sm app-muted">Condizione attuale: <strong>{{ $km_included_per_day === null ? 'chilometri illimitati' : $km_included_per_day.' km al giorno' }}</strong>. Puoi indicare qui sotto un diverso limite giornaliero previsto dall’offerta.</p>
+                    @endif
                     <input type="number" min="0" wire:model.lazy="km_included_per_day" @disabled(!$this->canEdit)
                            class="mt-1 w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700">
                     @error('km_included_per_day')<p class="text-sm text-red-600 dark:text-red-400 mt-1">{{ $message }}</p>@enderror
@@ -188,6 +195,7 @@
 
                 <div>
                     <label class="block text-sm font-medium">Costo km extra (€)</label>
+                    <p class="text-sm app-muted">Prezzo per ogni chilometro oltre il totale incluso. Si paga in sede al rientro. Non si applica ai chilometri illimitati.</p>
                     <input type="number" step="0.01" min="0" wire:model.lazy="extra_km_eur" @disabled(!$this->canEdit)
                            class="mt-1 w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700" placeholder="es. 0.20">
                     @error('extra_km_eur')<p class="text-sm text-red-600 dark:text-red-400 mt-1">{{ $message }}</p>@enderror
@@ -195,7 +203,8 @@
 
                 <div>
                     <label class="block text-sm font-medium">Cauzione (€)</label>
-                    <input type="number" step="1" min="0" wire:model.lazy="deposit_eur" @disabled(!$this->canEdit)
+                    <p class="text-sm app-muted">Paga in sede. Garanzia separata dal prezzo del noleggio e dall’acconto online.</p>
+                    <input type="number" step="0.01" min="0" wire:model.lazy="deposit_eur" @disabled(!$this->canEdit)
                            class="mt-1 w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700" placeholder="facoltativo">
                     @error('deposit_eur')<p class="text-sm text-red-600 dark:text-red-400 mt-1">{{ $message }}</p>@enderror
                 </div>
@@ -228,6 +237,31 @@
                               class="mt-1 w-full rounded border-gray-300 dark:bg-gray-900 dark:border-gray-700"></textarea>
                 </div>
             </div>
+            @if(auth()->user()->hasRole('admin'))
+                <fieldset class="mt-6 border-t pt-5">
+                    <legend class="font-semibold text-lg">Supplementi per età del conducente</legend>
+                    <p class="text-sm app-muted mb-4">Età alla data del ritiro. Attiva il supplemento per la fascia desiderata e indica l’importo in euro. Con la casella disattivata non si aggiunge alcun costo. Il supplemento viene mostrato separatamente al cliente.</p>
+                    <div class="grid sm:grid-cols-2 gap-5">
+                        @foreach(\App\Services\AmdRent\DriverAgePricing::BANDS as $band => $bandLabel)
+                            <div class="rounded border p-4" wire:key="driver-age-{{ $band }}">
+                                <h3 class="font-semibold">{{ $bandLabel }}</h3>
+                                <label class="flex items-center gap-2 mt-3"><input type="checkbox" wire:model.live="driver_age_rules.{{ $band }}.enabled" @disabled(!$this->canEdit)> Applica un supplemento</label>
+                                @if($driver_age_rules[$band]['enabled'])
+                                    <label class="block text-sm mt-3" for="age-amount-{{ $band }}">Importo del supplemento (€)</label>
+                                    <input id="age-amount-{{ $band }}" type="number" min="0" max="100000" step="0.01" wire:model.lazy="driver_age_rules.{{ $band }}.amount" @disabled(!$this->canEdit) class="app-field w-full rounded border">
+                                    @error('driver_age_rules.'.$band.'.amount')<p class="text-sm text-red-600">Inserisci un importo valido. Usa 0 solo se non è previsto un costo.</p>@enderror
+                                    <label class="block text-sm mt-3" for="age-unit-{{ $band }}">Come si applica</label>
+                                    <select id="age-unit-{{ $band }}" wire:model.live="driver_age_rules.{{ $band }}.unit" @disabled(!$this->canEdit) class="app-field w-full rounded border"><option value="day">Per ogni giorno tariffato</option><option value="rental">Una volta per l’intero noleggio</option></select>
+                                    <p class="text-sm mt-3">{{ $driver_age_rules[$band]['amount'] === null || $driver_age_rules[$band]['amount'] === '' ? 'Importo da configurare' : number_format((float) $driver_age_rules[$band]['amount'], 2, ',', '.').' € '.($driver_age_rules[$band]['unit'] === 'day' ? 'al giorno' : 'per noleggio') }}</p>
+                                @else
+                                    <p class="text-sm app-muted mt-3">Nessun supplemento per questa fascia.</p>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                    <p class="text-sm app-muted mt-4">Salva la bozza e pubblica il listino per applicare le nuove condizioni alle prenotazioni future.</p>
+                </fieldset>
+            @endif
         </div>
     @endif
 

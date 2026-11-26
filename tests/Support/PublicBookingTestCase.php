@@ -19,6 +19,7 @@ abstract class PublicBookingTestCase extends PublicCarsTestCase
         Schema::create('customers', function (Blueprint $t) {
             $t->id(); $t->unsignedBigInteger('organization_id'); $t->string('name');
             foreach (['first_name', 'last_name', 'email', 'phone'] as $field) $t->string($field)->nullable();
+            $t->date('birthdate')->nullable();
             $t->softDeletes(); $t->timestamps();
         });
         Schema::create('renter_contract_number_ledger', function (Blueprint $t) {
@@ -41,6 +42,7 @@ abstract class PublicBookingTestCase extends PublicCarsTestCase
         (require database_path('migrations/2026_11_05_120000_set_default_amd_rent_commission_to_fifteen_percent.php'))->up();
         (require database_path('migrations/2026_09_25_100000_create_public_customer_accounts.php'))->up();
         (require database_path('migrations/2026_11_17_120000_create_amd_rent_options_table.php'))->up();
+        (require database_path('migrations/2026_11_26_120000_add_public_checkout_settings.php'))->up();
         // Preserve coverage of previously accepted pay-at-pickup bookings. Stripe has a dedicated suite.
         config(['amd_rent.payment_mode' => 'pickup']);
         foreach ([2 => 'rentals.viewAny', 3 => 'rentals.view', 4 => 'rentals.create'] as $id => $name) {

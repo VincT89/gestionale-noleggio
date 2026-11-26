@@ -22,7 +22,7 @@ return [
     'retention_documents' => env('AMD_RENT_PRIVACY_RETENTION_DOCUMENTS'),
     'retention_logs' => env('AMD_RENT_PRIVACY_RETENTION_LOGS'),
     'reviewed' => (bool) env('AMD_RENT_PRIVACY_REVIEWED', false),
-    'updated_at' => '2026-10-06',
+    'updated_at' => '2026-11-26',
     // Informational notice only: no optional tracking is installed by this site.
     // Review the notice and implement prior consent BEFORE adding any trackers.
     'notice_version' => '2026-10-06',

@@ -8,7 +8,7 @@
         return is_scalar($input) ? (string) $input : '';
     };
     $money = fn ($cents) => number_format($cents / 100, 2, ',', '.').' €';
-    $baseFilters = array_filter(\Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at', 'place_id', 'city', 'pickup_group', 'request_delivery', 'delivery_address', 'delivery_place', 'request_custom_return', 'return_address', 'return_place', 'exclude']), fn ($v) => $v !== null && $v !== '');
+    $baseFilters = array_filter(\Illuminate\Support\Arr::only($filters, ['pickup_at', 'return_at', 'place_id', 'city', 'pickup_group', 'request_delivery', 'delivery_address', 'delivery_place', 'request_custom_return', 'return_address', 'return_place', 'exclude', 'driver_age_band']), fn ($v) => $v !== null && $v !== '');
     $customPickup = $value('request_delivery') === '1';
     $destinationValue = $value('destination', $value('pickup_group') ? 'group:'.$value('pickup_group') : ($value('place_id') ?: ($value('city') ? 'city:'.$value('city') : '')));
     $groupLabel = \App\Domain\Rentals\PublicPickupDirectory::groupLabel($value('pickup_group'));
@@ -22,9 +22,9 @@
                 <div id="public-search-recap">
                     <div class="amd-trip-place">
                         <span>{{ $customPickup ? 'Ritiro al tuo indirizzo' : 'Luogo di ritiro' }}</span>
-                        <strong>{{ $customPickup ? $value('delivery_address') : ($groupLabel ?? $selectedPlace?->label ?? $value('city')) }}</strong>
+                        <strong>{{ $customPickup ? $value('delivery_address') : ($groupLabel ?? $selectedPlace?->public_label ?? $value('city')) }}</strong>
                         @if($customPickup && $deliveryPoint)<small class="amd-trip-credit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a></small>@endif
-                        @if($customPickup)<small>Riconsegna: {{ !empty($filters['request_custom_return']) ? $filters['return_address'].' (da confermare)' : ($groupLabel ?? $selectedPlace?->label ?? ($value('city') ?: 'da scegliere dopo l’auto')) }}</small>@endif
+                        @if($customPickup)<small>Riconsegna: {{ !empty($filters['request_custom_return']) ? $filters['return_address'].' (da confermare)' : ($groupLabel ?? $selectedPlace?->public_label ?? ($value('city') ?: 'da scegliere dopo l’auto')) }}</small>@endif
                     </div>
                     <div class="amd-trip-date"><span>Ritiro</span><strong><time datetime="{{ $filters['pickup_at'] }}">{{ \Carbon\CarbonImmutable::parse($filters['pickup_at'])->format('d/m/Y') }}</time></strong><small>Ore {{ \Carbon\CarbonImmutable::parse($filters['pickup_at'])->format('H:i') }}</small></div>
                     <div class="amd-trip-date"><span>Riconsegna</span><strong><time datetime="{{ $filters['return_at'] }}">{{ \Carbon\CarbonImmutable::parse($filters['return_at'])->format('d/m/Y') }}</time></strong><small>Ore {{ \Carbon\CarbonImmutable::parse($filters['return_at'])->format('H:i') }}</small></div>
@@ -76,7 +76,7 @@
             </details>
         </aside>
         <section class="amd-results" aria-labelledby="results-title">
-            <div class="amd-results-heading"><div><h2 id="results-title">{{ $results->total() === 1 ? '1 auto disponibile' : $results->total().' auto disponibili' }}</h2>@if($selectedPlace)<p class="amd-results-place">{{ $selectedPlace->name }}@if($selectedPlace->city), {{ $selectedPlace->city }}@endif</p>@elseif($value('city'))<p class="amd-results-place">{{ $value('city') }} — Tutti i punti di ritiro</p>@endif</div>
+            <div class="amd-results-heading"><div><h2 id="results-title">{{ $results->total() === 1 ? '1 auto disponibile' : $results->total().' auto disponibili' }}</h2>@if($selectedPlace)<p class="amd-results-place">{{ $selectedPlace->public_label }}@if($selectedPlace->city), {{ $selectedPlace->city }}@endif</p>@elseif($value('city'))<p class="amd-results-place">{{ $value('city') }} — Tutti i punti di ritiro</p>@endif</div>
                 <form method="get" action="{{ route($routePrefix.'.index') }}" class="amd-sort" data-live-search>
                     @foreach($filters as $key => $filterValue) @if(!in_array($key, ['sort','page']) && $filterValue !== null)<input type="hidden" name="{{ $key }}" value="{{ $filterValue }}">@endif @endforeach
                     <label for="sort">Ordina per</label><select id="sort" name="sort"><option value="price_asc" @selected(($filters['sort'] ?? '') !== 'price_desc')>Prezzo crescente</option><option value="price_desc" @selected(($filters['sort'] ?? '') === 'price_desc')>Prezzo decrescente</option></select><button class="amd-button amd-button-secondary" type="submit">Ordina</button>
@@ -100,7 +100,7 @@
                                 @elseif($customPickup && empty($filters['place_id']))
                                     La scegli dopo l’auto
                                 @else
-                                    {{ $car['location'] }}@if($car['city']), {{ $car['city'] }}@endif
+                                    {{ $car['public_location'] ?? $car['city'] }}
                                 @endif
                             </p>
                         </div>

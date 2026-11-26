@@ -140,7 +140,7 @@ class PublicPickupMapTest extends PublicBookingTestCase
         $page = $this->get(route('public-cars.booking.create', ['pricelist' => 1] + $filters))->assertOk()
             ->assertSee(self::ADDRESS)->assertSee('Vedi il punto di ritiro indicato sulla mappa');
         $this->post(route('public-cars.booking.store', 1), $filters + ['first_name' => 'Cliente', 'last_name' => 'Mappa',
-            'email' => 'map@example.test', 'phone' => '+393200000000', 'accept_summary' => 1,
+            'email' => 'map@example.test', 'phone' => '+393200000000', ...$this->bookingDetailsFixture(), 'accept_summary' => 1,
             'checkout_token' => $page->viewData('checkoutToken'), 'map_lat' => -20, 'map_lng' => -40])->assertStatus(303);
         $case = AmdRentEnquiry::firstOrFail();
         $this->assertSame(self::ADDRESS, $case->delivery_address);

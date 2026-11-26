@@ -33,7 +33,7 @@ class AmdRentOperationsTest extends PublicBookingTestCase
     {
         $page = $this->get(route('public-cars.booking.create', ['pricelist' => $pricelist] + $this->period($filters)))->assertOk();
         return $page->viewData('filters') + ['checkout_token' => $page->viewData('checkoutToken'), 'first_name' => 'Cliente', 'last_name' => 'Dimostrativo',
-            'email' => 'cliente@example.test', 'phone' => '+393200000000', 'accept_summary' => 1];
+            'email' => 'cliente@example.test', 'phone' => '+393200000000', ...$this->bookingDetailsFixture(), 'accept_summary' => 1];
     }
     private function book(): PublicBooking
     {

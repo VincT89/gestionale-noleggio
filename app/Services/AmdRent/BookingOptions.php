@@ -42,7 +42,7 @@ class BookingOptions
             }
         }
 
-        $services = $options->where('kind', 'service');
+        $services = $options->where('kind', 'service')->filter(fn (AmdRentOption $option) => $option->is_available ?? true);
         $secondDriver = $services->firstWhere('covers_second_driver', true);
         foreach ($services as $option) {
             if (!$option->covers_second_driver || $option->is($secondDriver)) {
@@ -104,7 +104,7 @@ class BookingOptions
             $car['standard_protection'] = $agreed['standard_protection'];
         }
         if (!empty($agreed['selected_extras'])) {
-            $rentalCents = $car['rental_total_cents'] ?? $car['total_cents'];
+            $rentalCents = $car['vehicle_rental_total_cents'] ?? $car['rental_total_cents'] ?? $car['total_cents'];
             $car['selected_extras'] = array_map(fn (array $extra) => self::priceForRental($extra, $rentalCents), $agreed['selected_extras']);
             $car['total_cents'] += self::total($car['selected_extras']);
         }
@@ -212,7 +212,7 @@ class BookingOptions
             $extra['price_multiplier_bps'] = $option->price_multiplier_bps;
         }
 
-        return self::priceForRental($extra, $car['rental_total_cents'] ?? $car['total_cents']);
+        return self::priceForRental($extra, $car['vehicle_rental_total_cents'] ?? $car['rental_total_cents'] ?? $car['total_cents']);
     }
 
     /** Apply the uplift only to the vehicle rate and keep the selected factor for delivery proposals. */

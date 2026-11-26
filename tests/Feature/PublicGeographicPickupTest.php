@@ -196,7 +196,7 @@ class PublicGeographicPickupTest extends PublicBookingTestCase
         $filters = $this->filters($service);
         $page = $this->get(route('public-cars.booking.create', ['pricelist' => 1] + $filters))->assertOk();
         $form = $filters + ['first_name' => 'Cliente', 'last_name' => 'Dimostrativo', 'email' => 'demo@example.test',
-            'phone' => '+393200000000', 'accept_summary' => 1, 'checkout_token' => $page->viewData('checkoutToken')];
+            'phone' => '+393200000000', ...$this->bookingDetailsFixture(), 'accept_summary' => 1, 'checkout_token' => $page->viewData('checkoutToken')];
         $withoutReturn = $form;
         unset($withoutReturn['place_id']);
         $this->post(route('public-cars.booking.store', 1), $withoutReturn)
@@ -228,7 +228,7 @@ class PublicGeographicPickupTest extends PublicBookingTestCase
         $service->update(['delivery_radius_km' => .01]);
         $this->post(route('public-cars.booking.store', 1), $filters + [
             'first_name' => 'Cliente', 'last_name' => 'Dimostrativo', 'email' => 'demo@example.test',
-            'phone' => '+393200000000', 'accept_summary' => 1, 'checkout_token' => $page->viewData('checkoutToken'),
+            'phone' => '+393200000000', ...$this->bookingDetailsFixture(), 'accept_summary' => 1, 'checkout_token' => $page->viewData('checkoutToken'),
         ])->assertRedirect()->assertSessionHasErrors('booking');
         $this->assertDatabaseCount('amd_rent_enquiries', 0);
     }
@@ -252,7 +252,7 @@ class PublicGeographicPickupTest extends PublicBookingTestCase
         $service = $this->service(1, 41.13);
         $filters = $this->filters($service);
         $contact = ['first_name' => 'Cliente', 'last_name' => 'Dimostrativo', 'email' => 'demo@example.test',
-            'phone' => '+393200000000', 'accept_summary' => 1];
+            'phone' => '+393200000000', ...$this->bookingDetailsFixture(), 'accept_summary' => 1];
         $page = $this->get(route('public-cars.booking.create', ['pricelist' => 1] + $filters))->assertOk();
         $this->post(route('public-cars.booking.store', 1), $contact + $filters + ['checkout_token' => $page->viewData('checkoutToken')])->assertStatus(303);
         $case = AmdRentEnquiry::firstOrFail();

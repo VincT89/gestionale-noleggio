@@ -20,6 +20,7 @@ class DeliveryQuotes
         $fee = (int) $case->delivery_fee_cents;
         $return = !empty($context['return_address']) ? ['return_address' => $context['return_address']] : [];
         if ($return && !empty($context['return_destination'])) $return['return_destination'] = $context['return_destination'];
+        $car = DriverAgePricing::retainAgreed($car, $context['car']);
         $base = $car['rental_total_cents'] ?? $car['total_cents'];
         $result = array_replace($car, $return, ['rental_total_cents' => $base, 'total_cents' => $base + $fee,
             'delivery_fee_cents' => $fee, 'delivery_address' => $case->delivery_address,

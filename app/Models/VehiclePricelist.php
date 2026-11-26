@@ -26,6 +26,7 @@ class VehiclePricelist extends Model
         'deposit_cents','rounding',
         'notes',
         'second_driver_daily_cents',
+        'driver_age_supplements',
         // versioning
         'version','status','active_flag','published_at',
         'is_active', // legacy: ancora nel DB, ma non più usato in UI
@@ -40,6 +41,7 @@ class VehiclePricelist extends Model
         'active_flag' => 'boolean',
         'published_at' => 'datetime',
         'second_driver_daily_cents' => 'integer',
+        'driver_age_supplements' => 'array',
     ];
 
     /** Public prices come directly from the active rental pricelists. */

@@ -17,7 +17,7 @@
     @endforeach
 </dl>
 @if($customReturn)<p>Riconsegna richiesta: <strong>{{ $case->booking_context['return_address'] }}</strong>.</p>
-@else<p>Riconsegna presso {{ $case->booking_context['car']['location'] }} — {{ $case->booking_context['car']['city'] }}.</p>@endif
+@else<p>Riconsegna presso {{ $case->booking_context['car']['public_location'] ?? $case->booking_context['car']['city'] }}. I riferimenti del noleggiatore saranno disponibili dopo l’ordine.</p>@endif
 @include('public-cars.partials.selected-map-point', ['point' => $case->booking_context['delivery_destination'] ?? null])
 @include('public-cars.partials.selected-map-point', ['point' => $case->booking_context['return_destination'] ?? null, 'pointType' => 'return'])
 @include('public-cars.partials.agreed-options', ['terms' => $case->booking_context['car']])

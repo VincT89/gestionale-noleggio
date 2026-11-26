@@ -6,7 +6,7 @@ if (bookingForm) {
     const base = Number(optionsBase);
     const days = Number(optionsDays);
     const depositBps = Number(optionsDepositBps);
-    const money = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' });
+    const money = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR', useGrouping: 'always' });
     const summary = bookingForm.closest('.amd-booking-layout');
     const amountInput = bookingForm.elements.namedItem('displayed_total_cents');
     const acceptance = bookingForm.elements.namedItem('accept_summary');

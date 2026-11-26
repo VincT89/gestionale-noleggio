@@ -31,7 +31,7 @@ class PublicCustomReturnTest extends PublicBookingTestCase
     private function contact(): array
     {
         return ['first_name' => 'Cliente', 'last_name' => 'Dimostrativo', 'email' => 'return@example.test',
-            'phone' => '+393200000000', 'accept_summary' => 1];
+            'phone' => '+393200000000', ...$this->bookingDetailsFixture(), 'accept_summary' => 1];
     }
 
     private function form(array $filters): array

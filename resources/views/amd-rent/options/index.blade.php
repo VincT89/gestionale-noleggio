@@ -35,6 +35,7 @@
                         <div class="amr-row-title">
                             <a class="amr-link font-semibold" href="{{ route('amd-rent.options.edit', $option) }}">{{ $option->name }}</a>
                             <span>{{ $option->published ? 'Pubblicata' : 'Bozza' }}</span>
+                            @if($option->kind === 'service')<span>{{ $option->is_available ? 'Disponibile' : 'Non disponibile' }}</span>@endif
                         </div>
                         <p class="app-muted">
                             @if($option->vehicle_id)
