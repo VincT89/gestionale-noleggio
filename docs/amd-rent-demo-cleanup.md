@@ -4,6 +4,44 @@ Il comando `amd-rent:demo-cleanup` opera su un solo noleggiatore DEMO, indicato 
 
 Negli esempi, sostituire `ID_DEMO` con l’ID verificato nell’ambiente di destinazione. Nel campo Artisan di Plesk che contiene già il prefisso `php artisan`, inserire soltanto la parte successiva a quel prefisso.
 
+## Comandi su Plesk per DEMO AMD Rent
+
+Il destinatario previsto per questa demo è **DEMO AMD Rent, ID 14**. Prima dell’utilizzo, il nuovo comando deve essere già pubblicato su `amdrent.it` dal ramo `dev_modifiche`.
+
+Aprire **Plesk → amdrent.it → Laravel Toolkit → Artisan**. I comandi seguenti sono già scritti senza il prefisso `php artisan`, presente nel campo del pannello.
+
+Per controllare l’anteprima senza modificare dati o file:
+
+```text
+amd-rent:demo-cleanup 14
+```
+
+Verificare che il riepilogo indichi **14 — DEMO AMD Rent**, il sito e il database corretti, gli ID previsti e nessun motivo di blocco. Conservare il riepilogo e copiare il valore completo indicato come **Impronta**.
+
+Solo dopo il via libera del cliente e un backup recente del database condiviso e delle foto, per applicare la pulizia:
+
+```text
+amd-rent:demo-cleanup 14 --apply --confirm=IMPRONTA
+```
+
+Sostituire `IMPRONTA` con il valore completo restituito dall’anteprima appena verificata. Il testo `IMPRONTA` è un segnaposto, non un valore da lasciare nel comando. Se l’anteprima segnala blocchi o cambia, fermarsi e verificare il nuovo riepilogo.
+
+La pulizia riguarda le copie demo riconosciute del noleggiatore 14. Il profilo DEMO viene conservato e disattivato; gli utenti vengono conservati. Eventuali fake senza contrassegni e foto nello storage separato di ERA richiedono un controllo distinto. La pulizia del database condiviso non va ripetuta automaticamente dall’altro dominio.
+
+Per scegliere invece la sola disattivazione, conservando tutte le copie e le foto, generare prima l’anteprima specifica:
+
+```text
+amd-rent:demo-cleanup 14 --deactivate
+```
+
+Dopo il controllo e la conferma dell’operazione, usare l’impronta di questa anteprima:
+
+```text
+amd-rent:demo-cleanup 14 --deactivate --apply --confirm=IMPRONTA
+```
+
+Le impronte delle due operazioni sono diverse: quella della pulizia non può confermare la sola disattivazione, e viceversa.
+
 ## Anteprima
 
 ```text
